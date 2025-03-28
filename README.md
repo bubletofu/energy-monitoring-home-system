@@ -40,9 +40,9 @@ energy-monitoring-home-system/
 ├── .gitignore
 ├── /docs                  # Documentation and architecture
 ├── /hardware              # Schematics and device configuration
-├── /firmware              # Arduino/ESP32 code for sensors and control
+├── /firmware              # Code for sensors and control
 ├── /ai_module             # YOLOHome-based prediction and learning
-├── /dashboard             # Real-time dashboard (e.g., Flask/Streamlit)
+├── /dashboard             # Real-time dashboard 
 ├── /utils                 # Helper scripts and calculations
 └── /data                  # Logged data and usage patterns
 ```
