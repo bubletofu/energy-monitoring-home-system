@@ -61,14 +61,8 @@ energy-monitoring-home-system/
 
 ## 🛠️ Technologies Used
 
-- **Arduino / ESP32**
 - **Python**
 - **YOLOHome (AI model)**
-- **Flask / Streamlit (Dashboard)**
-- **Sensors & Actuators (Relay, USB switch, Light sensor, LCD)**
+- **Sensors & Actuators**
 
----
 
-## 📈 Future Improvements
-- Enable remote control via mobile app
-- Expand to multi-room energy profiling
