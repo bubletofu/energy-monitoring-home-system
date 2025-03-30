@@ -104,8 +104,3 @@ GET /compression/compressed-data
 ```
 GET /compression/stats
 ```
-
-4. Tổng hợp dữ liệu 24 giờ:
-```
-POST /compression/daily_summary
-```
