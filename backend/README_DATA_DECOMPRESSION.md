@@ -109,28 +109,8 @@ df['timestamp'] = pd.to_datetime(df['timestamp'])
 print(df.describe())
 ```
 
-## Xử lý sự cố
-
-Nếu bạn gặp vấn đề khi chạy script, hãy thử các bước sau:
-
-1. Bật chế độ debug để xem thông tin chi tiết:
-   ```bash
-   python decompress_data_for_ai.py --output data.json --debug
-   ```
-
-2. Kiểm tra kết nối database:
-   ```bash
-   psql -U postgres -d iot_db -h localhost -p 5433 -c "SELECT COUNT(*) FROM compressed_data;"
-   ```
-
-3. Kiểm tra cấu trúc bảng trong database:
-   ```bash
-   psql -U postgres -d iot_db -h localhost -p 5433 -c "\d+ compressed_data"
-   psql -U postgres -d iot_db -h localhost -p 5433 -c "\d+ original_samples"
-   ```
 
 ## Lưu ý
 
-- Script này tự động tái tạo dữ liệu cảm biến từ templates được lưu trong database.
 - Quá trình giải nén hoạt động tốt nhất khi cả hai bảng `compressed_data` và `original_samples` đều có đầy đủ dữ liệu.
 - Thời gian xử lý có thể tăng lên nếu lượng dữ liệu lớn, hãy sử dụng tham số `--start-date` và `--end-date` để lọc dữ liệu trong khoảng thời gian cụ thể. 
