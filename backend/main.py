@@ -11,13 +11,11 @@ import json
 from fastapi.responses import JSONResponse
 from config import settings
 from mqtt_client import MQTTClient
+from database import engine, get_db
 
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Khởi tạo MQTT client
-mqtt_client = MQTTClient()
 
 # Thông tin kết nối database từ config
 DATABASE_URL = settings.DATABASE_URL
@@ -45,8 +43,13 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# Khởi tạo MQTT client
+mqtt_client = None
+
 @app.on_event("startup")
 async def startup_event():
+    global mqtt_client
+    mqtt_client = MQTTClient()
     try:
         mqtt_client.connect()
         logger.info("MQTT client connected successfully")
@@ -56,11 +59,10 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    try:
+    global mqtt_client
+    if mqtt_client:
         mqtt_client.disconnect()
         logger.info("MQTT client disconnected successfully")
-    except Exception as e:
-        logger.error(f"Error disconnecting MQTT client: {str(e)}")
 
 # Dependency để lấy database session
 def get_db():
@@ -268,4 +270,24 @@ async def publish_device_data(
         return {"message": "Device data published successfully"}
     except Exception as e:
         logger.error(f"Error publishing device data: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/")
+def read_root():
+    return {"message": "IoT Backend API"}
+
+@app.get("/sensor-data/")
+def get_sensor_data(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    data = db.query(models.SensorData).offset(skip).limit(limit).all()
+    return data
+
+@app.get("/publish/{feed_id}/{value}")
+def publish_to_feed(feed_id: str, value: str):
+    if mqtt_client:
+        success = mqtt_client.publish_message(feed_id, value)
+        if success:
+            return {"status": "success", "message": f"Đã gửi {value} đến feed {feed_id}"}
+        else:
+            raise HTTPException(status_code=500, detail="Không thể gửi dữ liệu")
+    else:
+        raise HTTPException(status_code=503, detail="MQTT client chưa được khởi tạo") 

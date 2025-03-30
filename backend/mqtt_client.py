@@ -107,7 +107,7 @@ class MQTTClient:
             
     def handle_message(self, topic, data):
         """
-        Xử lý tin nhắn nhận được từ Adafruit IO
+        Xử lý tin nhắn nhận được từ Adafruit IO và lưu vào database
         
         Format topic Adafruit IO: username/feeds/feed_id
         """
@@ -118,11 +118,44 @@ class MQTTClient:
                 feed_id = parts[2]
                 logger.info(f"Đã xử lý dữ liệu từ feed {feed_id}: {data}")
                 
-                # TODO: Lưu dữ liệu vào database hoặc xử lý theo logic ứng dụng
-                # Ví dụ:
-                # from database import save_sensor_data
-                # save_sensor_data(feed_id, data)
+                # Lấy giá trị từ dữ liệu
+                value = data
+                if isinstance(data, dict) and "value" in data:
+                    value = data["value"]
+                
+                # Lưu vào database
+                self.save_to_database(feed_id, value)
             else:
                 logger.warning(f"Định dạng topic không đúng: {topic}")
         except Exception as e:
-            logger.error(f"Lỗi khi xử lý dữ liệu: {str(e)}") 
+            logger.error(f"Lỗi khi xử lý dữ liệu: {str(e)}")
+            
+    def save_to_database(self, feed_id, value):
+        """
+        Lưu dữ liệu vào database
+        """
+        try:
+            from database import SessionLocal
+            from models import SensorData
+            
+            # Tạo session mới
+            db = SessionLocal()
+            
+            # Tạo bản ghi mới
+            new_data = SensorData(
+                device_id="default",  # Có thể trích xuất từ feed_id hoặc cấu hình
+                feed_id=feed_id,
+                value=float(value) if isinstance(value, (int, float, str)) else 0.0
+            )
+            
+            # Thêm và commit vào database
+            db.add(new_data)
+            db.commit()
+            db.refresh(new_data)
+            db.close()
+            
+            logger.info(f"Đã lưu dữ liệu từ feed {feed_id} vào database")
+            return True
+        except Exception as e:
+            logger.error(f"Lỗi khi lưu dữ liệu vào database: {str(e)}")
+            return False 
