@@ -60,11 +60,13 @@ python fetch_adafruit_data_manual.py --date 2023-11-20 --limit 100
 
 ```
 python fetch_adafruit_data_manual.py --date 2025-03-30 --force-reload
+```
 
+## Giải nén dữ liệu
 
-## Công cụ giải nén dữ liệu
+Dành cho mấy bạn AI để giải nén và dùng để huấn luyện mô hình, có thể lưu dữ liệu dưới dạng csv, json.
 
-Công cụ giải nén dữ liệu IDEALEM được cung cấp cho AI developers để phục hồi dữ liệu gốc từ dữ liệu nén. Xem chi tiết cách sử dụng tại [README_DATA_DECOMPRESSION.md](./README_DATA_DECOMPRESSION.md).
+Xem chi tiết cách sử dụng tại [README_DATA_DECOMPRESSION.md](./README_DATA_DECOMPRESSION.md).
 
 Cấu trúc sử dụng cơ bản:
 ```
@@ -107,7 +109,3 @@ GET /compression/stats
 ```
 POST /compression/daily_summary
 ```
-
-## Tài liệu khác
-
-- [Hướng dẫn giải nén dữ liệu](./README_DATA_DECOMPRESSION.md): Chi tiết về cách giải nén dữ liệu cho AI
