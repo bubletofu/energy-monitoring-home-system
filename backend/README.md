@@ -1,7 +1,6 @@
 
 # Tính năng
 
-- **API Backend (FastAPI)**: Xử lý yêu cầu từ thiết bị IoT và ứng dụng front-end
 - **Tích hợp Adafruit IO**: Đồng bộ dữ liệu và lấy dữ liệu về database
 - **Nén Dữ liệu IDEALEM**: Giảm dung lượng lưu trữ cần thiết mà vẫn giữ được chất lượng dữ liệu
 - **Công cụ giải nén**: Script riêng dành cho AI developer để phục hồi dữ liệu gốc từ dữ liệu nén
@@ -21,17 +20,6 @@ docker-compose up -d
 ```
 uvicorn main:app --reload
 ```
-
-## Cấu trúc thư mục
-
-- `main.py`: Ứng dụng FastAPI chính
-- `models.py`: Định nghĩa các mô hình dữ liệu
-- `data_compression.py`: Thuật toán nén IDEALEM
-- `compression_api.py`: API liên quan đến nén dữ liệu
-- `mqtt_client.py`: Client kết nối với Adafruit IO
-- `decompress_data_for_ai.py`: Script giải nén dữ liệu cho nhà phát triển AI
-- `fetch_adafruit_data.py`: Script lấy dữ liệu từ Adafruit IO
-- `Dockerfile` và `docker-compose.yml`: Cấu hình Docker
 
 ## Lấy dữ liệu từ Adafruit theo ngày cụ thể
 
@@ -83,42 +71,3 @@ python decompress_data_for_ai.py --output data.json
 python decompress_data_for_ai.py --format csv --output data.csv
 ```
 
-## API Backend
-
-### Chứng thực
-
-1. Đăng ký tài khoản:
-```
-POST /register/
-```
-
-2. Đăng nhập:
-```
-POST /login/
-```
-
-### API Nén dữ liệu
-
-1. Nén dữ liệu:
-```
-POST /compression/compress
-```
-
-2. Lấy dữ liệu đã nén:
-```
-GET /compression/compressed-data
-```
-
-3. Thống kê về nén:
-```
-GET /compression/stats
-```
-
-4. Tổng hợp dữ liệu 24 giờ:
-```
-POST /compression/daily_summary
-```
-
-## Tài liệu khác
-
-- [Hướng dẫn giải nén dữ liệu](./README_DATA_DECOMPRESSION.md): Chi tiết về cách giải nén dữ liệu cho AI
