@@ -1,0 +1,112 @@
+[
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:00:00",
+    "readings": {
+      "temperature": 22.062,
+      "humidity": 68.407,
+      "pressure": 1013.713,
+      "power": 10.123,
+      "battery": 98
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:01:01.758399",
+    "readings": {
+      "temperature": 22.636,
+      "humidity": 69.506,
+      "pressure": 1013.82,
+      "power": 10.288,
+      "battery": 100
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:02:03.516798",
+    "readings": {
+      "temperature": 23.233,
+      "humidity": 67.539,
+      "pressure": 1014.113,
+      "power": 10.178,
+      "battery": 100
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:03:05.275197",
+    "readings": {
+      "temperature": 23.028,
+      "humidity": 69.167,
+      "pressure": 1014.11,
+      "power": 10.025,
+      "battery": 98
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:04:07.033596",
+    "readings": {
+      "temperature": 22.33,
+      "humidity": 68.382,
+      "pressure": 1014.159,
+      "power": 9.948,
+      "battery": 100
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:05:08.791995",
+    "readings": {
+      "temperature": 22.922,
+      "humidity": 68.974,
+      "pressure": 1013.876,
+      "power": 10.332,
+      "battery": 100
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:06:10.550394",
+    "readings": {
+      "temperature": 22.723,
+      "humidity": 67.837,
+      "pressure": 1014.243,
+      "power": 10.257,
+      "battery": 100
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:07:12.308793",
+    "readings": {
+      "temperature": 22.259,
+      "humidity": 69.49,
+      "pressure": 1013.702,
+      "power": 10.944,
+      "battery": 100
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:08:14.067192",
+    "readings": {
+      "temperature": 22.25,
+      "humidity": 69.259,
+      "pressure": 1013.749,
+      "power": 9.161,
+      "battery": 100
+    }
+  },
+  {
+    "device_id": "sensor_01",
+    "timestamp": "2025-03-31T00:09:15.825591",
+    "readings": {
+      "temperature": 22.369,
+      "humidity": 70.116,
+      "pressure": 1014.251,
+      "power": 9.233,
+      "battery": 98
+    }
+  }
+]

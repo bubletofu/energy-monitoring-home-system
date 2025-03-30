@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Float, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Float, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
@@ -35,6 +35,9 @@ class Device(Base):
     
     # Relationship với SensorData
     sensor_data = relationship("SensorData", back_populates="device")
+    
+    # Relationship với CompressedData
+    compressed_data = relationship("CompressedData", back_populates="device")
 
 class SensorData(Base):
     __tablename__ = "sensor_data"
@@ -43,7 +46,20 @@ class SensorData(Base):
     device_id = Column(String, ForeignKey("devices.device_id"))
     feed_id = Column(String, index=True)
     value = Column(Float)
+    raw_data = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     
     # Relationship với Device
-    device = relationship("Device", back_populates="sensor_data") 
+    device = relationship("Device", back_populates="sensor_data")
+
+class CompressedData(Base):
+    __tablename__ = "compressed_data"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(String, ForeignKey("devices.device_id"))
+    compressed_data = Column(JSONB)  # Dữ liệu đã nén
+    compression_ratio = Column(Float)  # Tỷ lệ nén
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationship với Device
+    device = relationship("Device", back_populates="compressed_data")

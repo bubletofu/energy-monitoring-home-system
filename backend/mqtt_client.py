@@ -130,6 +130,33 @@ class MQTTClient:
         except Exception as e:
             logger.error(f"Lỗi khi xử lý dữ liệu: {str(e)}")
             
+    def ensure_default_device(self, db, device_id="default"):
+        """
+        Đảm bảo thiết bị mặc định tồn tại trong database
+        """
+        try:
+            from models import Device
+            
+            # Kiểm tra xem thiết bị đã tồn tại chưa
+            device = db.query(Device).filter(Device.device_id == device_id).first()
+            
+            if not device:
+                # Tạo thiết bị mới
+                new_device = Device(
+                    device_id=device_id,
+                    name="Default Device",
+                    description="Thiết bị mặc định cho dữ liệu Adafruit IO"
+                )
+                db.add(new_device)
+                db.commit()
+                logger.info(f"Đã tạo thiết bị mặc định với ID: {device_id}")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Lỗi khi đảm bảo thiết bị mặc định: {str(e)}")
+            db.rollback()
+            return False
+
     def save_to_database(self, feed_id, value):
         """
         Lưu dữ liệu vào database
@@ -141,11 +168,32 @@ class MQTTClient:
             # Tạo session mới
             db = SessionLocal()
             
+            # Đảm bảo thiết bị mặc định tồn tại
+            device_id = "default"
+            self.ensure_default_device(db, device_id)
+            
+            # Xử lý giá trị trước khi chuyển đổi
+            float_value = 0.0
+            try:
+                # Nếu giá trị có dạng CSV, lấy giá trị đầu tiên
+                if isinstance(value, str) and ',' in value:
+                    # Lấy phần tử đầu tiên trước dấu phẩy
+                    first_part = value.split(',')[0].strip()
+                    if first_part:
+                        float_value = float(first_part)
+                else:
+                    # Nếu là số hoặc chuỗi số bình thường
+                    float_value = float(value) if isinstance(value, (int, float, str)) else 0.0
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Không thể chuyển đổi giá trị '{value}' sang số: {str(e)}")
+                # Vẫn tiếp tục với giá trị mặc định 0.0
+            
             # Tạo bản ghi mới
             new_data = SensorData(
                 device_id="default",  # Có thể trích xuất từ feed_id hoặc cấu hình
                 feed_id=feed_id,
-                value=float(value) if isinstance(value, (int, float, str)) else 0.0
+                value=float_value,
+                raw_data=str(value)  # Lưu thêm dữ liệu gốc để tham khảo
             )
             
             # Thêm và commit vào database
@@ -154,7 +202,7 @@ class MQTTClient:
             db.refresh(new_data)
             db.close()
             
-            logger.info(f"Đã lưu dữ liệu từ feed {feed_id} vào database")
+            logger.info(f"Đã lưu dữ liệu từ feed {feed_id} vào database với giá trị {float_value}")
             return True
         except Exception as e:
             logger.error(f"Lỗi khi lưu dữ liệu vào database: {str(e)}")

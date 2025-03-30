@@ -1,0 +1,601 @@
+2025-03-30 20:52:41,499 - INFO - 
+========== BẮT ĐẦU KIỂM TRA TOÀN DIỆN ADAFRUIT IO VÀ BACKEND ==========
+2025-03-30 20:52:41,499 - INFO - === KIỂM TRA TRẠNG THÁI SERVER ===
+2025-03-30 20:52:41,507 - INFO - ✅ Server hoạt động: {'message': 'IoT Backend API'}
+2025-03-30 20:52:41,507 - INFO - 
+=== ĐĂNG KÝ NGƯỜI DÙNG MỚI ===
+2025-03-30 20:52:41,507 - INFO - Đăng ký người dùng: testuser_1743342761
+2025-03-30 20:52:41,800 - INFO - ✅ Đăng ký thành công: {'message': 'User created successfully'}
+2025-03-30 20:52:41,800 - INFO - 
+=== ĐĂNG NHẬP HỆ THỐNG ===
+2025-03-30 20:52:41,800 - INFO - Đăng nhập với tài khoản: testuser_1743342761
+2025-03-30 20:52:42,057 - INFO - ✅ Đăng nhập thành công, đã nhận access token
+2025-03-30 20:52:42,057 - INFO - 
+>> Đang thực hiện: Kết nối trực tiếp Adafruit IO...
+2025-03-30 20:52:42,057 - INFO - 
+=== KIỂM TRA KẾT NỐI TRỰC TIẾP ADAFRUIT IO ===
+2025-03-30 20:52:42,057 - INFO - Gửi dữ liệu đến feed test: 1743342762.057377
+2025-03-30 20:52:42,059 - INFO - ✅ Gửi dữ liệu thành công: {'status': 'success', 'message': 'Đã gửi 1743342762.057377 đến feed test'}
+2025-03-30 20:52:43,062 - INFO - 
+>> Đang thực hiện: Tạo cấu hình thiết bị...
+2025-03-30 20:52:43,062 - INFO - 
+=== TẠO CẤU HÌNH THIẾT BỊ ===
+2025-03-30 20:52:43,062 - INFO - Tạo cấu hình cho thiết bị: test_device_1743342761
+2025-03-30 20:52:43,075 - INFO - ✅ Tạo cấu hình thiết bị thành công: {'message': 'Device configuration saved successfully', 'device_id': 4, 'device_name': 'test_device_1743342761', 'user_id': 10, 'config_data': {'humidity': {'max': 100, 'min': 0, 'unit': '%', 'alert_threshold': 85}, 'pressure': {'max': 1100, 'min': 900, 'unit': 'hPa'}, 'power_mode': 'normal', 'sample_rate': 5, 'temperature': {'max': 40, 'min': 0, 'unit': '°C', 'alert_threshold': 35}}}
+2025-03-30 20:52:44,076 - INFO - 
+>> Đang thực hiện: Gửi dữ liệu thiết bị...
+2025-03-30 20:52:44,076 - INFO - 
+=== GỬI DỮ LIỆU THIẾT BỊ QUA API ===
+2025-03-30 20:52:44,076 - INFO - Gửi dữ liệu thiết bị: {"device_id": "test_device_1743342761", "readings": {"temperature": 27.95, "humidity": 69.62, "pressure": 1013.72}}
+2025-03-30 20:52:44,081 - INFO - ✅ Gửi dữ liệu thiết bị thành công: {'message': 'Device data published successfully'}
+2025-03-30 20:52:45,082 - INFO - 
+>> Đang thực hiện: API nén dữ liệu...
+2025-03-30 20:52:45,083 - INFO - 
+=== KIỂM TRA API NÉN DỮ LIỆU ===
+2025-03-30 20:52:45,083 - INFO - Nén dữ liệu: {"device_id": "test_device_1743342761", "timestamp": "2025-03-30T20:52:45.083072", "readings": {"temperature": 24.671, "humidity": 64.623, "pressure": 1012.809, "battery": 95}}
+2025-03-30 20:52:45,105 - INFO - ✅ Nén dữ liệu thành công:
+2025-03-30 20:52:45,105 - INFO -    - Dữ liệu nén: {"device_id": "test_device_1743342761", "timestamp": "2025-03-30T20:52:45.083072", "readings": {"temperature": 24.700000000000003, "humidity": 64.60000000000001, "pressure": 1012.8000000000001, "battery": 95.0}}
+2025-03-30 20:52:45,105 - INFO -    - Tỷ lệ nén: 1.1989
+2025-03-30 20:52:45,105 - INFO - 
+=== KIỂM TRA NÉN DỮ LIỆU HÀNG LOẠT ===
+2025-03-30 20:52:45,105 - INFO - Nén hàng loạt 5 điểm dữ liệu
+2025-03-30 20:52:45,109 - INFO - ✅ Nén hàng loạt thành công:
+2025-03-30 20:52:45,109 - INFO -    - Số điểm dữ liệu đã nén: 5
+2025-03-30 20:52:45,109 - INFO -    - Tỷ lệ nén tổng thể: 1.4051
+2025-03-30 20:52:45,110 - INFO - 
+=== KIỂM TRA CẤU HÌNH COMPRESSOR ===
+2025-03-30 20:52:45,110 - INFO - Cập nhật cấu hình compressor: {"compression_ratio": 0.6, "error_threshold": 0.03, "window_size": 100, "adaptation_rate": 0.2, "min_bandwidth": 15}
+2025-03-30 20:52:45,114 - INFO - ✅ Cập nhật cấu hình compressor thành công: {'message': 'Cấu hình compressor đã được cập nhật', 'current_config': {'compression_ratio': 0.6, 'error_threshold': 0.03, 'window_size': 100, 'adaptation_rate': 0.2, 'min_bandwidth': 15}}
+2025-03-30 20:52:45,114 - INFO - 
+=== KIỂM TRA THỐNG KÊ NÉN DỮ LIỆU ===
+2025-03-30 20:52:45,114 - INFO - Lấy thống kê về nén dữ liệu
+2025-03-30 20:52:45,117 - INFO - ✅ Lấy thống kê nén dữ liệu thành công: {'message': 'Không có dữ liệu thống kê'}
+2025-03-30 20:52:45,117 - INFO - 
+=== KIỂM TRA RESET COMPRESSOR ===
+2025-03-30 20:52:45,117 - INFO - Reset compressor
+2025-03-30 20:52:45,120 - INFO - ✅ Reset compressor thành công: {'message': 'Compressor đã được reset thành công'}
+2025-03-30 20:52:46,125 - INFO - 
+>> Đang thực hiện: Lấy dữ liệu cảm biến...
+2025-03-30 20:52:46,125 - INFO - 
+=== LẤY DỮ LIỆU CẢM BIẾN ===
+2025-03-30 20:52:46,125 - INFO - Lấy dữ liệu cảm biến từ database
+2025-03-30 20:52:46,130 - ERROR - ❌ Lấy dữ liệu cảm biến thất bại: 500 - Internal Server Error
+2025-03-30 20:52:47,135 - INFO - 
+
+========== KẾT QUẢ KIỂM TRA ==========
+2025-03-30 20:52:47,136 - INFO - ✅ THÀNH CÔNG: Kết nối trực tiếp Adafruit IO
+2025-03-30 20:52:47,136 - INFO - ✅ THÀNH CÔNG: Tạo cấu hình thiết bị
+2025-03-30 20:52:47,136 - INFO - ✅ THÀNH CÔNG: Gửi dữ liệu thiết bị
+2025-03-30 20:52:47,136 - INFO - ✅ THÀNH CÔNG: API nén dữ liệu
+2025-03-30 20:52:47,136 - INFO - ❌ THẤT BẠI: Lấy dữ liệu cảm biến
+2025-03-30 20:52:47,136 - INFO - 
+TỶ LỆ THÀNH CÔNG: 80.0% (4/5)
+2025-03-30 20:52:47,136 - INFO - 
+✨ HẦU HẾT CÁC TÍNH NĂNG HOẠT ĐỘNG TỐT!
+2025-03-30 20:52:47,136 - INFO - 
+========== KẾT THÚC KIỂM TRA ==========
+2025-03-30 21:15:26,747 - INFO - 
+========== BẮT ĐẦU KIỂM TRA TOÀN DIỆN ADAFRUIT IO VÀ BACKEND ==========
+2025-03-30 21:15:26,747 - INFO - === KIỂM TRA TRẠNG THÁI SERVER ===
+2025-03-30 21:15:26,761 - INFO - ✅ Server hoạt động: {'message': 'IoT Backend API'}
+2025-03-30 21:15:26,762 - INFO - 
+=== ĐĂNG KÝ NGƯỜI DÙNG MỚI ===
+2025-03-30 21:15:26,762 - INFO - Đăng ký người dùng: testuser_1743344126
+2025-03-30 21:15:27,069 - INFO - ✅ Đăng ký thành công: {'message': 'User created successfully'}
+2025-03-30 21:15:27,069 - INFO - 
+=== ĐĂNG NHẬP HỆ THỐNG ===
+2025-03-30 21:15:27,069 - INFO - Đăng nhập với tài khoản: testuser_1743344126
+2025-03-30 21:15:27,319 - INFO - ✅ Đăng nhập thành công, đã nhận access token
+2025-03-30 21:15:27,319 - INFO - 
+>> Đang thực hiện: Kết nối trực tiếp Adafruit IO...
+2025-03-30 21:15:27,319 - INFO - 
+=== KIỂM TRA KẾT NỐI TRỰC TIẾP ADAFRUIT IO ===
+2025-03-30 21:15:27,319 - INFO - Gửi dữ liệu đến feed test: 1743344127.3195798
+2025-03-30 21:15:27,321 - INFO - ✅ Gửi dữ liệu thành công: {'status': 'success', 'message': 'Đã gửi 1743344127.3195798 đến feed test'}
+2025-03-30 21:15:28,326 - INFO - 
+>> Đang thực hiện: Tạo cấu hình thiết bị...
+2025-03-30 21:15:28,326 - INFO - 
+=== TẠO CẤU HÌNH THIẾT BỊ ===
+2025-03-30 21:15:28,326 - INFO - Tạo cấu hình cho thiết bị: test_device_1743344126
+2025-03-30 21:15:28,340 - INFO - ✅ Tạo cấu hình thiết bị thành công: {'message': 'Device configuration saved successfully', 'device_id': 5, 'device_name': 'test_device_1743344126', 'user_id': 11, 'config_data': {'humidity': {'max': 100, 'min': 0, 'unit': '%', 'alert_threshold': 85}, 'pressure': {'max': 1100, 'min': 900, 'unit': 'hPa'}, 'power_mode': 'normal', 'sample_rate': 5, 'temperature': {'max': 40, 'min': 0, 'unit': '°C', 'alert_threshold': 35}}}
+2025-03-30 21:15:29,342 - INFO - 
+>> Đang thực hiện: Gửi dữ liệu thiết bị...
+2025-03-30 21:15:29,342 - INFO - 
+=== GỬI DỮ LIỆU THIẾT BỊ QUA API ===
+2025-03-30 21:15:29,342 - INFO - Gửi dữ liệu thiết bị: {"device_id": "test_device_1743344126", "readings": {"temperature": 27.19, "humidity": 61.44, "pressure": 1015.45}}
+2025-03-30 21:15:29,346 - INFO - ✅ Gửi dữ liệu thiết bị thành công: {'message': 'Device data published successfully'}
+2025-03-30 21:15:30,348 - INFO - 
+>> Đang thực hiện: API nén dữ liệu...
+2025-03-30 21:15:30,348 - INFO - 
+=== KIỂM TRA API NÉN DỮ LIỆU ===
+2025-03-30 21:15:30,348 - INFO - Nén dữ liệu: {"device_id": "test_device_1743344126", "timestamp": "2025-03-30T21:15:30.348509", "readings": {"temperature": 25.294, "humidity": 65.359, "pressure": 1012.803, "battery": 90}}
+2025-03-30 21:15:30,383 - INFO - ✅ Nén dữ liệu thành công:
+2025-03-30 21:15:30,383 - INFO -    - Dữ liệu nén: {"device_id": "test_device_1743344126", "timestamp": "2025-03-30T21:15:30.348509", "readings": {"temperature": 25.3, "humidity": 65.4, "pressure": 1012.8000000000001, "battery": 90.0}}
+2025-03-30 21:15:30,383 - INFO -    - Tỷ lệ nén: 1.0455
+2025-03-30 21:15:30,383 - INFO - 
+=== KIỂM TRA NÉN DỮ LIỆU HÀNG LOẠT ===
+2025-03-30 21:15:30,383 - INFO - Nén hàng loạt 5 điểm dữ liệu
+2025-03-30 21:15:30,390 - INFO - ✅ Nén hàng loạt thành công:
+2025-03-30 21:15:30,390 - INFO -    - Số điểm dữ liệu đã nén: 5
+2025-03-30 21:15:30,390 - INFO -    - Tỷ lệ nén tổng thể: 1.4099
+2025-03-30 21:15:30,390 - INFO - 
+=== KIỂM TRA CẤU HÌNH COMPRESSOR ===
+2025-03-30 21:15:30,390 - INFO - Cập nhật cấu hình compressor: {"compression_ratio": 0.6, "error_threshold": 0.03, "window_size": 100, "adaptation_rate": 0.2, "min_bandwidth": 15}
+2025-03-30 21:15:30,395 - INFO - ✅ Cập nhật cấu hình compressor thành công: {'message': 'Cấu hình compressor đã được cập nhật', 'current_config': {'compression_ratio': 0.6, 'error_threshold': 0.03, 'window_size': 100, 'adaptation_rate': 0.2, 'min_bandwidth': 15}}
+2025-03-30 21:15:30,395 - INFO - 
+=== KIỂM TRA THỐNG KÊ NÉN DỮ LIỆU ===
+2025-03-30 21:15:30,395 - INFO - Lấy thống kê về nén dữ liệu
+2025-03-30 21:15:30,400 - INFO - ✅ Lấy thống kê nén dữ liệu thành công: {'message': 'Không có dữ liệu thống kê'}
+2025-03-30 21:15:30,400 - INFO - 
+=== KIỂM TRA RESET COMPRESSOR ===
+2025-03-30 21:15:30,400 - INFO - Reset compressor
+2025-03-30 21:15:30,404 - INFO - ✅ Reset compressor thành công: {'message': 'Compressor đã được reset thành công'}
+2025-03-30 21:15:31,405 - INFO - 
+>> Đang thực hiện: Lấy dữ liệu cảm biến...
+2025-03-30 21:15:31,406 - INFO - 
+=== LẤY DỮ LIỆU CẢM BIẾN ===
+2025-03-30 21:15:31,406 - INFO - Lấy dữ liệu cảm biến từ database
+2025-03-30 21:15:31,419 - INFO - ✅ Lấy dữ liệu cảm biến thành công: 5 bản ghi
+2025-03-30 21:15:31,419 - INFO -    - Bản ghi 1: {"value": 1743344127.3195798, "id": 9, "timestamp": "2025-03-30T14:15:27.709522", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798"}
+2025-03-30 21:15:31,419 - INFO -    - Bản ghi 2: {"value": 0.0, "id": 10, "timestamp": "2025-03-30T14:15:27.714819", "device_id": "default", "feed_id": "test", "raw_data": "{'id': 3046715, 'last_value': '1743344127.3195798', 'updated_at': '2025-03-30 14:15:27 UTC', 'key': 'test', 'data': {'created_at': '2025-03-30T14:15:27.557Z', 'value': '1743344127.3195798', 'location': [], 'id': '0FVC5163NKRSHF32PZZKJ9SS3X'}}"}
+2025-03-30 21:15:31,419 - INFO -    - Bản ghi 3: {"value": 1743344127.3195798, "id": 11, "timestamp": "2025-03-30T14:15:27.717812", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798,,,"}
+2025-03-30 21:15:31,419 - INFO -    - ... và 2 bản ghi khác
+2025-03-30 21:15:32,424 - INFO - 
+
+========== KẾT QUẢ KIỂM TRA ==========
+2025-03-30 21:15:32,425 - INFO - ✅ THÀNH CÔNG: Kết nối trực tiếp Adafruit IO
+2025-03-30 21:15:32,425 - INFO - ✅ THÀNH CÔNG: Tạo cấu hình thiết bị
+2025-03-30 21:15:32,425 - INFO - ✅ THÀNH CÔNG: Gửi dữ liệu thiết bị
+2025-03-30 21:15:32,425 - INFO - ✅ THÀNH CÔNG: API nén dữ liệu
+2025-03-30 21:15:32,425 - INFO - ✅ THÀNH CÔNG: Lấy dữ liệu cảm biến
+2025-03-30 21:15:32,425 - INFO - 
+TỶ LỆ THÀNH CÔNG: 100.0% (5/5)
+2025-03-30 21:15:32,425 - INFO - 
+🎉 CÁC TÍNH NĂNG HOẠT ĐỘNG TỐT!
+2025-03-30 21:15:32,425 - INFO - 
+========== KẾT THÚC KIỂM TRA ==========
+2025-03-30 21:22:43,929 - INFO - 
+========== BẮT ĐẦU KIỂM TRA TOÀN DIỆN ADAFRUIT IO VÀ BACKEND ==========
+2025-03-30 21:22:43,929 - INFO - === KIỂM TRA TRẠNG THÁI SERVER ===
+2025-03-30 21:22:43,937 - INFO - ✅ Server hoạt động: {'message': 'IoT Backend API'}
+2025-03-30 21:22:43,937 - INFO - 
+=== ĐĂNG KÝ NGƯỜI DÙNG MỚI ===
+2025-03-30 21:22:43,937 - INFO - Đăng ký người dùng: testuser_1743344563
+2025-03-30 21:22:44,221 - INFO - ✅ Đăng ký thành công: {'message': 'User created successfully'}
+2025-03-30 21:22:44,221 - INFO - 
+=== ĐĂNG NHẬP HỆ THỐNG ===
+2025-03-30 21:22:44,222 - INFO - Đăng nhập với tài khoản: testuser_1743344563
+2025-03-30 21:22:44,468 - INFO - ✅ Đăng nhập thành công, đã nhận access token
+2025-03-30 21:22:44,468 - INFO - 
+>> Đang thực hiện: Kết nối trực tiếp Adafruit IO...
+2025-03-30 21:22:44,468 - INFO - 
+=== KIỂM TRA KẾT NỐI TRỰC TIẾP ADAFRUIT IO ===
+2025-03-30 21:22:44,468 - INFO - Gửi dữ liệu đến feed test: 1743344564.46874
+2025-03-30 21:22:44,470 - INFO - ✅ Gửi dữ liệu thành công: {'status': 'success', 'message': 'Đã gửi 1743344564.46874 đến feed test'}
+2025-03-30 21:22:45,475 - INFO - 
+>> Đang thực hiện: Tạo cấu hình thiết bị...
+2025-03-30 21:22:45,476 - INFO - 
+=== TẠO CẤU HÌNH THIẾT BỊ ===
+2025-03-30 21:22:45,476 - INFO - Tạo cấu hình cho thiết bị: test_device_1743344563
+2025-03-30 21:22:45,499 - INFO - ✅ Tạo cấu hình thiết bị thành công: {'message': 'Device configuration saved successfully', 'device_id': 6, 'device_name': 'test_device_1743344563', 'user_id': 12, 'config_data': {'humidity': {'max': 100, 'min': 0, 'unit': '%', 'alert_threshold': 85}, 'pressure': {'max': 1100, 'min': 900, 'unit': 'hPa'}, 'power_mode': 'normal', 'sample_rate': 5, 'temperature': {'max': 40, 'min': 0, 'unit': '°C', 'alert_threshold': 35}}}
+2025-03-30 21:22:46,502 - INFO - 
+>> Đang thực hiện: Gửi dữ liệu thiết bị...
+2025-03-30 21:22:46,502 - INFO - 
+=== GỬI DỮ LIỆU THIẾT BỊ QUA API ===
+2025-03-30 21:22:46,503 - INFO - Gửi dữ liệu thiết bị: {"device_id": "test_device_1743344563", "readings": {"temperature": 29.81, "humidity": 56.42, "pressure": 1011.48}}
+2025-03-30 21:22:46,509 - INFO - ✅ Gửi dữ liệu thiết bị thành công: {'message': 'Device data published successfully'}
+2025-03-30 21:22:47,515 - INFO - 
+>> Đang thực hiện: API nén dữ liệu...
+2025-03-30 21:22:47,515 - INFO - 
+=== KIỂM TRA API NÉN DỮ LIỆU ===
+2025-03-30 21:22:47,515 - INFO - Nén dữ liệu: {"device_id": "test_device_1743344563", "timestamp": "2025-03-30T21:22:47.515213", "readings": {"temperature": 25.388, "humidity": 65.152, "pressure": 1013.022, "battery": 93}}
+2025-03-30 21:22:47,534 - INFO - ✅ Nén dữ liệu thành công:
+2025-03-30 21:22:47,534 - INFO -    - Dữ liệu nén: {"device_id": "test_device_1743344563", "timestamp": "2025-03-30T21:22:47.515213", "readings": {"temperature": 25.400000000000002, "humidity": 65.2, "pressure": 1013.0, "battery": 93.0}}
+2025-03-30 21:22:47,534 - INFO -    - Tỷ lệ nén: 1.0568
+2025-03-30 21:22:47,534 - INFO - 
+=== KIỂM TRA NÉN DỮ LIỆU HÀNG LOẠT ===
+2025-03-30 21:22:47,534 - INFO - Nén hàng loạt 5 điểm dữ liệu
+2025-03-30 21:22:47,538 - INFO - ✅ Nén hàng loạt thành công:
+2025-03-30 21:22:47,538 - INFO -    - Số điểm dữ liệu đã nén: 5
+2025-03-30 21:22:47,538 - INFO -    - Tỷ lệ nén tổng thể: 1.4019
+2025-03-30 21:22:47,538 - INFO - 
+=== KIỂM TRA CẤU HÌNH COMPRESSOR ===
+2025-03-30 21:22:47,538 - INFO - Cập nhật cấu hình compressor: {"compression_ratio": 0.6, "error_threshold": 0.03, "window_size": 100, "adaptation_rate": 0.2, "min_bandwidth": 15}
+2025-03-30 21:22:47,541 - INFO - ✅ Cập nhật cấu hình compressor thành công: {'message': 'Cấu hình compressor đã được cập nhật', 'current_config': {'compression_ratio': 0.6, 'error_threshold': 0.03, 'window_size': 100, 'adaptation_rate': 0.2, 'min_bandwidth': 15}}
+2025-03-30 21:22:47,541 - INFO - 
+=== KIỂM TRA THỐNG KÊ NÉN DỮ LIỆU ===
+2025-03-30 21:22:47,541 - INFO - Lấy thống kê về nén dữ liệu
+2025-03-30 21:22:47,544 - INFO - ✅ Lấy thống kê nén dữ liệu thành công: {'message': 'Không có dữ liệu thống kê'}
+2025-03-30 21:22:47,544 - INFO - 
+=== KIỂM TRA RESET COMPRESSOR ===
+2025-03-30 21:22:47,544 - INFO - Reset compressor
+2025-03-30 21:22:47,547 - INFO - ✅ Reset compressor thành công: {'message': 'Compressor đã được reset thành công'}
+2025-03-30 21:22:48,552 - INFO - 
+>> Đang thực hiện: Lấy dữ liệu cảm biến...
+2025-03-30 21:22:48,552 - INFO - 
+=== LẤY DỮ LIỆU CẢM BIẾN ===
+2025-03-30 21:22:48,553 - INFO - Lấy dữ liệu cảm biến từ database
+2025-03-30 21:22:48,562 - INFO - ✅ Lấy dữ liệu cảm biến thành công: 5 bản ghi
+2025-03-30 21:22:48,562 - INFO -    - Bản ghi 1: {"value": 1743344127.3195798, "id": 9, "timestamp": "2025-03-30T14:15:27.709522", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798"}
+2025-03-30 21:22:48,562 - INFO -    - Bản ghi 2: {"value": 0.0, "id": 10, "timestamp": "2025-03-30T14:15:27.714819", "device_id": "default", "feed_id": "test", "raw_data": "{'id': 3046715, 'last_value': '1743344127.3195798', 'updated_at': '2025-03-30 14:15:27 UTC', 'key': 'test', 'data': {'created_at': '2025-03-30T14:15:27.557Z', 'value': '1743344127.3195798', 'location': [], 'id': '0FVC5163NKRSHF32PZZKJ9SS3X'}}"}
+2025-03-30 21:22:48,562 - INFO -    - Bản ghi 3: {"value": 1743344127.3195798, "id": 11, "timestamp": "2025-03-30T14:15:27.717812", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798,,,"}
+2025-03-30 21:22:48,562 - INFO -    - ... và 2 bản ghi khác
+2025-03-30 21:22:49,563 - INFO - 
+
+========== KẾT QUẢ KIỂM TRA ==========
+2025-03-30 21:22:49,563 - INFO - ✅ THÀNH CÔNG: Kết nối trực tiếp Adafruit IO
+2025-03-30 21:22:49,563 - INFO - ✅ THÀNH CÔNG: Tạo cấu hình thiết bị
+2025-03-30 21:22:49,563 - INFO - ✅ THÀNH CÔNG: Gửi dữ liệu thiết bị
+2025-03-30 21:22:49,563 - INFO - ✅ THÀNH CÔNG: API nén dữ liệu
+2025-03-30 21:22:49,564 - INFO - ✅ THÀNH CÔNG: Lấy dữ liệu cảm biến
+2025-03-30 21:22:49,564 - INFO - 
+TỶ LỆ THÀNH CÔNG: 100.0% (5/5)
+2025-03-30 21:22:49,564 - INFO - 
+🎉 CÁC TÍNH NĂNG HOẠT ĐỘNG TỐT!
+2025-03-30 21:22:49,564 - INFO - 
+========== KẾT THÚC KIỂM TRA ==========
+2025-03-30 21:25:38,393 - INFO - 
+========== BẮT ĐẦU KIỂM TRA TOÀN DIỆN ADAFRUIT IO VÀ BACKEND ==========
+2025-03-30 21:25:38,393 - INFO - === KIỂM TRA TRẠNG THÁI SERVER ===
+2025-03-30 21:25:38,401 - INFO - ✅ Server hoạt động: {'message': 'IoT Backend API'}
+2025-03-30 21:25:38,401 - INFO - 
+=== ĐĂNG KÝ NGƯỜI DÙNG MỚI ===
+2025-03-30 21:25:38,402 - INFO - Đăng ký người dùng: testuser_1743344738
+2025-03-30 21:25:38,688 - INFO - ✅ Đăng ký thành công: {'message': 'User created successfully'}
+2025-03-30 21:25:38,689 - INFO - 
+=== ĐĂNG NHẬP HỆ THỐNG ===
+2025-03-30 21:25:38,689 - INFO - Đăng nhập với tài khoản: testuser_1743344738
+2025-03-30 21:25:38,939 - INFO - ✅ Đăng nhập thành công, đã nhận access token
+2025-03-30 21:25:38,940 - INFO - 
+>> Đang thực hiện: Kết nối trực tiếp Adafruit IO...
+2025-03-30 21:25:38,940 - INFO - 
+=== KIỂM TRA KẾT NỐI TRỰC TIẾP ADAFRUIT IO ===
+2025-03-30 21:25:38,940 - INFO - Gửi dữ liệu đến feed test: 1743344738.940165
+2025-03-30 21:25:38,942 - INFO - ✅ Gửi dữ liệu thành công: {'status': 'success', 'message': 'Đã gửi 1743344738.940165 đến feed test'}
+2025-03-30 21:25:39,947 - INFO - 
+>> Đang thực hiện: Tạo cấu hình thiết bị...
+2025-03-30 21:25:39,947 - INFO - 
+=== TẠO CẤU HÌNH THIẾT BỊ ===
+2025-03-30 21:25:39,947 - INFO - Tạo cấu hình cho thiết bị: test_device_1743344738
+2025-03-30 21:25:39,957 - INFO - ✅ Tạo cấu hình thiết bị thành công: {'message': 'Device configuration saved successfully', 'device_id': 7, 'device_name': 'test_device_1743344738', 'user_id': 13, 'config_data': {'humidity': {'max': 100, 'min': 0, 'unit': '%', 'alert_threshold': 85}, 'pressure': {'max': 1100, 'min': 900, 'unit': 'hPa'}, 'power_mode': 'normal', 'sample_rate': 5, 'temperature': {'max': 40, 'min': 0, 'unit': '°C', 'alert_threshold': 35}}}
+2025-03-30 21:25:40,962 - INFO - 
+>> Đang thực hiện: Gửi dữ liệu thiết bị...
+2025-03-30 21:25:40,963 - INFO - 
+=== GỬI DỮ LIỆU THIẾT BỊ QUA API ===
+2025-03-30 21:25:40,963 - INFO - Gửi dữ liệu thiết bị: {"device_id": "test_device_1743344738", "readings": {"temperature": 27.06, "humidity": 65.72, "pressure": 1017.62}}
+2025-03-30 21:25:40,978 - INFO - ✅ Gửi dữ liệu thiết bị thành công: {'message': 'Device data published successfully'}
+2025-03-30 21:25:41,979 - INFO - 
+>> Đang thực hiện: API nén dữ liệu...
+2025-03-30 21:25:41,979 - INFO - 
+=== KIỂM TRA API NÉN DỮ LIỆU ===
+2025-03-30 21:25:41,980 - INFO - Nén dữ liệu: {"device_id": "test_device_1743344738", "timestamp": "2025-03-30T21:25:41.980154", "readings": {"temperature": 24.888, "humidity": 64.763, "pressure": 1012.803, "battery": 100}}
+2025-03-30 21:25:42,250 - INFO - ✅ Nén dữ liệu thành công:
+2025-03-30 21:25:42,250 - INFO -    - Dữ liệu nén: {"device_id": "test_device_1743344738", "timestamp": "2025-03-30T21:25:41.980154", "readings": {"temperature": 24.900000000000002, "humidity": 64.8, "pressure": 1012.8000000000001, "battery": 100.0}}
+2025-03-30 21:25:42,250 - INFO -    - Tỷ lệ nén: 1.1243
+2025-03-30 21:25:42,250 - INFO - ✅ Dữ liệu đã được lưu vào database với ID: 1
+2025-03-30 21:25:42,250 - INFO - 
+=== KIỂM TRA LẤY DỮ LIỆU NÉN TỪ DATABASE ===
+2025-03-30 21:25:42,250 - INFO - Lấy dữ liệu nén từ database
+2025-03-30 21:25:42,291 - INFO - ✅ Lấy dữ liệu nén thành công: 1 bản ghi
+2025-03-30 21:25:42,292 - INFO -    - Bản ghi 1: ID=1, Device=test_device_1743344738, Tỷ lệ nén=1.1243, Thời gian=2025-03-30T14:25:42.183904
+2025-03-30 21:25:42,292 - INFO - ✅ Kiểm tra lấy dữ liệu nén từ database thành công
+2025-03-30 21:25:42,292 - INFO - 
+=== KIỂM TRA NÉN DỮ LIỆU HÀNG LOẠT ===
+2025-03-30 21:25:42,292 - INFO - Nén hàng loạt 5 điểm dữ liệu
+2025-03-30 21:25:42,348 - INFO - ✅ Nén hàng loạt thành công:
+2025-03-30 21:25:42,349 - INFO -    - Số điểm dữ liệu đã nén: 5
+2025-03-30 21:25:42,349 - INFO -    - Tỷ lệ nén tổng thể: 1.4055
+2025-03-30 21:25:42,349 - INFO - ✅ Dữ liệu nén hàng loạt đã được lưu vào database
+2025-03-30 21:25:42,349 - INFO -    - Đã lưu 5 bản ghi với IDs: [2, 3, 4]...
+2025-03-30 21:25:42,350 - INFO - 
+=== KIỂM TRA CẤU HÌNH COMPRESSOR ===
+2025-03-30 21:25:42,350 - INFO - Cập nhật cấu hình compressor: {"compression_ratio": 0.6, "error_threshold": 0.03, "window_size": 100, "adaptation_rate": 0.2, "min_bandwidth": 15}
+2025-03-30 21:25:42,358 - INFO - ✅ Cập nhật cấu hình compressor thành công: {'message': 'Cấu hình compressor đã được cập nhật', 'current_config': {'compression_ratio': 0.6, 'error_threshold': 0.03, 'window_size': 100, 'adaptation_rate': 0.2, 'min_bandwidth': 15}}
+2025-03-30 21:25:42,359 - INFO - 
+=== KIỂM TRA THỐNG KÊ NÉN DỮ LIỆU ===
+2025-03-30 21:25:42,359 - INFO - Lấy thống kê về nén dữ liệu
+2025-03-30 21:25:42,369 - INFO - ✅ Lấy thống kê nén dữ liệu thành công: {'message': 'Không có dữ liệu thống kê'}
+2025-03-30 21:25:42,369 - INFO - 
+=== KIỂM TRA RESET COMPRESSOR ===
+2025-03-30 21:25:42,370 - INFO - Reset compressor
+2025-03-30 21:25:42,389 - INFO - ✅ Reset compressor thành công: {'message': 'Compressor đã được reset thành công'}
+2025-03-30 21:25:43,393 - INFO - 
+>> Đang thực hiện: Lấy dữ liệu cảm biến...
+2025-03-30 21:25:43,394 - INFO - 
+=== LẤY DỮ LIỆU CẢM BIẾN ===
+2025-03-30 21:25:43,394 - INFO - Lấy dữ liệu cảm biến từ database
+2025-03-30 21:25:43,403 - INFO - ✅ Lấy dữ liệu cảm biến thành công: 5 bản ghi
+2025-03-30 21:25:43,403 - INFO -    - Bản ghi 1: {"value": 1743344127.3195798, "id": 9, "timestamp": "2025-03-30T14:15:27.709522", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798"}
+2025-03-30 21:25:43,403 - INFO -    - Bản ghi 2: {"value": 0.0, "id": 10, "timestamp": "2025-03-30T14:15:27.714819", "device_id": "default", "feed_id": "test", "raw_data": "{'id': 3046715, 'last_value': '1743344127.3195798', 'updated_at': '2025-03-30 14:15:27 UTC', 'key': 'test', 'data': {'created_at': '2025-03-30T14:15:27.557Z', 'value': '1743344127.3195798', 'location': [], 'id': '0FVC5163NKRSHF32PZZKJ9SS3X'}}"}
+2025-03-30 21:25:43,403 - INFO -    - Bản ghi 3: {"value": 1743344127.3195798, "id": 11, "timestamp": "2025-03-30T14:15:27.717812", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798,,,"}
+2025-03-30 21:25:43,403 - INFO -    - ... và 2 bản ghi khác
+2025-03-30 21:25:44,407 - INFO - 
+
+========== KẾT QUẢ KIỂM TRA ==========
+2025-03-30 21:25:44,407 - INFO - ✅ THÀNH CÔNG: Kết nối trực tiếp Adafruit IO
+2025-03-30 21:25:44,408 - INFO - ✅ THÀNH CÔNG: Tạo cấu hình thiết bị
+2025-03-30 21:25:44,408 - INFO - ✅ THÀNH CÔNG: Gửi dữ liệu thiết bị
+2025-03-30 21:25:44,408 - INFO - ✅ THÀNH CÔNG: API nén dữ liệu
+2025-03-30 21:25:44,408 - INFO - ✅ THÀNH CÔNG: Lấy dữ liệu cảm biến
+2025-03-30 21:25:44,408 - INFO - 
+TỶ LỆ THÀNH CÔNG: 100.0% (5/5)
+2025-03-30 21:25:44,408 - INFO - 
+🎉 CÁC TÍNH NĂNG HOẠT ĐỘNG TỐT!
+2025-03-30 21:25:44,408 - INFO - 
+========== KẾT THÚC KIỂM TRA ==========
+2025-03-30 21:59:29,806 - INFO - 
+========== BẮT ĐẦU KIỂM TRA TOÀN DIỆN ADAFRUIT IO VÀ BACKEND ==========
+2025-03-30 21:59:29,806 - INFO - === KIỂM TRA TRẠNG THÁI SERVER ===
+2025-03-30 21:59:29,817 - INFO - ✅ Server hoạt động: {'message': 'IoT Backend API'}
+2025-03-30 21:59:29,817 - INFO - 
+=== ĐĂNG KÝ NGƯỜI DÙNG MỚI ===
+2025-03-30 21:59:29,817 - INFO - Đăng ký người dùng: testuser_1743346769
+2025-03-30 21:59:30,107 - INFO - ✅ Đăng ký thành công: {'message': 'User created successfully'}
+2025-03-30 21:59:30,108 - INFO - 
+=== ĐĂNG NHẬP HỆ THỐNG ===
+2025-03-30 21:59:30,108 - INFO - Đăng nhập với tài khoản: testuser_1743346769
+2025-03-30 21:59:30,356 - INFO - ✅ Đăng nhập thành công, đã nhận access token
+2025-03-30 21:59:30,357 - INFO - 
+>> Đang thực hiện: Kết nối trực tiếp Adafruit IO...
+2025-03-30 21:59:30,357 - INFO - 
+=== KIỂM TRA KẾT NỐI TRỰC TIẾP ADAFRUIT IO ===
+2025-03-30 21:59:30,357 - INFO - Gửi dữ liệu đến feed test: 1743346770.357122
+2025-03-30 21:59:30,359 - INFO - ✅ Gửi dữ liệu thành công: {'status': 'success', 'message': 'Đã gửi 1743346770.357122 đến feed test'}
+2025-03-30 21:59:31,365 - INFO - 
+>> Đang thực hiện: Tạo cấu hình thiết bị...
+2025-03-30 21:59:31,366 - INFO - 
+=== TẠO CẤU HÌNH THIẾT BỊ ===
+2025-03-30 21:59:31,366 - INFO - Tạo cấu hình cho thiết bị: test_device_1743346769
+2025-03-30 21:59:31,400 - INFO - ✅ Tạo cấu hình thiết bị thành công: {'message': 'Device configuration saved successfully', 'device_id': 8, 'device_name': 'test_device_1743346769', 'user_id': 14, 'config_data': {'humidity': {'max': 100, 'min': 0, 'unit': '%', 'alert_threshold': 85}, 'pressure': {'max': 1100, 'min': 900, 'unit': 'hPa'}, 'power_mode': 'normal', 'sample_rate': 5, 'temperature': {'max': 40, 'min': 0, 'unit': '°C', 'alert_threshold': 35}}}
+2025-03-30 21:59:32,405 - INFO - 
+>> Đang thực hiện: Gửi dữ liệu thiết bị...
+2025-03-30 21:59:32,405 - INFO - 
+=== GỬI DỮ LIỆU THIẾT BỊ QUA API ===
+2025-03-30 21:59:32,405 - INFO - Gửi dữ liệu thiết bị: {"device_id": "test_device_1743346769", "readings": {"temperature": 29.35, "humidity": 61.61, "pressure": 1009.47}}
+2025-03-30 21:59:32,412 - INFO - ✅ Gửi dữ liệu thiết bị thành công: {'message': 'Device data published successfully'}
+2025-03-30 21:59:33,416 - INFO - 
+>> Đang thực hiện: API nén dữ liệu...
+2025-03-30 21:59:33,416 - INFO - 
+=== KIỂM TRA API NÉN DỮ LIỆU ===
+2025-03-30 21:59:33,416 - INFO - Nén dữ liệu: {"device_id": "test_device_1743346769", "timestamp": "2025-03-30T21:59:33.416919", "readings": {"temperature": 24.772, "humidity": 65.651, "pressure": 1013.044, "battery": 94}}
+2025-03-30 21:59:33,427 - INFO - ✅ Nén dữ liệu thành công:
+2025-03-30 21:59:33,427 - INFO -    - Dữ liệu nén: {"device_id": "test_device_1743346769", "timestamp": "2025-03-30T21:59:33.416919", "readings": {"temperature": 24.8, "humidity": 65.7, "pressure": 1013.0, "battery": 94.0}}
+2025-03-30 21:59:33,427 - INFO -    - Tỷ lệ nén: 0.9773
+2025-03-30 21:59:33,427 - INFO - ✅ Dữ liệu đã được lưu vào database với ID: 7
+2025-03-30 21:59:33,427 - INFO - 
+=== KIỂM TRA LẤY DỮ LIỆU NÉN TỪ DATABASE ===
+2025-03-30 21:59:33,427 - INFO - Lấy dữ liệu nén từ database
+2025-03-30 21:59:33,432 - INFO - ✅ Lấy dữ liệu nén thành công: 5 bản ghi
+2025-03-30 21:59:33,432 - INFO -    - Bản ghi 1: ID=1, Device=test_device_1743344738, Tỷ lệ nén=1.1243, Thời gian=2025-03-30T14:25:42.183904
+2025-03-30 21:59:33,432 - INFO -    - Bản ghi 2: ID=2, Device=test_device_1743344738, Tỷ lệ nén=1.4124, Thời gian=2025-03-30T14:25:42.303971
+2025-03-30 21:59:33,432 - INFO -    - ... và 3 bản ghi khác
+2025-03-30 21:59:33,432 - INFO - ✅ Kiểm tra lấy dữ liệu nén từ database thành công
+2025-03-30 21:59:33,432 - INFO - 
+=== KIỂM TRA NÉN DỮ LIỆU HÀNG LOẠT ===
+2025-03-30 21:59:33,432 - INFO - Nén hàng loạt 5 điểm dữ liệu
+2025-03-30 21:59:33,444 - INFO - ✅ Nén hàng loạt thành công:
+2025-03-30 21:59:33,444 - INFO -    - Số điểm dữ liệu đã nén: 5
+2025-03-30 21:59:33,444 - INFO -    - Tỷ lệ nén tổng thể: 1.3647
+2025-03-30 21:59:33,444 - INFO - ✅ Dữ liệu nén hàng loạt đã được lưu vào database
+2025-03-30 21:59:33,444 - INFO -    - Đã lưu 5 bản ghi với IDs: [8, 9, 10]...
+2025-03-30 21:59:33,444 - INFO - 
+=== KIỂM TRA CẤU HÌNH COMPRESSOR ===
+2025-03-30 21:59:33,444 - INFO - Cập nhật cấu hình compressor: {"compression_ratio": 0.6, "error_threshold": 0.03, "window_size": 100, "adaptation_rate": 0.2, "min_bandwidth": 15}
+2025-03-30 21:59:33,447 - INFO - ✅ Cập nhật cấu hình compressor thành công: {'message': 'Cấu hình compressor đã được cập nhật', 'current_config': {'compression_ratio': 0.6, 'error_threshold': 0.03, 'window_size': 100, 'adaptation_rate': 0.2, 'min_bandwidth': 15}}
+2025-03-30 21:59:33,447 - INFO - 
+=== KIỂM TRA THỐNG KÊ NÉN DỮ LIỆU ===
+2025-03-30 21:59:33,447 - INFO - Lấy thống kê về nén dữ liệu
+2025-03-30 21:59:33,450 - INFO - ✅ Lấy thống kê nén dữ liệu thành công: {'message': 'Không có dữ liệu thống kê'}
+2025-03-30 21:59:33,450 - INFO - 
+=== KIỂM TRA RESET COMPRESSOR ===
+2025-03-30 21:59:33,450 - INFO - Reset compressor
+2025-03-30 21:59:33,454 - INFO - ✅ Reset compressor thành công: {'message': 'Compressor đã được reset thành công'}
+2025-03-30 21:59:34,455 - INFO - 
+>> Đang thực hiện: Lấy dữ liệu cảm biến...
+2025-03-30 21:59:34,455 - INFO - 
+=== LẤY DỮ LIỆU CẢM BIẾN ===
+2025-03-30 21:59:34,455 - INFO - Lấy dữ liệu cảm biến từ database
+2025-03-30 21:59:34,462 - INFO - ✅ Lấy dữ liệu cảm biến thành công: 5 bản ghi
+2025-03-30 21:59:34,462 - INFO -    - Bản ghi 1: {"value": 1743344127.3195798, "id": 9, "timestamp": "2025-03-30T14:15:27.709522", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798"}
+2025-03-30 21:59:34,462 - INFO -    - Bản ghi 2: {"value": 0.0, "id": 10, "timestamp": "2025-03-30T14:15:27.714819", "device_id": "default", "feed_id": "test", "raw_data": "{'id': 3046715, 'last_value': '1743344127.3195798', 'updated_at': '2025-03-30 14:15:27 UTC', 'key': 'test', 'data': {'created_at': '2025-03-30T14:15:27.557Z', 'value': '1743344127.3195798', 'location': [], 'id': '0FVC5163NKRSHF32PZZKJ9SS3X'}}"}
+2025-03-30 21:59:34,462 - INFO -    - Bản ghi 3: {"value": 1743344127.3195798, "id": 11, "timestamp": "2025-03-30T14:15:27.717812", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798,,,"}
+2025-03-30 21:59:34,462 - INFO -    - ... và 2 bản ghi khác
+2025-03-30 21:59:35,467 - INFO - 
+
+========== KẾT QUẢ KIỂM TRA ==========
+2025-03-30 21:59:35,468 - INFO - ✅ THÀNH CÔNG: Kết nối trực tiếp Adafruit IO
+2025-03-30 21:59:35,468 - INFO - ✅ THÀNH CÔNG: Tạo cấu hình thiết bị
+2025-03-30 21:59:35,468 - INFO - ✅ THÀNH CÔNG: Gửi dữ liệu thiết bị
+2025-03-30 21:59:35,468 - INFO - ✅ THÀNH CÔNG: API nén dữ liệu
+2025-03-30 21:59:35,468 - INFO - ✅ THÀNH CÔNG: Lấy dữ liệu cảm biến
+2025-03-30 21:59:35,468 - INFO - 
+TỶ LỆ THÀNH CÔNG: 100.0% (5/5)
+2025-03-30 21:59:35,469 - INFO - 
+🎉 CÁC TÍNH NĂNG HOẠT ĐỘNG TỐT!
+2025-03-30 21:59:35,469 - INFO - 
+========== KẾT THÚC KIỂM TRA ==========
+2025-03-30 23:12:59,582 - INFO - 
+========== BẮT ĐẦU KIỂM TRA TOÀN DIỆN ADAFRUIT IO VÀ BACKEND ==========
+2025-03-30 23:12:59,582 - INFO - === KIỂM TRA TRẠNG THÁI SERVER ===
+2025-03-30 23:13:09,441 - ERROR - ❌ Không thể kết nối đến server: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer'))
+2025-03-30 23:13:09,441 - ERROR - ⚠️ Đảm bảo server đang chạy với lệnh: uvicorn main:app --reload
+2025-03-30 23:13:09,442 - ERROR - ❌ Không thể kết nối đến server. Đảm bảo server đang chạy và thử lại.
+2025-03-30 23:13:22,937 - INFO - 
+========== BẮT ĐẦU KIỂM TRA TOÀN DIỆN ADAFRUIT IO VÀ BACKEND ==========
+2025-03-30 23:13:22,937 - INFO - === KIỂM TRA TRẠNG THÁI SERVER ===
+2025-03-30 23:13:36,061 - INFO - ✅ Server hoạt động: {'message': 'IoT Backend API'}
+2025-03-30 23:13:36,061 - INFO - 
+=== ĐĂNG KÝ NGƯỜI DÙNG MỚI ===
+2025-03-30 23:13:36,061 - INFO - Đăng ký người dùng: testuser_1743351202
+2025-03-30 23:13:36,360 - INFO - ✅ Đăng ký thành công: {'message': 'User created successfully'}
+2025-03-30 23:13:36,361 - INFO - 
+=== ĐĂNG NHẬP HỆ THỐNG ===
+2025-03-30 23:13:36,361 - INFO - Đăng nhập với tài khoản: testuser_1743351202
+2025-03-30 23:13:36,611 - INFO - ✅ Đăng nhập thành công, đã nhận access token
+2025-03-30 23:13:36,611 - INFO - 
+>> Đang thực hiện: Kết nối trực tiếp Adafruit IO...
+2025-03-30 23:13:36,611 - INFO - 
+=== KIỂM TRA KẾT NỐI TRỰC TIẾP ADAFRUIT IO ===
+2025-03-30 23:13:36,611 - INFO - Gửi dữ liệu đến feed test: 1743351216.611414
+2025-03-30 23:13:36,613 - INFO - ✅ Gửi dữ liệu thành công: {'status': 'success', 'message': 'Đã gửi 1743351216.611414 đến feed test'}
+2025-03-30 23:13:37,618 - INFO - 
+>> Đang thực hiện: Tạo cấu hình thiết bị...
+2025-03-30 23:13:37,618 - INFO - 
+=== TẠO CẤU HÌNH THIẾT BỊ ===
+2025-03-30 23:13:37,618 - INFO - Tạo cấu hình cho thiết bị: test_device_1743351202
+2025-03-30 23:13:37,632 - INFO - ✅ Tạo cấu hình thiết bị thành công: {'message': 'Device configuration saved successfully', 'device_id': 9, 'device_name': 'test_device_1743351202', 'user_id': 15, 'config_data': {'humidity': {'max': 100, 'min': 0, 'unit': '%', 'alert_threshold': 85}, 'pressure': {'max': 1100, 'min': 900, 'unit': 'hPa'}, 'power_mode': 'normal', 'sample_rate': 5, 'temperature': {'max': 40, 'min': 0, 'unit': '°C', 'alert_threshold': 35}}}
+2025-03-30 23:13:38,637 - INFO - 
+>> Đang thực hiện: Gửi dữ liệu thiết bị...
+2025-03-30 23:13:38,638 - INFO - 
+=== GỬI DỮ LIỆU THIẾT BỊ QUA API ===
+2025-03-30 23:13:38,638 - INFO - Gửi dữ liệu thiết bị: {"device_id": "test_device_1743351202", "readings": {"temperature": 28.2, "humidity": 58.54, "pressure": 1014.96}}
+2025-03-30 23:13:38,649 - INFO - ✅ Gửi dữ liệu thiết bị thành công: {'message': 'Device data published successfully'}
+2025-03-30 23:13:39,655 - INFO - 
+>> Đang thực hiện: API nén dữ liệu...
+2025-03-30 23:13:39,655 - INFO - 
+=== KIỂM TRA API NÉN DỮ LIỆU ===
+2025-03-30 23:13:39,655 - INFO - Nén dữ liệu: {"device_id": "test_device_1743351202", "timestamp": "2025-03-30T23:13:39.655189", "readings": {"temperature": 25.194, "humidity": 64.02, "pressure": 1013.116, "battery": 98}}
+2025-03-30 23:13:39,666 - ERROR - ❌ Nén dữ liệu thất bại: 500 - {"detail":"Lỗi xử lý: (psycopg2.errors.UndefinedColumn) column \"compression_method\" of relation \"compressed_data\" does not exist\nLINE 1: ..._data, compression_ratio, error, processing_time, compressio...\n                                                             ^\n\n[SQL: INSERT INTO compressed_data (device_id, original_data, compressed_data, compression_ratio, error, processing_time, compression_method, timestamp) VALUES (%(device_id)s, %(original_data)s, %(compressed_data)s, %(compression_ratio)s, %(error)s, %(processing_time)s, %(compression_method)s, %(timestamp)s) RETURNING compressed_data.id]\n[parameters: {'device_id': 'test_device_1743351202', 'original_data': '{\"device_id\": \"test_device_1743351202\", \"timestamp\": \"2025-03-30T23:13:39.655189\", \"readings\": {\"temperature\": 25.194, \"humidity\": 64.02, \"pressure\": 1013.116, \"battery\": 98}}', 'compressed_data': '{\"device_id\": \"test_device_1743351202\", \"timestamp\": \"2025-03-30T23:13:39.655189\", \"compressed_type\": \"raw\", \"readings\": {\"temperature\": 25.194, \"humidity\": 64.02, \"pressure\": 1013.116, \"battery\": 98}}', 'compression_ratio': 1.1485714285714286, 'error': 0.0, 'processing_time': 0.06198883056640625, 'compression_method': 'idealem', 'timestamp': datetime.datetime(2025, 3, 30, 16, 13, 39, 663382)}]\n(Background on this error at: https://sqlalche.me/e/20/f405)"}
+2025-03-30 23:13:40,670 - INFO - 
+>> Đang thực hiện: So sánh phương pháp nén...
+2025-03-30 23:13:40,671 - INFO - 
+=== SO SÁNH PHƯƠNG PHÁP NÉN ===
+2025-03-30 23:13:40,681 - ERROR - ❌ Nén với phương pháp Dynamic thất bại: 500
+2025-03-30 23:13:40,689 - ERROR - ❌ Nén với phương pháp IDEALEM thất bại: 500
+2025-03-30 23:13:40,689 - ERROR - ❌ Không thể so sánh các phương pháp nén do thiếu dữ liệu
+2025-03-30 23:13:41,694 - INFO - 
+>> Đang thực hiện: Lấy dữ liệu cảm biến...
+2025-03-30 23:13:41,694 - INFO - 
+=== LẤY DỮ LIỆU CẢM BIẾN ===
+2025-03-30 23:13:41,694 - INFO - Lấy dữ liệu cảm biến từ database
+2025-03-30 23:13:41,701 - INFO - ✅ Lấy dữ liệu cảm biến thành công: 5 bản ghi
+2025-03-30 23:13:41,702 - INFO -    - Bản ghi 1: {"value": 1743344127.3195798, "id": 9, "timestamp": "2025-03-30T14:15:27.709522", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798"}
+2025-03-30 23:13:41,702 - INFO -    - Bản ghi 2: {"value": 0.0, "id": 10, "timestamp": "2025-03-30T14:15:27.714819", "device_id": "default", "feed_id": "test", "raw_data": "{'id': 3046715, 'last_value': '1743344127.3195798', 'updated_at': '2025-03-30 14:15:27 UTC', 'key': 'test', 'data': {'created_at': '2025-03-30T14:15:27.557Z', 'value': '1743344127.3195798', 'location': [], 'id': '0FVC5163NKRSHF32PZZKJ9SS3X'}}"}
+2025-03-30 23:13:41,702 - INFO -    - Bản ghi 3: {"value": 1743344127.3195798, "id": 11, "timestamp": "2025-03-30T14:15:27.717812", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798,,,"}
+2025-03-30 23:13:41,702 - INFO -    - ... và 2 bản ghi khác
+2025-03-30 23:13:42,707 - INFO - 
+
+========== KẾT QUẢ KIỂM TRA ==========
+2025-03-30 23:13:42,708 - INFO - ✅ THÀNH CÔNG: Kết nối trực tiếp Adafruit IO
+2025-03-30 23:13:42,708 - INFO - ✅ THÀNH CÔNG: Tạo cấu hình thiết bị
+2025-03-30 23:13:42,708 - INFO - ✅ THÀNH CÔNG: Gửi dữ liệu thiết bị
+2025-03-30 23:13:42,708 - INFO - ❌ THẤT BẠI: API nén dữ liệu
+2025-03-30 23:13:42,708 - INFO - ❌ THẤT BẠI: So sánh phương pháp nén
+2025-03-30 23:13:42,708 - INFO - ✅ THÀNH CÔNG: Lấy dữ liệu cảm biến
+2025-03-30 23:13:42,708 - INFO - 
+TỶ LỆ THÀNH CÔNG: 66.7% (4/6)
+2025-03-30 23:13:42,712 - INFO - 
+⚠️ MỘT SỐ TÍNH NĂNG CẦN KIỂM TRA LẠI!
+2025-03-30 23:13:42,712 - INFO - 
+========== KẾT THÚC KIỂM TRA ==========
+2025-03-30 23:18:13,858 - INFO - 
+========== BẮT ĐẦU KIỂM TRA TOÀN DIỆN ADAFRUIT IO VÀ BACKEND ==========
+2025-03-30 23:18:13,858 - INFO - === KIỂM TRA TRẠNG THÁI SERVER ===
+2025-03-30 23:18:13,867 - INFO - ✅ Server hoạt động: {'message': 'IoT Backend API'}
+2025-03-30 23:18:13,867 - INFO - 
+=== ĐĂNG KÝ NGƯỜI DÙNG MỚI ===
+2025-03-30 23:18:13,867 - INFO - Đăng ký người dùng: testuser_1743351493
+2025-03-30 23:18:14,156 - INFO - ✅ Đăng ký thành công: {'message': 'User created successfully'}
+2025-03-30 23:18:14,156 - INFO - 
+=== ĐĂNG NHẬP HỆ THỐNG ===
+2025-03-30 23:18:14,156 - INFO - Đăng nhập với tài khoản: testuser_1743351493
+2025-03-30 23:18:14,408 - INFO - ✅ Đăng nhập thành công, đã nhận access token
+2025-03-30 23:18:14,409 - INFO - 
+>> Đang thực hiện: Kết nối trực tiếp Adafruit IO...
+2025-03-30 23:18:14,409 - INFO - 
+=== KIỂM TRA KẾT NỐI TRỰC TIẾP ADAFRUIT IO ===
+2025-03-30 23:18:14,409 - INFO - Gửi dữ liệu đến feed test: 1743351494.409137
+2025-03-30 23:18:14,411 - INFO - ✅ Gửi dữ liệu thành công: {'status': 'success', 'message': 'Đã gửi 1743351494.409137 đến feed test'}
+2025-03-30 23:18:15,416 - INFO - 
+>> Đang thực hiện: Tạo cấu hình thiết bị...
+2025-03-30 23:18:15,416 - INFO - 
+=== TẠO CẤU HÌNH THIẾT BỊ ===
+2025-03-30 23:18:15,416 - INFO - Tạo cấu hình cho thiết bị: test_device_1743351493
+2025-03-30 23:18:15,426 - INFO - ✅ Tạo cấu hình thiết bị thành công: {'message': 'Device configuration saved successfully', 'device_id': 10, 'device_name': 'test_device_1743351493', 'user_id': 16, 'config_data': {'humidity': {'max': 100, 'min': 0, 'unit': '%', 'alert_threshold': 85}, 'pressure': {'max': 1100, 'min': 900, 'unit': 'hPa'}, 'power_mode': 'normal', 'sample_rate': 5, 'temperature': {'max': 40, 'min': 0, 'unit': '°C', 'alert_threshold': 35}}}
+2025-03-30 23:18:16,431 - INFO - 
+>> Đang thực hiện: Gửi dữ liệu thiết bị...
+2025-03-30 23:18:16,432 - INFO - 
+=== GỬI DỮ LIỆU THIẾT BỊ QUA API ===
+2025-03-30 23:18:16,432 - INFO - Gửi dữ liệu thiết bị: {"device_id": "test_device_1743351493", "readings": {"temperature": 27.86, "humidity": 61.14, "pressure": 1010.89}}
+2025-03-30 23:18:16,440 - INFO - ✅ Gửi dữ liệu thiết bị thành công: {'message': 'Device data published successfully'}
+2025-03-30 23:18:17,446 - INFO - 
+>> Đang thực hiện: API nén dữ liệu...
+2025-03-30 23:18:17,446 - INFO - 
+=== KIỂM TRA API NÉN DỮ LIỆU ===
+2025-03-30 23:18:17,446 - INFO - Nén dữ liệu: {"device_id": "test_device_1743351493", "timestamp": "2025-03-30T23:18:17.446290", "readings": {"temperature": 25.464, "humidity": 64.287, "pressure": 1013.115, "battery": 97}}
+2025-03-30 23:18:17,457 - INFO - ✅ Nén dữ liệu thành công:
+2025-03-30 23:18:17,457 - INFO -    - Dữ liệu nén: {"device_id": "test_device_1743351493", "timestamp": "2025-03-30T23:18:17.446290", "compressed_type": "raw", "readings": {"temperature": 25.464, "humidity": 64.287, "pressure": 1013.115, "battery": 97}}
+2025-03-30 23:18:17,457 - INFO -    - Tỷ lệ nén: 1.1477
+2025-03-30 23:18:17,457 - INFO -    - Phương pháp nén: idealem
+2025-03-30 23:18:17,457 - INFO - ✅ Dữ liệu đã được lưu vào database với ID: 13
+2025-03-30 23:18:17,457 - INFO - 
+=== KIỂM TRA LẤY DỮ LIỆU NÉN TỪ DATABASE ===
+2025-03-30 23:18:17,457 - INFO - Lấy dữ liệu nén từ database
+2025-03-30 23:18:17,465 - INFO - ✅ Lấy dữ liệu nén thành công: 5 bản ghi
+2025-03-30 23:18:17,465 - INFO -    - Bản ghi 1: ID=13, Device=test_device_1743351493, Tỷ lệ nén=1.1477, Thời gian=2025-03-30T16:18:17.452651
+2025-03-30 23:18:17,465 - INFO -    - Bản ghi 2: ID=12, Device=test_device_1743346769, Tỷ lệ nén=1.3977, Thời gian=2025-03-30T14:59:33.442369
+2025-03-30 23:18:17,465 - INFO -    - ... và 3 bản ghi khác
+2025-03-30 23:18:17,465 - INFO - ✅ Kiểm tra lấy dữ liệu nén từ database thành công
+2025-03-30 23:18:17,465 - INFO - 
+=== KIỂM TRA CHUYỂN ĐỔI PHƯƠNG PHÁP NÉN ===
+2025-03-30 23:18:17,468 - INFO - Phương pháp nén hiện tại: idealem
+2025-03-30 23:18:17,468 - INFO - Chuyển đổi phương pháp nén từ idealem sang dynamic
+2025-03-30 23:18:17,472 - INFO - Kết quả chuyển đổi: {'message': 'Đã chuyển phương pháp nén sang: dynamic', 'current_method': 'dynamic'}
+2025-03-30 23:18:17,472 - INFO - Nén dữ liệu với phương pháp dynamic
+2025-03-30 23:18:17,479 - INFO - ✅ Nén dữ liệu với phương pháp dynamic thành công:
+2025-03-30 23:18:17,479 - INFO -    - Tỷ lệ nén: 1.1257
+2025-03-30 23:18:17,479 - INFO - Chuyển đổi phương pháp nén trở lại idealem
+2025-03-30 23:18:17,483 - INFO - ✅ Kiểm tra chuyển đổi phương pháp nén thành công
+2025-03-30 23:18:17,483 - INFO - 
+=== KIỂM TRA NÉN DỮ LIỆU HÀNG LOẠT ===
+2025-03-30 23:18:17,483 - INFO - Nén hàng loạt 3 điểm dữ liệu
+2025-03-30 23:18:17,493 - INFO - ✅ Nén hàng loạt thành công:
+2025-03-30 23:18:17,493 - INFO -    - Số điểm dữ liệu đã nén: 3
+2025-03-30 23:18:17,493 - INFO -    - Tỷ lệ nén tổng thể: 1.1484
+2025-03-30 23:18:17,493 - INFO - ✅ Dữ liệu nén hàng loạt đã được lưu vào database
+2025-03-30 23:18:17,494 - INFO -    - Đã lưu 3 bản ghi với IDs: [15, 16, 17]...
+2025-03-30 23:18:17,494 - INFO - 
+=== KIỂM TRA CẤU HÌNH COMPRESSOR ===
+2025-03-30 23:18:17,494 - INFO - Cập nhật cấu hình compressor: {"compression_ratio": 0.6, "error_threshold": 0.03, "window_size": 100, "adaptation_rate": 0.2, "min_bandwidth": 15}
+2025-03-30 23:18:17,498 - INFO - ✅ Cập nhật cấu hình compressor thành công: {'message': 'Cấu hình compressor idealem đã được cập nhật', 'current_config': {'compression_ratio': 0.6, 'error_threshold': 0.03, 'window_size': 100, 'adaptation_rate': 0.2, 'min_bandwidth': 15}}
+2025-03-30 23:18:17,498 - INFO - 
+=== KIỂM TRA THỐNG KÊ NÉN DỮ LIỆU ===
+2025-03-30 23:18:17,498 - INFO - Lấy thống kê về nén dữ liệu
+2025-03-30 23:18:17,502 - INFO - ✅ Lấy thống kê nén dữ liệu thành công: {'message': 'Không có dữ liệu thống kê', 'method': 'IDEALEM_KS', 'current_method': 'idealem'}
+2025-03-30 23:18:17,502 - INFO - 
+=== KIỂM TRA RESET COMPRESSOR ===
+2025-03-30 23:18:17,502 - INFO - Reset compressor
+2025-03-30 23:18:17,505 - INFO - ✅ Reset compressor thành công: {'message': 'Compressor idealem đã được reset thành công'}
+2025-03-30 23:18:18,511 - INFO - 
+>> Đang thực hiện: So sánh phương pháp nén...
+2025-03-30 23:18:18,511 - INFO - 
+=== SO SÁNH PHƯƠNG PHÁP NÉN ===
+2025-03-30 23:18:18,590 - INFO - ✅ Phương pháp Dynamic: Tỷ lệ nén = 1.0341
+2025-03-30 23:18:18,643 - INFO - ✅ Phương pháp IDEALEM: Tỷ lệ nén = 1.1487
+2025-03-30 23:18:18,643 - INFO - ✅ Dynamic hiệu quả hơn IDEALEM 9.98%
+2025-03-30 23:18:18,647 - INFO - ✅ Số lượng bản ghi nén trong database: 10
+2025-03-30 23:18:19,653 - INFO - 
+>> Đang thực hiện: Lấy dữ liệu cảm biến...
+2025-03-30 23:18:19,653 - INFO - 
+=== LẤY DỮ LIỆU CẢM BIẾN ===
+2025-03-30 23:18:19,653 - INFO - Lấy dữ liệu cảm biến từ database
+2025-03-30 23:18:19,660 - INFO - ✅ Lấy dữ liệu cảm biến thành công: 5 bản ghi
+2025-03-30 23:18:19,660 - INFO -    - Bản ghi 1: {"value": 1743344127.3195798, "id": 9, "timestamp": "2025-03-30T14:15:27.709522", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798"}
+2025-03-30 23:18:19,660 - INFO -    - Bản ghi 2: {"value": 0.0, "id": 10, "timestamp": "2025-03-30T14:15:27.714819", "device_id": "default", "feed_id": "test", "raw_data": "{'id': 3046715, 'last_value': '1743344127.3195798', 'updated_at': '2025-03-30 14:15:27 UTC', 'key': 'test', 'data': {'created_at': '2025-03-30T14:15:27.557Z', 'value': '1743344127.3195798', 'location': [], 'id': '0FVC5163NKRSHF32PZZKJ9SS3X'}}"}
+2025-03-30 23:18:19,660 - INFO -    - Bản ghi 3: {"value": 1743344127.3195798, "id": 11, "timestamp": "2025-03-30T14:15:27.717812", "device_id": "default", "feed_id": "test", "raw_data": "1743344127.3195798,,,"}
+2025-03-30 23:18:19,660 - INFO -    - ... và 2 bản ghi khác
+2025-03-30 23:18:20,665 - INFO - 
+
+========== KẾT QUẢ KIỂM TRA ==========
+2025-03-30 23:18:20,665 - INFO - ✅ THÀNH CÔNG: Kết nối trực tiếp Adafruit IO
+2025-03-30 23:18:20,665 - INFO - ✅ THÀNH CÔNG: Tạo cấu hình thiết bị
+2025-03-30 23:18:20,665 - INFO - ✅ THÀNH CÔNG: Gửi dữ liệu thiết bị
+2025-03-30 23:18:20,666 - INFO - ✅ THÀNH CÔNG: API nén dữ liệu
+2025-03-30 23:18:20,666 - INFO - ✅ THÀNH CÔNG: So sánh phương pháp nén
+2025-03-30 23:18:20,666 - INFO - ✅ THÀNH CÔNG: Lấy dữ liệu cảm biến
+2025-03-30 23:18:20,666 - INFO - 
+TỶ LỆ THÀNH CÔNG: 100.0% (6/6)
+2025-03-30 23:18:20,666 - INFO - 
+🎉 CÁC TÍNH NĂNG HOẠT ĐỘNG TỐT!
+2025-03-30 23:18:20,666 - INFO - 
+========== KẾT THÚC KIỂM TRA ==========

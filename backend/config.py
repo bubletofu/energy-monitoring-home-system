@@ -30,14 +30,20 @@ class Settings(BaseSettings):
     # MQTT Configuration cho Adafruit IO
     MQTT_HOST: str = "io.adafruit.com"
     MQTT_PORT: int = 8883  # Sử dụng 8883 cho SSL/TLS
-    MQTT_USERNAME: str  # Sẽ là ADAFRUIT_IO_USERNAME
-    MQTT_PASSWORD: str  # Sẽ là ADAFRUIT_IO_KEY
-    MQTT_TOPIC: str  # Mặc định là username/feeds/#
+    MQTT_USERNAME: str = ""  # Sẽ là ADAFRUIT_IO_USERNAME
+    MQTT_PASSWORD: str = ""  # Sẽ là ADAFRUIT_IO_KEY
+    MQTT_TOPIC: str = ""  # Mặc định là username/feeds/#
+    MQTT_SSL: bool = True  # SSL flag
+    
+    # Adafruit IO thông tin
+    ADAFRUIT_IO_USERNAME: str = ""
+    ADAFRUIT_IO_KEY: str = ""
 
     class Config:
         env_file = ".env"
         env_file_encoding = 'utf-8'
         case_sensitive = True
+        extra = "allow"  # Cho phép các biến môi trường phụ
 
 try:
     settings = Settings()

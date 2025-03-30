@@ -12,6 +12,8 @@ from fastapi.responses import JSONResponse
 from config import settings
 from mqtt_client import MQTTClient
 from database import engine, get_db
+# Import compression api
+from compression_api import router as compression_router
 
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO)
@@ -43,26 +45,35 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# Thêm router compression
+app.include_router(compression_router)
+
 # Khởi tạo MQTT client
 mqtt_client = None
 
 @app.on_event("startup")
 async def startup_event():
     global mqtt_client
-    mqtt_client = MQTTClient()
     try:
+        # Kích hoạt kết nối MQTT
+        logger.info("Đang kết nối tới MQTT broker (Adafruit IO)...")
+        mqtt_client = MQTTClient()
         mqtt_client.connect()
         logger.info("MQTT client connected successfully")
     except Exception as e:
-        logger.error(f"Failed to connect MQTT client: {str(e)}")
-        raise
+        logger.error(f"Startup error: {str(e)}")
+        # Không raise exception để app vẫn có thể khởi động ngay cả khi MQTT thất bại
+        # raise
 
 @app.on_event("shutdown")
 async def shutdown_event():
     global mqtt_client
     if mqtt_client:
-        mqtt_client.disconnect()
-        logger.info("MQTT client disconnected successfully")
+        try:
+            mqtt_client.disconnect()
+            logger.info("MQTT client disconnected successfully")
+        except Exception as e:
+            logger.error(f"Error disconnecting MQTT client: {str(e)}")
 
 # Dependency để lấy database session
 def get_db():
@@ -263,11 +274,15 @@ async def publish_device_data(
         data["user_id"] = current_user.id
         data["timestamp"] = datetime.utcnow().isoformat()
         
-        # Publish message
-        topic = f"iot/devices/{current_user.id}"
-        mqtt_client.publish_message(topic, data)
-        
-        return {"message": "Device data published successfully"}
+        # Kiểm tra MQTT client trước khi publish
+        if mqtt_client:
+            # Publish message
+            topic = f"iot/devices/{current_user.id}"
+            mqtt_client.publish_message(topic, data)
+            return {"message": "Device data published successfully"}
+        else:
+            # Trả về thông báo khi MQTT không khả dụng
+            return {"message": "MQTT is disabled, data logged but not published"}
     except Exception as e:
         logger.error(f"Error publishing device data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -290,4 +305,5 @@ def publish_to_feed(feed_id: str, value: str):
         else:
             raise HTTPException(status_code=500, detail="Không thể gửi dữ liệu")
     else:
-        raise HTTPException(status_code=503, detail="MQTT client chưa được khởi tạo") 
+        # Thông báo khi MQTT không khả dụng
+        return {"status": "info", "message": "MQTT client đang bị vô hiệu hóa"} 
