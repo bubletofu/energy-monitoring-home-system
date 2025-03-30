@@ -1,96 +1,124 @@
 
+# Tính năng
 
-Yêu cầu:
-- Docker (https://docs.docker.com/get-docker/)
-- Docker Compose (https://docs.docker.com/compose/install/)
+- **API Backend (FastAPI)**: Xử lý yêu cầu từ thiết bị IoT và ứng dụng front-end
+- **Tích hợp Adafruit IO**: Đồng bộ dữ liệu và lấy dữ liệu về database
+- **Nén Dữ liệu IDEALEM**: Giảm dung lượng lưu trữ cần thiết mà vẫn giữ được chất lượng dữ liệu
+- **Công cụ giải nén**: Script riêng dành cho AI developer để phục hồi dữ liệu gốc từ dữ liệu nén
 
-Các bước thiết lập:
+## Cài đặt và Sử dụng
 
-1. Clone repository:
-   git clone https://github.com/bubletofu/energy-monitoring-home-system/tree/backend/backend
-   cd your-repo
+### Sử dụng Docker (Khuyến nghị)
 
-2. Khởi động môi trường Docker:
-   docker-compose up -d
+1. Cài đặt Docker và Docker Compose
+2. Sao chép file `.env.example` thành `.env` và cập nhật thông tin kết nối
+3. Chạy hệ thống:
+```
+docker-compose up -d
+```
 
-3. Truy cập Jupyter Notebook:
-   - Mở trình duyệt và truy cập: http://localhost:8888
-   - Để lấy token đăng nhập, chạy lệnh:
-     docker-compose logs ai-notebook
+4. Khởi chạy ứng dụng:
+```
+uvicorn main:app --reload
+```
 
-CẤU TRÚC DỮ LIỆU
----------------
+## Cấu trúc thư mục
 
-Database Schema:
+- `main.py`: Ứng dụng FastAPI chính
+- `models.py`: Định nghĩa các mô hình dữ liệu
+- `data_compression.py`: Thuật toán nén IDEALEM
+- `compression_api.py`: API liên quan đến nén dữ liệu
+- `mqtt_client.py`: Client kết nối với Adafruit IO
+- `decompress_data_for_ai.py`: Script giải nén dữ liệu cho nhà phát triển AI
+- `fetch_adafruit_data.py`: Script lấy dữ liệu từ Adafruit IO
+- `Dockerfile` và `docker-compose.yml`: Cấu hình Docker
 
-1. devices: Thông tin về các thiết bị IoT
-   - id: ID của thiết bị (primary key)
-   - device_id: ID duy nhất của thiết bị (string)
-   - name: Tên thiết bị
-   - description: Mô tả thiết bị
-   - created_at: Thời gian tạo thiết bị
+## Lấy dữ liệu từ Adafruit theo ngày cụ thể
 
-2. sensor_data: Dữ liệu từ các cảm biến
-   - id: ID của bản ghi (primary key)
-   - device_id: ID của thiết bị (foreign key)
-   - feed_id: ID của feed Adafruit IO
-   - value: Giá trị đo được
-   - timestamp: Thời gian ghi nhận dữ liệu
+  
 
-3. users: Thông tin người dùng
-   - id: ID của người dùng (primary key)
-   - username: Tên đăng nhập
-   - email: Email
-   - hashed_password: Mật khẩu đã được mã hóa
+Chọn một ngày để lấy dữ liệu từ Adafruit và lưu vào database.
 
-4. device_configs: Cấu hình thiết bị
-   - id: ID của cấu hình (primary key)
-   - user_id: ID của người dùng (foreign key)
-   - device_name: Tên thiết bị
-   - config_data: Dữ liệu cấu hình (JSON)
+  
 
-Dữ liệu mẫu:
-- 3 thiết bị: Temperature Sensor, Humidity Sensor, Light Sensor
-- Dữ liệu cảm biến trong 7 ngày gần đây
-- 1 tài khoản người dùng mẫu
+### Lệnh cơ bản:
 
-KẾT NỐI ĐẾN DATABASE
--------------------
+```
+python fetch_adafruit_data_manual.py
+```
 
-Trong Jupyter Notebook, kết nối đến database bằng đoạn code sau:
+Mặc định sẽ lấy dữ liệu của ngày hiện tại.
 
-import pandas as pd
-from sqlalchemy import create_engine
+  
 
-# Kết nối đến database
-engine = create_engine('postgresql://ai_user:1234@db:5432/iot_db')
+### Lấy dữ liệu theo ngày cụ thể:
 
-# Truy vấn dữ liệu
-df = pd.read_sql("SELECT * FROM sensor_data LIMIT 10", engine)
-print(df.head())
+```
+python fetch_adafruit_data_manual.py --date 2023-03-30
+```
 
-VÍ DỤ PHÂN TÍCH DỮ LIỆU
-----------------------
+  
 
-1. Truy vấn dữ liệu cảm biến:
+### Giới hạn số lượng bản ghi:
 
-import pandas as pd
-from sqlalchemy import create_engine
-import matplotlib.pyplot as plt
-import seaborn as sns
+```
+python fetch_adafruit_data_manual.py --date 2023-11-20 --limit 100
+```
 
-# Kết nối đến database
-engine = create_engine('postgresql://ai_user:1234@db:5432/iot_db')
+  
 
-# Truy vấn dữ liệu nhiệt độ
-query = """
-SELECT timestamp, value 
-FROM sensor_data 
-JOIN devices ON sensor_data.device_id = devices.device_id
-WHERE devices.name = 'Temperature Sensor'
-ORDER BY timestamp
-"""
-temp_data = pd.read_sql(query, engine)
+### Nếu gặp lỗi, thử ép buộc tải lại dữ liệu:
 
-# Chuyển đổi timestamp thành datetime
-temp_data['timestamp'] = pd.to_datetime(temp_data['timestamp'])
+```
+python fetch_adafruit_data_manual.py --date 2025-03-30 --force-reload
+
+
+## Công cụ giải nén dữ liệu
+
+Công cụ giải nén dữ liệu IDEALEM được cung cấp cho AI developers để phục hồi dữ liệu gốc từ dữ liệu nén. Xem chi tiết cách sử dụng tại [README_DATA_DECOMPRESSION.md](./README_DATA_DECOMPRESSION.md).
+
+Cấu trúc sử dụng cơ bản:
+```
+python decompress_data_for_ai.py --output data.json
+python decompress_data_for_ai.py --format csv --output data.csv
+```
+
+## API Backend
+
+### Chứng thực
+
+1. Đăng ký tài khoản:
+```
+POST /register/
+```
+
+2. Đăng nhập:
+```
+POST /login/
+```
+
+### API Nén dữ liệu
+
+1. Nén dữ liệu:
+```
+POST /compression/compress
+```
+
+2. Lấy dữ liệu đã nén:
+```
+GET /compression/compressed-data
+```
+
+3. Thống kê về nén:
+```
+GET /compression/stats
+```
+
+4. Tổng hợp dữ liệu 24 giờ:
+```
+POST /compression/daily_summary
+```
+
+## Tài liệu khác
+
+- [Hướng dẫn giải nén dữ liệu](./README_DATA_DECOMPRESSION.md): Chi tiết về cách giải nén dữ liệu cho AI
