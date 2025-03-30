@@ -1,0 +1,28 @@
+# Các thư viện cơ bản cho FastAPI
+fastapi>=0.103.1
+uvicorn>=0.23.2
+pydantic>=2.4.2
+pydantic-settings>=2.0.3
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+
+# Thư viện cho database
+sqlalchemy>=2.0.21
+psycopg2-binary>=2.9.7
+alembic>=1.12.0
+
+# Thư viện cho authentication
+python-jose>=3.3.0
+passlib>=1.7.4
+bcrypt>=4.0.1
+
+# Thư viện cho MQTT và Adafruit IO
+paho-mqtt>=2.2.1
+requests>=2.31.0
+
+# Thư viện cho logging và monitoring
+loguru>=0.7.2
+
+# Thư viện cho testing
+pytest>=7.4.2
+httpx>=0.25.0 
