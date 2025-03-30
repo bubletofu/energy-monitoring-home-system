@@ -1,37 +1,8 @@
 # Hướng dẫn sử dụng công cụ giải nén dữ liệu IDEALEM
 
-Tài liệu này mô tả cách sử dụng script `decompress_data_for_ai.py` để giải nén dữ liệu từ thuật toán nén IDEALEM và chuẩn bị dữ liệu cho phân tích và huấn luyện AI.
-
-## Tổng quan
 
 Script `decompress_data_for_ai.py` kết nối đến PostgreSQL database, trích xuất dữ liệu nén từ bảng `compressed_data` và các mẫu gốc từ bảng `original_samples`, sau đó tái tạo dữ liệu đầy đủ với tất cả các thông số cảm biến.
 
-## Cài đặt
-
-### Yêu cầu
-
-- Python 3.6+
-- PostgreSQL database chứa bảng `compressed_data` và `original_samples`
-- Các thư viện Python: sqlalchemy, psycopg2, pandas
-
-### Cài đặt thư viện
-
-```bash
-pip install sqlalchemy psycopg2-binary pandas
-```
-
-## Cấu hình
-
-Script sử dụng biến môi trường `DATABASE_URL` để kết nối đến PostgreSQL database. Mặc định, script sẽ sử dụng URL sau nếu không tìm thấy biến môi trường:
-
-```
-postgresql://postgres:1234@localhost:5433/iot_db
-```
-
-Để thay đổi cấu hình database, bạn có thể:
-
-1. Thiết lập biến môi trường `DATABASE_URL`
-2. Hoặc sửa trực tiếp URL mặc định trong script
 
 ## Sử dụng
 
