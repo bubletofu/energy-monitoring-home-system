@@ -1,0 +1,29 @@
+FROM jupyter/scipy-notebook:latest
+
+USER root
+
+# Cài đặt các thư viện Python cần thiết cho AI
+RUN pip install --no-cache-dir \
+    pandas \
+    numpy \
+    scikit-learn \
+    tensorflow \
+    keras \
+    matplotlib \
+    seaborn \
+    psycopg2-binary \
+    sqlalchemy
+
+# Tạo thư mục cho dữ liệu và notebooks
+RUN mkdir -p /data /notebooks
+
+# Thiết lập quyền
+RUN chown -R jovyan:users /data /notebooks
+
+USER jovyan
+
+# Thiết lập thư mục làm việc
+WORKDIR /notebooks
+
+# Chạy Jupyter Notebook
+CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"] 
