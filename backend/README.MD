@@ -22,17 +22,6 @@ docker-compose up -d
 uvicorn main:app --reload
 ```
 
-## Cấu trúc thư mục
-
-- `main.py`: Ứng dụng FastAPI chính
-- `models.py`: Định nghĩa các mô hình dữ liệu
-- `data_compression.py`: Thuật toán nén IDEALEM
-- `compression_api.py`: API liên quan đến nén dữ liệu
-- `mqtt_client.py`: Client kết nối với Adafruit IO
-- `decompress_data_for_ai.py`: Script giải nén dữ liệu cho nhà phát triển AI
-- `fetch_adafruit_data.py`: Script lấy dữ liệu từ Adafruit IO
-- `Dockerfile` và `docker-compose.yml`: Cấu hình Docker
-
 ## Lấy dữ liệu từ Adafruit theo ngày cụ thể
 
   
