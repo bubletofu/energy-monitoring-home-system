@@ -57,7 +57,7 @@ Dữ liệu mẫu:
 KẾT NỐI ĐẾN DATABASE
 -------------------
 
-Trong Jupyter Notebook, bạn có thể kết nối đến database bằng đoạn code sau:
+Trong Jupyter Notebook, kết nối đến database bằng đoạn code sau:
 
 import pandas as pd
 from sqlalchemy import create_engine
@@ -94,13 +94,3 @@ temp_data = pd.read_sql(query, engine)
 
 # Chuyển đổi timestamp thành datetime
 temp_data['timestamp'] = pd.to_datetime(temp_data['timestamp'])
-
-# Vẽ biểu đồ
-plt.figure(figsize=(12, 6))
-plt.plot(temp_data['timestamp'], temp_data['value'])
-plt.title('Temperature over time')
-plt.xlabel('Time')
-plt.ylabel('Temperature (°C)')
-plt.grid(True)
-plt.tight_layout()
-plt.show()
