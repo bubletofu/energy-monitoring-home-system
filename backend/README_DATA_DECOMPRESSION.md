@@ -1,4 +1,4 @@
-# Hướng dẫn sử dụng công cụ giải nén dữ liệu IDEALEM
+# Giải nén dữ liệu IDEALEM
 
 
 Script `decompress_data_for_ai.py` kết nối đến PostgreSQL database, trích xuất dữ liệu nén từ bảng `compressed_data` và các mẫu gốc từ bảng `original_samples`, sau đó tái tạo dữ liệu đầy đủ với tất cả các thông số cảm biến.
