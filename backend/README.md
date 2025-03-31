@@ -83,41 +83,7 @@ python decompress_data_for_ai.py --output data.json
 python decompress_data_for_ai.py --format csv --output data.csv
 ```
 
-## API Backend
 
-### Chứng thực
-
-1. Đăng ký tài khoản:
-```
-POST /register/
-```
-
-2. Đăng nhập:
-```
-POST /login/
-```
-
-### API Nén dữ liệu
-
-1. Nén dữ liệu:
-```
-POST /compression/compress
-```
-
-2. Lấy dữ liệu đã nén:
-```
-GET /compression/compressed-data
-```
-
-3. Thống kê về nén:
-```
-GET /compression/stats
-```
-
-4. Tổng hợp dữ liệu 24 giờ:
-```
-POST /compression/daily_summary
-```
 
 ## Tài liệu khác
 
