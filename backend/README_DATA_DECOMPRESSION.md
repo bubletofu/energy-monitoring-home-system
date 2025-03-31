@@ -74,41 +74,6 @@ Mỗi đối tượng bao gồm:
   - `power`: Công suất (W)
   - `battery`: Dung lượng pin (%)
 
-## Xử lý dữ liệu với Python
-
-Bạn có thể dễ dàng đọc và xử lý dữ liệu JSON đầu ra bằng Python:
-
-```python
-import json
-import pandas as pd
-
-# Đọc dữ liệu từ file JSON
-with open('data.json', 'r') as f:
-    data = json.load(f)
-
-# Chuyển đổi sang DataFrame
-rows = []
-for item in data:
-    row = {
-        'device_id': item['device_id'],
-        'timestamp': item['timestamp']
-    }
-    # Thêm các thông số readings
-    if 'readings' in item:
-        for key, value in item['readings'].items():
-            row[key] = value
-    rows.append(row)
-
-# Tạo DataFrame
-df = pd.DataFrame(rows)
-
-# Chuyển timestamp sang định dạng datetime
-df['timestamp'] = pd.to_datetime(df['timestamp'])
-
-# Bây giờ bạn có thể phân tích dữ liệu
-print(df.describe())
-```
-
 
 ## Lưu ý
 
