@@ -1,0 +1,57 @@
+[
+  {
+    "device_id": "he_test",
+    "timestamp": "2025-07-15T10:00:00",
+    "readings": {
+      "temperature": 39.153,
+      "humidity": 51.185,
+      "pressure": 1008.08,
+      "power": 232.579,
+      "battery": 91
+    }
+  },
+  {
+    "device_id": "he_test",
+    "timestamp": "2025-07-15T10:01:00",
+    "readings": {
+      "temperature": 38.62,
+      "humidity": 49.182,
+      "pressure": 1007.988,
+      "power": 213.11,
+      "battery": 91
+    }
+  },
+  {
+    "device_id": "he_test",
+    "timestamp": "2025-07-15T10:02:00",
+    "readings": {
+      "temperature": 38.165,
+      "humidity": 49.112,
+      "pressure": 1008.101,
+      "power": 227.607,
+      "battery": 92
+    }
+  },
+  {
+    "device_id": "he_test",
+    "timestamp": "2025-07-15T10:03:00",
+    "readings": {
+      "temperature": 38.083,
+      "humidity": 51.99,
+      "pressure": 1007.939,
+      "power": 256.468,
+      "battery": 91
+    }
+  },
+  {
+    "device_id": "he_test",
+    "timestamp": "2025-07-15T10:04:00",
+    "readings": {
+      "temperature": 38.479,
+      "humidity": 53.838,
+      "pressure": 1007.92,
+      "power": 217.047,
+      "battery": 91
+    }
+  }
+] 

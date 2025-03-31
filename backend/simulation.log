@@ -1,0 +1,299 @@
+2025-03-31 00:29:07,618 - INFO - Khởi tạo trình quản lý mô phỏng với thiết bị: sensor_sim_01, khoảng thời gian: 10s
+2025-03-31 00:29:07,618 - INFO - Đang đăng nhập với tài khoản: testrandom
+2025-03-31 00:29:07,656 - ERROR - Đăng nhập thất bại: 401 - {"detail":"Incorrect username or password"}
+2025-03-31 00:29:07,657 - ERROR - Không thể đăng nhập, không thể bắt đầu mô phỏng
+2025-03-31 00:29:07,657 - ERROR - Không thể bắt đầu mô phỏng
+2025-03-31 00:30:01,809 - INFO - Khởi tạo trình quản lý mô phỏng với thiết bị: sensor_sim_01, khoảng thời gian: 10s
+2025-03-31 00:30:01,809 - INFO - Đang đăng nhập với tài khoản: testrandom
+2025-03-31 00:30:02,070 - INFO - Đăng nhập thành công, đã nhận access token
+2025-03-31 00:30:02,070 - INFO - Bắt đầu mô phỏng với thiết bị sensor_sim_01, chu kỳ 10s
+2025-03-31 00:30:02,070 - INFO - Lịch tổng hợp dữ liệu tiếp theo: 2025-04-01 00:05:00
+2025-03-31 00:30:02,070 - INFO - Mô phỏng đã bắt đầu! Nhấn Ctrl+C để dừng.
+2025-03-31 00:30:02,139 - INFO - Gửi dữ liệu thành công: temp=22.03°C, humidity=63.19%, power=0.272kW, CR=1.4867
+2025-03-31 00:30:12,155 - INFO - Gửi dữ liệu thành công: temp=21.98°C, humidity=64.44%, power=0.279kW, CR=1.1065
+2025-03-31 00:30:22,175 - INFO - Gửi dữ liệu thành công: temp=22.18°C, humidity=63.43%, power=0.262kW, CR=1.1065
+2025-03-31 00:30:32,194 - INFO - Gửi dữ liệu thành công: temp=21.95°C, humidity=64.77%, power=0.287kW, CR=1.1065
+2025-03-31 00:30:42,207 - INFO - Gửi dữ liệu thành công: temp=20.81°C, humidity=63.85%, power=0.21kW, CR=1.4904
+2025-03-31 00:30:52,222 - INFO - Gửi dữ liệu thành công: temp=21.9°C, humidity=63.87%, power=0.266kW, CR=1.1149
+2025-03-31 00:31:02,235 - INFO - Gửi dữ liệu thành công: temp=21.74°C, humidity=64.76%, power=0.222kW, CR=1.1107
+2025-03-31 00:31:10,919 - INFO - Đã nhận lệnh dừng từ người dùng
+2025-03-31 00:31:10,920 - INFO - Đang dừng mô phỏng...
+2025-03-31 00:31:12,240 - INFO - Đã dừng mô phỏng
+2025-03-31 00:31:12,240 - INFO - Đã dừng mô phỏng
+2025-03-31 00:34:07,767 - INFO - Khởi tạo trình quản lý mô phỏng với thiết bị: sensor_sim_01, khoảng thời gian: 1s
+2025-03-31 00:34:07,767 - INFO - Chế độ nhanh được kích hoạt! Mô phỏng 24 giờ với hệ số tăng tốc: 20x
+2025-03-31 00:34:07,767 - INFO - Đang đăng nhập với tài khoản: testrandom
+2025-03-31 00:34:07,771 - ERROR - Lỗi khi đăng nhập: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /login/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x103999f10>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-31 00:34:07,772 - ERROR - Không thể đăng nhập, không thể bắt đầu mô phỏng
+2025-03-31 00:34:07,772 - ERROR - Không thể bắt đầu mô phỏng
+2025-03-31 00:34:57,491 - INFO - Khởi tạo trình quản lý mô phỏng với thiết bị: sensor_sim_01, khoảng thời gian: 1s
+2025-03-31 00:34:57,491 - INFO - Chế độ nhanh được kích hoạt! Mô phỏng 24 giờ với hệ số tăng tốc: 20x
+2025-03-31 00:34:57,491 - INFO - Đang đăng nhập với tài khoản: testrandom
+2025-03-31 00:34:57,814 - INFO - Đăng nhập thành công, đã nhận access token
+2025-03-31 00:34:57,814 - INFO - Bắt đầu mô phỏng với thiết bị sensor_sim_01, chu kỳ 1s
+2025-03-31 00:34:57,815 - INFO - Chế độ nhanh: Tạo 240 điểm dữ liệu cho 24 giờ (10 điểm/giờ)
+2025-03-31 00:34:57,815 - INFO - Mô phỏng nhanh đã bắt đầu! Tạo dữ liệu 24 giờ...
+2025-03-31 00:34:57,866 - INFO - Gửi dữ liệu 2025-03-31 00:00: temp=21.12°C, humidity=63.24%, power=0.275kW, CR=1.5000
+2025-03-31 00:34:57,929 - INFO - Gửi dữ liệu 2025-03-31 00:03: temp=21.23°C, humidity=63.95%, power=0.241kW, CR=1.1094
+2025-03-31 00:34:58,000 - INFO - Gửi dữ liệu 2025-03-31 00:06: temp=22.08°C, humidity=64.7%, power=0.197kW, CR=1.5039
+2025-03-31 00:34:58,060 - INFO - Gửi dữ liệu 2025-03-31 00:09: temp=20.87°C, humidity=64.2%, power=0.248kW, CR=1.1137
+2025-03-31 00:34:58,119 - INFO - Gửi dữ liệu 2025-03-31 00:12: temp=20.82°C, humidity=64.18%, power=0.227kW, CR=1.5020
+2025-03-31 00:34:58,178 - INFO - Gửi dữ liệu 2025-03-31 00:15: temp=21.4°C, humidity=63.7%, power=0.228kW, CR=1.1225
+2025-03-31 00:34:58,237 - INFO - Gửi dữ liệu 2025-03-31 00:18: temp=21.87°C, humidity=65.27%, power=0.199kW, CR=1.1137
+2025-03-31 00:34:58,292 - WARNING - BẤT THƯỜNG: humidity = 91.77810829570393
+2025-03-31 00:34:58,307 - INFO - Gửi dữ liệu 2025-03-31 00:21: temp=21.99°C, humidity=91.78%, power=0.289kW, CR=1.4689
+2025-03-31 00:34:58,370 - INFO - Gửi dữ liệu 2025-03-31 00:24: temp=20.85°C, humidity=65.31%, power=0.26kW, CR=1.1102
+2025-03-31 00:34:58,433 - INFO - Gửi dữ liệu 2025-03-31 00:27: temp=21.1°C, humidity=63.54%, power=0.246kW, CR=1.1181
+2025-03-31 00:34:58,495 - INFO - Gửi dữ liệu 2025-03-31 00:30: temp=20.98°C, humidity=64.56%, power=0.206kW, CR=1.1137
+2025-03-31 00:34:58,555 - INFO - Gửi dữ liệu 2025-03-31 00:33: temp=20.71°C, humidity=64.76%, power=0.284kW, CR=1.1137
+2025-03-31 00:34:58,618 - INFO - Gửi dữ liệu 2025-03-31 00:36: temp=21.41°C, humidity=62.93%, power=0.264kW, CR=1.1137
+2025-03-31 00:34:58,677 - INFO - Gửi dữ liệu 2025-03-31 00:39: temp=20.96°C, humidity=63.37%, power=0.206kW, CR=1.1137
+2025-03-31 00:34:58,740 - INFO - Gửi dữ liệu 2025-03-31 00:42: temp=20.89°C, humidity=65.33%, power=0.24kW, CR=1.1225
+2025-03-31 00:34:58,805 - INFO - Gửi dữ liệu 2025-03-31 00:45: temp=21.07°C, humidity=63.31%, power=0.191kW, CR=1.1137
+2025-03-31 00:34:58,863 - INFO - Gửi dữ liệu 2025-03-31 00:48: temp=21.54°C, humidity=62.71%, power=0.259kW, CR=1.1137
+2025-03-31 00:34:58,924 - INFO - Gửi dữ liệu 2025-03-31 00:51: temp=20.8°C, humidity=63.62%, power=0.201kW, CR=1.1181
+2025-03-31 00:34:58,979 - WARNING - BẤT THƯỜNG: temperature = 35.680728608331336
+2025-03-31 00:34:58,986 - INFO - Gửi dữ liệu 2025-03-31 00:54: temp=35.68°C, humidity=62.74%, power=0.198kW, CR=1.4621
+2025-03-31 00:34:59,045 - INFO - Gửi dữ liệu 2025-03-31 00:57: temp=20.71°C, humidity=64.81%, power=0.191kW, CR=1.1137
+2025-03-31 00:34:59,046 - INFO - Đã hoàn thành 1/24 giờ dữ liệu (20/240 điểm)
+2025-03-31 00:34:59,106 - INFO - Gửi dữ liệu 2025-03-31 01:00: temp=21.95°C, humidity=63.85%, power=0.24kW, CR=1.1181
+2025-03-31 00:34:59,163 - INFO - Gửi dữ liệu 2025-03-31 01:03: temp=21.45°C, humidity=65.09%, power=0.276kW, CR=1.1137
+2025-03-31 00:34:59,226 - INFO - Gửi dữ liệu 2025-03-31 01:06: temp=22.17°C, humidity=63.77%, power=0.203kW, CR=1.1137
+2025-03-31 00:34:59,287 - INFO - Gửi dữ liệu 2025-03-31 01:09: temp=20.96°C, humidity=65.01%, power=0.21kW, CR=1.1181
+2025-03-31 00:34:59,348 - INFO - Gửi dữ liệu 2025-03-31 01:12: temp=21.09°C, humidity=62.72%, power=0.28kW, CR=1.1181
+2025-03-31 00:34:59,411 - INFO - Gửi dữ liệu 2025-03-31 01:15: temp=21.75°C, humidity=63.65%, power=0.201kW, CR=1.1137
+2025-03-31 00:34:59,474 - INFO - Gửi dữ liệu 2025-03-31 01:18: temp=21.51°C, humidity=63.3%, power=0.198kW, CR=1.1181
+2025-03-31 00:34:59,536 - INFO - Gửi dữ liệu 2025-03-31 01:21: temp=21.43°C, humidity=64.91%, power=0.255kW, CR=1.1181
+2025-03-31 00:34:59,597 - INFO - Gửi dữ liệu 2025-03-31 01:24: temp=22.16°C, humidity=63.88%, power=0.288kW, CR=1.1137
+2025-03-31 00:34:59,743 - INFO - Gửi dữ liệu 2025-03-31 01:27: temp=22.14°C, humidity=63.32%, power=0.249kW, CR=1.5020
+2025-03-31 00:34:59,805 - INFO - Gửi dữ liệu 2025-03-31 01:30: temp=21.3°C, humidity=64.1%, power=0.244kW, CR=1.1225
+2025-03-31 00:34:59,862 - INFO - Gửi dữ liệu 2025-03-31 01:33: temp=21.79°C, humidity=64.18%, power=0.196kW, CR=1.1098
+2025-03-31 00:34:59,922 - INFO - Gửi dữ liệu 2025-03-31 01:36: temp=21.38°C, humidity=62.95%, power=0.283kW, CR=1.1137
+2025-03-31 00:34:59,980 - INFO - Gửi dữ liệu 2025-03-31 01:39: temp=21.53°C, humidity=63.54%, power=0.253kW, CR=1.1098
+2025-03-31 00:35:00,042 - INFO - Gửi dữ liệu 2025-03-31 01:42: temp=20.99°C, humidity=63.88%, power=0.202kW, CR=1.1137
+2025-03-31 00:35:00,103 - INFO - Gửi dữ liệu 2025-03-31 01:45: temp=20.79°C, humidity=64.16%, power=0.255kW, CR=1.1181
+2025-03-31 00:35:00,165 - INFO - Gửi dữ liệu 2025-03-31 01:48: temp=21.12°C, humidity=63.2%, power=0.207kW, CR=1.1181
+2025-03-31 00:35:00,226 - INFO - Gửi dữ liệu 2025-03-31 01:51: temp=22.12°C, humidity=65.29%, power=0.249kW, CR=1.1181
+2025-03-31 00:35:00,288 - INFO - Gửi dữ liệu 2025-03-31 01:54: temp=22.0°C, humidity=62.87%, power=0.204kW, CR=1.1142
+2025-03-31 00:35:00,351 - INFO - Gửi dữ liệu 2025-03-31 01:57: temp=21.17°C, humidity=65.28%, power=0.235kW, CR=1.1137
+2025-03-31 00:35:00,352 - INFO - Đã hoàn thành 2/24 giờ dữ liệu (40/240 điểm)
+2025-03-31 00:35:00,415 - INFO - Gửi dữ liệu 2025-03-31 02:00: temp=21.26°C, humidity=65.15%, power=0.216kW, CR=1.1137
+2025-03-31 00:35:00,474 - INFO - Gửi dữ liệu 2025-03-31 02:03: temp=21.51°C, humidity=62.57%, power=0.25kW, CR=1.1181
+2025-03-31 00:35:00,538 - INFO - Gửi dữ liệu 2025-03-31 02:06: temp=21.22°C, humidity=62.54%, power=0.231kW, CR=1.1137
+2025-03-31 00:35:00,601 - INFO - Gửi dữ liệu 2025-03-31 02:09: temp=21.16°C, humidity=62.78%, power=0.224kW, CR=1.1137
+2025-03-31 00:35:00,708 - INFO - Gửi dữ liệu 2025-03-31 02:12: temp=22.03°C, humidity=62.84%, power=0.242kW, CR=1.1137
+2025-03-31 00:35:00,771 - INFO - Gửi dữ liệu 2025-03-31 02:15: temp=20.89°C, humidity=62.89%, power=0.195kW, CR=1.1137
+2025-03-31 00:35:00,835 - INFO - Gửi dữ liệu 2025-03-31 02:18: temp=21.45°C, humidity=65.34%, power=0.237kW, CR=1.1137
+2025-03-31 00:35:00,897 - INFO - Gửi dữ liệu 2025-03-31 02:21: temp=21.01°C, humidity=65.44%, power=0.279kW, CR=1.1137
+2025-03-31 00:35:00,960 - INFO - Gửi dữ liệu 2025-03-31 02:24: temp=20.89°C, humidity=64.33%, power=0.228kW, CR=1.1137
+2025-03-31 00:35:01,022 - INFO - Gửi dữ liệu 2025-03-31 02:27: temp=20.97°C, humidity=65.41%, power=0.227kW, CR=1.1137
+2025-03-31 00:35:01,086 - INFO - Gửi dữ liệu 2025-03-31 02:30: temp=21.25°C, humidity=62.87%, power=0.223kW, CR=1.1142
+2025-03-31 00:35:01,147 - INFO - Gửi dữ liệu 2025-03-31 02:33: temp=20.9°C, humidity=64.44%, power=0.226kW, CR=1.1181
+2025-03-31 00:35:01,206 - INFO - Gửi dữ liệu 2025-03-31 02:36: temp=21.86°C, humidity=65.21%, power=0.279kW, CR=1.5020
+2025-03-31 00:35:01,270 - INFO - Gửi dữ liệu 2025-03-31 02:39: temp=21.14°C, humidity=62.83%, power=0.286kW, CR=1.1137
+2025-03-31 00:35:01,333 - INFO - Gửi dữ liệu 2025-03-31 02:42: temp=21.21°C, humidity=64.18%, power=0.267kW, CR=1.1137
+2025-03-31 00:35:01,395 - INFO - Gửi dữ liệu 2025-03-31 02:45: temp=21.9°C, humidity=63.41%, power=0.225kW, CR=1.1181
+2025-03-31 00:35:01,458 - INFO - Gửi dữ liệu 2025-03-31 02:48: temp=21.16°C, humidity=65.42%, power=0.223kW, CR=1.1137
+2025-03-31 00:35:01,520 - INFO - Gửi dữ liệu 2025-03-31 02:51: temp=21.33°C, humidity=65.25%, power=0.253kW, CR=1.1137
+2025-03-31 00:35:01,578 - INFO - Gửi dữ liệu 2025-03-31 02:54: temp=22.11°C, humidity=64.95%, power=0.214kW, CR=1.1137
+2025-03-31 00:35:01,638 - INFO - Gửi dữ liệu 2025-03-31 02:57: temp=21.52°C, humidity=63.07%, power=0.223kW, CR=1.1137
+2025-03-31 00:35:01,638 - INFO - Đã hoàn thành 3/24 giờ dữ liệu (60/240 điểm)
+2025-03-31 00:35:01,700 - INFO - Gửi dữ liệu 2025-03-31 03:00: temp=20.74°C, humidity=62.79%, power=0.266kW, CR=1.1137
+2025-03-31 00:35:01,765 - INFO - Gửi dữ liệu 2025-03-31 03:03: temp=21.59°C, humidity=64.83%, power=0.264kW, CR=1.1137
+2025-03-31 00:35:01,830 - INFO - Gửi dữ liệu 2025-03-31 03:06: temp=21.22°C, humidity=64.57%, power=0.267kW, CR=1.1098
+2025-03-31 00:35:01,893 - INFO - Gửi dữ liệu 2025-03-31 03:09: temp=22.11°C, humidity=64.04%, power=0.219kW, CR=1.1137
+2025-03-31 00:35:01,951 - INFO - Gửi dữ liệu 2025-03-31 03:12: temp=22.29°C, humidity=62.81%, power=0.208kW, CR=1.1137
+2025-03-31 00:35:02,013 - INFO - Gửi dữ liệu 2025-03-31 03:15: temp=21.58°C, humidity=64.28%, power=0.264kW, CR=1.1137
+2025-03-31 00:35:02,075 - INFO - Gửi dữ liệu 2025-03-31 03:18: temp=20.74°C, humidity=64.12%, power=0.269kW, CR=1.1181
+2025-03-31 00:35:02,139 - INFO - Gửi dữ liệu 2025-03-31 03:21: temp=20.76°C, humidity=64.7%, power=0.277kW, CR=1.1181
+2025-03-31 00:35:02,199 - INFO - Gửi dữ liệu 2025-03-31 03:24: temp=22.0°C, humidity=65.24%, power=0.266kW, CR=1.1181
+2025-03-31 00:35:02,260 - INFO - Gửi dữ liệu 2025-03-31 03:27: temp=22.11°C, humidity=65.36%, power=0.235kW, CR=1.1137
+2025-03-31 00:35:02,323 - INFO - Gửi dữ liệu 2025-03-31 03:30: temp=21.2°C, humidity=64.99%, power=0.207kW, CR=1.1181
+2025-03-31 00:35:02,384 - INFO - Gửi dữ liệu 2025-03-31 03:33: temp=21.07°C, humidity=62.91%, power=0.217kW, CR=1.1137
+2025-03-31 00:35:02,442 - INFO - Gửi dữ liệu 2025-03-31 03:36: temp=21.44°C, humidity=63.6%, power=0.266kW, CR=1.1181
+2025-03-31 00:35:02,504 - INFO - Gửi dữ liệu 2025-03-31 03:39: temp=21.34°C, humidity=65.36%, power=0.237kW, CR=1.1137
+2025-03-31 00:35:02,567 - INFO - Gửi dữ liệu 2025-03-31 03:42: temp=21.8°C, humidity=62.78%, power=0.275kW, CR=1.1142
+2025-03-31 00:35:02,631 - INFO - Gửi dữ liệu 2025-03-31 03:45: temp=22.14°C, humidity=64.23%, power=0.265kW, CR=1.1137
+2025-03-31 00:35:02,692 - INFO - Gửi dữ liệu 2025-03-31 03:48: temp=21.97°C, humidity=64.13%, power=0.211kW, CR=1.1137
+2025-03-31 00:35:02,756 - INFO - Gửi dữ liệu 2025-03-31 03:51: temp=22.15°C, humidity=63.92%, power=0.268kW, CR=1.1137
+2025-03-31 00:35:02,819 - INFO - Gửi dữ liệu 2025-03-31 03:54: temp=22.18°C, humidity=65.12%, power=0.261kW, CR=1.1137
+2025-03-31 00:35:02,877 - INFO - Gửi dữ liệu 2025-03-31 03:57: temp=21.98°C, humidity=64.42%, power=0.215kW, CR=1.1137
+2025-03-31 00:35:02,877 - INFO - Đã hoàn thành 4/24 giờ dữ liệu (80/240 điểm)
+2025-03-31 00:35:02,937 - INFO - Gửi dữ liệu 2025-03-31 04:00: temp=21.83°C, humidity=64.17%, power=0.282kW, CR=1.1137
+2025-03-31 00:35:03,000 - INFO - Gửi dữ liệu 2025-03-31 04:03: temp=22.27°C, humidity=64.43%, power=0.224kW, CR=1.1137
+2025-03-31 00:35:03,063 - INFO - Gửi dữ liệu 2025-03-31 04:06: temp=22.07°C, humidity=64.82%, power=0.241kW, CR=1.1098
+2025-03-31 00:35:03,128 - INFO - Gửi dữ liệu 2025-03-31 04:09: temp=22.04°C, humidity=65.46%, power=0.273kW, CR=1.1137
+2025-03-31 00:35:03,192 - INFO - Gửi dữ liệu 2025-03-31 04:12: temp=21.71°C, humidity=64.22%, power=0.244kW, CR=1.1137
+2025-03-31 00:35:03,255 - INFO - Gửi dữ liệu 2025-03-31 04:15: temp=20.87°C, humidity=63.81%, power=0.231kW, CR=1.1137
+2025-03-31 00:35:03,315 - INFO - Gửi dữ liệu 2025-03-31 04:18: temp=21.03°C, humidity=64.24%, power=0.239kW, CR=1.1137
+2025-03-31 00:35:03,377 - INFO - Gửi dữ liệu 2025-03-31 04:21: temp=21.31°C, humidity=64.24%, power=0.267kW, CR=1.1137
+2025-03-31 00:35:03,439 - INFO - Gửi dữ liệu 2025-03-31 04:24: temp=21.45°C, humidity=65.0%, power=0.198kW, CR=1.1181
+2025-03-31 00:35:03,499 - INFO - Gửi dữ liệu 2025-03-31 04:27: temp=22.18°C, humidity=64.76%, power=0.243kW, CR=1.1137
+2025-03-31 00:35:03,562 - INFO - Gửi dữ liệu 2025-03-31 04:30: temp=22.29°C, humidity=62.83%, power=0.282kW, CR=1.1137
+2025-03-31 00:35:03,625 - INFO - Gửi dữ liệu 2025-03-31 04:33: temp=22.17°C, humidity=65.11%, power=0.206kW, CR=1.1137
+2025-03-31 00:35:03,688 - INFO - Gửi dữ liệu 2025-03-31 04:36: temp=21.46°C, humidity=63.15%, power=0.256kW, CR=1.1137
+2025-03-31 00:35:03,750 - INFO - Gửi dữ liệu 2025-03-31 04:39: temp=21.84°C, humidity=64.93%, power=0.282kW, CR=1.1137
+2025-03-31 00:35:03,814 - INFO - Gửi dữ liệu 2025-03-31 04:42: temp=22.23°C, humidity=63.54%, power=0.237kW, CR=1.1137
+2025-03-31 00:35:03,877 - INFO - Gửi dữ liệu 2025-03-31 04:45: temp=21.25°C, humidity=63.9%, power=0.239kW, CR=1.1181
+2025-03-31 00:35:03,943 - INFO - Gửi dữ liệu 2025-03-31 04:48: temp=21.01°C, humidity=63.07%, power=0.259kW, CR=1.1181
+2025-03-31 00:35:04,008 - INFO - Gửi dữ liệu 2025-03-31 04:51: temp=21.58°C, humidity=65.3%, power=0.267kW, CR=1.1181
+2025-03-31 00:35:04,068 - INFO - Gửi dữ liệu 2025-03-31 04:54: temp=22.03°C, humidity=64.71%, power=0.254kW, CR=1.1137
+2025-03-31 00:35:04,129 - INFO - Gửi dữ liệu 2025-03-31 04:57: temp=20.77°C, humidity=64.59%, power=0.238kW, CR=1.1137
+2025-03-31 00:35:04,129 - INFO - Đã hoàn thành 5/24 giờ dữ liệu (100/240 điểm)
+2025-03-31 00:35:04,189 - INFO - Gửi dữ liệu 2025-03-31 05:00: temp=23.6°C, humidity=60.44%, power=0.483kW, CR=1.5039
+2025-03-31 00:35:04,252 - INFO - Gửi dữ liệu 2025-03-31 05:03: temp=24.26°C, humidity=61.36%, power=0.476kW, CR=1.1137
+2025-03-31 00:35:04,312 - INFO - Gửi dữ liệu 2025-03-31 05:06: temp=24.5°C, humidity=60.14%, power=0.468kW, CR=1.1225
+2025-03-31 00:35:04,377 - INFO - Gửi dữ liệu 2025-03-31 05:09: temp=23.6°C, humidity=60.45%, power=0.431kW, CR=1.1181
+2025-03-31 00:35:04,444 - INFO - Gửi dữ liệu 2025-03-31 05:12: temp=24.46°C, humidity=60.07%, power=0.473kW, CR=1.1137
+2025-03-31 00:35:04,506 - INFO - Gửi dữ liệu 2025-03-31 05:15: temp=23.55°C, humidity=60.37%, power=0.456kW, CR=1.1137
+2025-03-31 00:35:04,568 - INFO - Gửi dữ liệu 2025-03-31 05:18: temp=24.78°C, humidity=58.8%, power=0.516kW, CR=1.5039
+2025-03-31 00:35:04,629 - INFO - Gửi dữ liệu 2025-03-31 05:21: temp=24.57°C, humidity=60.08%, power=0.469kW, CR=1.1137
+2025-03-31 00:35:04,688 - INFO - Gửi dữ liệu 2025-03-31 05:24: temp=24.18°C, humidity=60.76%, power=0.462kW, CR=1.1137
+2025-03-31 00:35:04,752 - INFO - Gửi dữ liệu 2025-03-31 05:27: temp=24.41°C, humidity=61.32%, power=0.528kW, CR=1.1137
+2025-03-31 00:35:04,817 - INFO - Gửi dữ liệu 2025-03-31 05:30: temp=23.68°C, humidity=58.74%, power=0.497kW, CR=1.1137
+2025-03-31 00:35:04,882 - INFO - Gửi dữ liệu 2025-03-31 05:33: temp=23.55°C, humidity=59.1%, power=0.451kW, CR=1.1181
+2025-03-31 00:35:04,946 - INFO - Gửi dữ liệu 2025-03-31 05:36: temp=23.51°C, humidity=59.3%, power=0.446kW, CR=1.1181
+2025-03-31 00:35:05,008 - INFO - Gửi dữ liệu 2025-03-31 05:39: temp=24.12°C, humidity=59.72%, power=0.511kW, CR=1.1181
+2025-03-31 00:35:05,066 - INFO - Gửi dữ liệu 2025-03-31 05:42: temp=23.74°C, humidity=59.54%, power=0.481kW, CR=1.1137
+2025-03-31 00:35:05,128 - INFO - Gửi dữ liệu 2025-03-31 05:45: temp=24.18°C, humidity=60.95%, power=0.45kW, CR=1.1181
+2025-03-31 00:35:05,193 - INFO - Gửi dữ liệu 2025-03-31 05:48: temp=24.68°C, humidity=59.61%, power=0.466kW, CR=1.1137
+2025-03-31 00:35:05,259 - INFO - Gửi dữ liệu 2025-03-31 05:51: temp=23.42°C, humidity=59.61%, power=0.513kW, CR=1.1137
+2025-03-31 00:35:05,328 - INFO - Gửi dữ liệu 2025-03-31 05:54: temp=24.73°C, humidity=59.83%, power=0.477kW, CR=1.1098
+2025-03-31 00:35:05,390 - INFO - Gửi dữ liệu 2025-03-31 05:57: temp=24.37°C, humidity=59.77%, power=0.514kW, CR=1.1137
+2025-03-31 00:35:05,390 - INFO - Đã hoàn thành 6/24 giờ dữ liệu (120/240 điểm)
+2025-03-31 00:35:05,449 - INFO - Gửi dữ liệu 2025-03-31 06:00: temp=25.32°C, humidity=57.74%, power=0.443kW, CR=1.5020
+2025-03-31 00:35:05,511 - INFO - Gửi dữ liệu 2025-03-31 06:03: temp=25.3°C, humidity=57.98%, power=0.522kW, CR=1.1142
+2025-03-31 00:35:05,570 - INFO - Gửi dữ liệu 2025-03-31 06:06: temp=25.19°C, humidity=59.25%, power=0.445kW, CR=1.1137
+2025-03-31 00:35:05,635 - INFO - Gửi dữ liệu 2025-03-31 06:09: temp=25.21°C, humidity=57.55%, power=0.478kW, CR=1.1137
+2025-03-31 00:35:05,701 - INFO - Gửi dữ liệu 2025-03-31 06:12: temp=25.02°C, humidity=59.24%, power=0.519kW, CR=1.1137
+2025-03-31 00:35:05,770 - INFO - Gửi dữ liệu 2025-03-31 06:15: temp=25.66°C, humidity=59.18%, power=0.493kW, CR=1.1181
+2025-03-31 00:35:05,832 - INFO - Gửi dữ liệu 2025-03-31 06:18: temp=25.59°C, humidity=58.81%, power=0.53kW, CR=1.1181
+2025-03-31 00:35:05,894 - INFO - Gửi dữ liệu 2025-03-31 06:21: temp=24.5°C, humidity=58.32%, power=0.509kW, CR=1.1181
+2025-03-31 00:35:05,954 - INFO - Gửi dữ liệu 2025-03-31 06:24: temp=24.55°C, humidity=58.59%, power=0.482kW, CR=1.1137
+2025-03-31 00:35:06,018 - INFO - Gửi dữ liệu 2025-03-31 06:27: temp=25.97°C, humidity=58.8%, power=0.495kW, CR=1.1142
+2025-03-31 00:35:06,082 - INFO - Gửi dữ liệu 2025-03-31 06:30: temp=24.81°C, humidity=58.97%, power=0.474kW, CR=1.1137
+2025-03-31 00:35:06,176 - INFO - Gửi dữ liệu 2025-03-31 06:33: temp=24.92°C, humidity=56.67%, power=0.488kW, CR=1.1137
+2025-03-31 00:35:06,238 - INFO - Gửi dữ liệu 2025-03-31 06:36: temp=25.67°C, humidity=58.09%, power=0.505kW, CR=1.1137
+2025-03-31 00:35:06,299 - INFO - Gửi dữ liệu 2025-03-31 06:39: temp=24.55°C, humidity=58.48%, power=0.479kW, CR=1.1137
+2025-03-31 00:35:06,360 - INFO - Gửi dữ liệu 2025-03-31 06:42: temp=25.8°C, humidity=57.98%, power=0.52kW, CR=1.1225
+2025-03-31 00:35:06,419 - INFO - Gửi dữ liệu 2025-03-31 06:45: temp=25.67°C, humidity=56.75%, power=0.437kW, CR=1.1137
+2025-03-31 00:35:06,482 - INFO - Gửi dữ liệu 2025-03-31 06:48: temp=24.88°C, humidity=56.68%, power=0.44kW, CR=1.1181
+2025-03-31 00:35:06,547 - INFO - Gửi dữ liệu 2025-03-31 06:51: temp=24.79°C, humidity=57.66%, power=0.464kW, CR=1.1098
+2025-03-31 00:35:06,616 - INFO - Gửi dữ liệu 2025-03-31 06:54: temp=25.58°C, humidity=56.45%, power=0.463kW, CR=1.1137
+2025-03-31 00:35:06,680 - INFO - Gửi dữ liệu 2025-03-31 06:57: temp=25.91°C, humidity=56.69%, power=0.479kW, CR=1.5059
+2025-03-31 00:35:06,681 - INFO - Đã hoàn thành 7/24 giờ dữ liệu (140/240 điểm)
+2025-03-31 00:35:06,742 - INFO - Gửi dữ liệu 2025-03-31 07:00: temp=26.21°C, humidity=57.08%, power=0.462kW, CR=1.1176
+2025-03-31 00:35:06,801 - INFO - Gửi dữ liệu 2025-03-31 07:03: temp=26.14°C, humidity=54.75%, power=0.499kW, CR=1.1176
+2025-03-31 00:35:06,863 - INFO - Gửi dữ liệu 2025-03-31 07:06: temp=26.26°C, humidity=54.77%, power=0.468kW, CR=1.1176
+2025-03-31 00:35:06,925 - INFO - Gửi dữ liệu 2025-03-31 07:09: temp=26.59°C, humidity=55.36%, power=0.492kW, CR=1.1176
+2025-03-31 00:35:06,992 - INFO - Gửi dữ liệu 2025-03-31 07:12: temp=26.57°C, humidity=56.24%, power=0.502kW, CR=1.1176
+2025-03-31 00:35:07,060 - INFO - Gửi dữ liệu 2025-03-31 07:15: temp=25.84°C, humidity=55.78%, power=0.449kW, CR=1.1176
+2025-03-31 00:35:07,127 - INFO - Gửi dữ liệu 2025-03-31 07:18: temp=27.28°C, humidity=56.94%, power=0.462kW, CR=1.1176
+2025-03-31 00:35:07,184 - INFO - Gửi dữ liệu 2025-03-31 07:21: temp=26.17°C, humidity=57.12%, power=0.433kW, CR=1.1181
+2025-03-31 00:35:07,242 - INFO - Gửi dữ liệu 2025-03-31 07:24: temp=26.91°C, humidity=55.11%, power=0.523kW, CR=1.5059
+2025-03-31 00:35:07,302 - INFO - Gửi dữ liệu 2025-03-31 07:27: temp=26.73°C, humidity=56.01%, power=0.529kW, CR=1.1176
+2025-03-31 00:35:07,364 - INFO - Gửi dữ liệu 2025-03-31 07:30: temp=27.0°C, humidity=55.11%, power=0.529kW, CR=1.1220
+2025-03-31 00:35:07,429 - INFO - Gửi dữ liệu 2025-03-31 07:33: temp=27.08°C, humidity=55.11%, power=0.474kW, CR=1.1176
+2025-03-31 00:35:07,499 - INFO - Gửi dữ liệu 2025-03-31 07:36: temp=26.34°C, humidity=54.83%, power=0.48kW, CR=1.1220
+2025-03-31 00:35:07,564 - INFO - Gửi dữ liệu 2025-03-31 07:39: temp=26.05°C, humidity=56.94%, power=0.52kW, CR=1.1265
+2025-03-31 00:35:07,626 - INFO - Gửi dữ liệu 2025-03-31 07:42: temp=26.88°C, humidity=57.31%, power=0.493kW, CR=1.1176
+2025-03-31 00:35:07,687 - INFO - Gửi dữ liệu 2025-03-31 07:45: temp=25.99°C, humidity=55.71%, power=0.483kW, CR=1.1176
+2025-03-31 00:35:07,749 - INFO - Gửi dữ liệu 2025-03-31 07:48: temp=26.33°C, humidity=55.06%, power=0.525kW, CR=1.1176
+2025-03-31 00:35:07,809 - INFO - Gửi dữ liệu 2025-03-31 07:51: temp=27.05°C, humidity=57.12%, power=0.453kW, CR=1.5059
+2025-03-31 00:35:07,875 - INFO - Gửi dữ liệu 2025-03-31 07:54: temp=26.36°C, humidity=57.4%, power=0.458kW, CR=1.1220
+2025-03-31 00:35:07,942 - INFO - Gửi dữ liệu 2025-03-31 07:57: temp=27.06°C, humidity=56.27%, power=0.523kW, CR=1.1176
+2025-03-31 00:35:07,943 - INFO - Đã hoàn thành 8/24 giờ dữ liệu (160/240 điểm)
+2025-03-31 00:35:08,011 - INFO - Gửi dữ liệu 2025-03-31 08:00: temp=26.76°C, humidity=55.42%, power=0.524kW, CR=1.1176
+2025-03-31 00:35:08,069 - INFO - Gửi dữ liệu 2025-03-31 08:03: temp=27.93°C, humidity=53.04%, power=0.487kW, CR=1.5059
+2025-03-31 00:35:08,128 - INFO - Gửi dữ liệu 2025-03-31 08:06: temp=27.22°C, humidity=53.77%, power=0.49kW, CR=1.1220
+2025-03-31 00:35:08,186 - INFO - Gửi dữ liệu 2025-03-31 08:09: temp=27.96°C, humidity=55.82%, power=0.53kW, CR=1.1220
+2025-03-31 00:35:08,249 - INFO - Gửi dữ liệu 2025-03-31 08:12: temp=27.18°C, humidity=54.39%, power=0.447kW, CR=1.1176
+2025-03-31 00:35:08,314 - INFO - Gửi dữ liệu 2025-03-31 08:15: temp=27.19°C, humidity=55.45%, power=0.451kW, CR=1.1176
+2025-03-31 00:35:08,378 - INFO - Gửi dữ liệu 2025-03-31 08:18: temp=27.9°C, humidity=54.48%, power=0.463kW, CR=1.1220
+2025-03-31 00:35:08,445 - INFO - Gửi dữ liệu 2025-03-31 08:21: temp=27.21°C, humidity=54.46%, power=0.488kW, CR=1.1176
+2025-03-31 00:35:08,508 - INFO - Gửi dữ liệu 2025-03-31 08:24: temp=28.07°C, humidity=53.71%, power=0.462kW, CR=1.1176
+2025-03-31 00:35:08,569 - INFO - Gửi dữ liệu 2025-03-31 08:27: temp=27.13°C, humidity=55.37%, power=0.493kW, CR=1.1176
+2025-03-31 00:35:08,631 - INFO - Gửi dữ liệu 2025-03-31 08:30: temp=27.77°C, humidity=55.63%, power=0.504kW, CR=1.1176
+2025-03-31 00:35:08,695 - INFO - Gửi dữ liệu 2025-03-31 08:33: temp=27.39°C, humidity=54.02%, power=0.437kW, CR=1.5059
+2025-03-31 00:35:08,761 - INFO - Gửi dữ liệu 2025-03-31 08:36: temp=27.59°C, humidity=54.09%, power=0.518kW, CR=1.1220
+2025-03-31 00:35:08,829 - INFO - Gửi dữ liệu 2025-03-31 08:39: temp=28.15°C, humidity=54.81%, power=0.446kW, CR=1.1176
+2025-03-31 00:35:08,893 - INFO - Gửi dữ liệu 2025-03-31 08:42: temp=27.16°C, humidity=53.54%, power=0.527kW, CR=1.1176
+2025-03-31 00:35:09,018 - INFO - Gửi dữ liệu 2025-03-31 08:45: temp=28.23°C, humidity=54.67%, power=0.51kW, CR=1.1220
+2025-03-31 00:35:09,080 - INFO - Gửi dữ liệu 2025-03-31 08:48: temp=27.76°C, humidity=53.73%, power=0.465kW, CR=1.1176
+2025-03-31 00:35:09,142 - INFO - Gửi dữ liệu 2025-03-31 08:51: temp=26.99°C, humidity=54.22%, power=0.435kW, CR=1.1176
+2025-03-31 00:35:09,202 - INFO - Gửi dữ liệu 2025-03-31 08:54: temp=27.91°C, humidity=55.52%, power=0.458kW, CR=1.1176
+2025-03-31 00:35:09,263 - INFO - Gửi dữ liệu 2025-03-31 08:57: temp=27.03°C, humidity=53.5%, power=0.483kW, CR=1.1220
+2025-03-31 00:35:09,263 - INFO - Đã hoàn thành 9/24 giờ dữ liệu (180/240 điểm)
+2025-03-31 00:35:09,325 - INFO - Gửi dữ liệu 2025-03-31 09:00: temp=28.72°C, humidity=52.05%, power=0.441kW, CR=1.5059
+2025-03-31 00:35:09,390 - INFO - Gửi dữ liệu 2025-03-31 09:03: temp=28.59°C, humidity=53.65%, power=0.436kW, CR=1.1176
+2025-03-31 00:35:09,455 - INFO - Gửi dữ liệu 2025-03-31 09:06: temp=27.75°C, humidity=52.02%, power=0.499kW, CR=1.1176
+2025-03-31 00:35:09,516 - INFO - Gửi dữ liệu 2025-03-31 09:09: temp=28.0°C, humidity=54.42%, power=0.505kW, CR=1.1220
+2025-03-31 00:35:09,575 - INFO - Gửi dữ liệu 2025-03-31 09:12: temp=27.82°C, humidity=53.48%, power=0.483kW, CR=1.1176
+2025-03-31 00:35:09,637 - INFO - Gửi dữ liệu 2025-03-31 09:15: temp=29.11°C, humidity=53.47%, power=0.445kW, CR=1.1176
+2025-03-31 00:35:09,701 - INFO - Gửi dữ liệu 2025-03-31 09:18: temp=27.77°C, humidity=52.14%, power=0.492kW, CR=1.1220
+2025-03-31 00:35:09,766 - INFO - Gửi dữ liệu 2025-03-31 09:21: temp=28.79°C, humidity=52.59%, power=0.479kW, CR=1.1176
+2025-03-31 00:35:09,833 - INFO - Gửi dữ liệu 2025-03-31 09:24: temp=28.12°C, humidity=54.23%, power=0.435kW, CR=1.1176
+2025-03-31 00:35:09,903 - INFO - Gửi dữ liệu 2025-03-31 09:27: temp=28.19°C, humidity=54.23%, power=0.503kW, CR=1.1137
+2025-03-31 00:35:09,964 - INFO - Gửi dữ liệu 2025-03-31 09:30: temp=28.21°C, humidity=52.16%, power=0.47kW, CR=1.1220
+2025-03-31 00:35:10,024 - INFO - Gửi dữ liệu 2025-03-31 09:33: temp=28.56°C, humidity=53.03%, power=0.452kW, CR=1.1176
+2025-03-31 00:35:10,086 - INFO - Gửi dữ liệu 2025-03-31 09:36: temp=28.04°C, humidity=52.66%, power=0.474kW, CR=1.1176
+2025-03-31 00:35:10,149 - INFO - Gửi dữ liệu 2025-03-31 09:39: temp=28.23°C, humidity=52.49%, power=0.442kW, CR=1.1137
+2025-03-31 00:35:10,214 - INFO - Gửi dữ liệu 2025-03-31 09:42: temp=28.35°C, humidity=54.04%, power=0.503kW, CR=1.1137
+2025-03-31 00:35:10,284 - INFO - Gửi dữ liệu 2025-03-31 09:45: temp=27.75°C, humidity=54.52%, power=0.473kW, CR=1.1176
+2025-03-31 00:35:10,350 - INFO - Gửi dữ liệu 2025-03-31 09:48: temp=27.61°C, humidity=51.96%, power=0.46kW, CR=1.1265
+2025-03-31 00:35:10,408 - INFO - Gửi dữ liệu 2025-03-31 09:51: temp=29.06°C, humidity=52.7%, power=0.432kW, CR=1.1220
+2025-03-31 00:35:10,466 - INFO - Gửi dữ liệu 2025-03-31 09:54: temp=28.03°C, humidity=54.39%, power=0.52kW, CR=1.1220
+2025-03-31 00:35:10,529 - INFO - Gửi dữ liệu 2025-03-31 09:57: temp=27.9°C, humidity=53.75%, power=0.492kW, CR=1.1220
+2025-03-31 00:35:10,529 - INFO - Đã hoàn thành 10/24 giờ dữ liệu (200/240 điểm)
+2025-03-31 00:35:10,593 - INFO - Gửi dữ liệu 2025-03-31 10:00: temp=29.6°C, humidity=53.12%, power=0.505kW, CR=1.5079
+2025-03-31 00:35:10,657 - INFO - Gửi dữ liệu 2025-03-31 10:03: temp=28.43°C, humidity=52.62%, power=0.5kW, CR=1.1265
+2025-03-31 00:35:10,725 - INFO - Gửi dữ liệu 2025-03-31 10:06: temp=28.69°C, humidity=53.63%, power=0.432kW, CR=1.1176
+2025-03-31 00:35:10,793 - INFO - Gửi dữ liệu 2025-03-31 10:09: temp=28.23°C, humidity=53.01%, power=0.451kW, CR=1.1176
+2025-03-31 00:35:10,853 - INFO - Gửi dữ liệu 2025-03-31 10:12: temp=28.55°C, humidity=51.54%, power=0.492kW, CR=1.1176
+2025-03-31 00:35:10,915 - INFO - Gửi dữ liệu 2025-03-31 10:15: temp=28.14°C, humidity=52.71%, power=0.484kW, CR=1.1137
+2025-03-31 00:35:10,974 - INFO - Gửi dữ liệu 2025-03-31 10:18: temp=29.25°C, humidity=51.64%, power=0.482kW, CR=1.1176
+2025-03-31 00:35:11,037 - INFO - Gửi dữ liệu 2025-03-31 10:21: temp=29.28°C, humidity=51.66%, power=0.479kW, CR=1.1176
+2025-03-31 00:35:11,101 - INFO - Gửi dữ liệu 2025-03-31 10:24: temp=29.52°C, humidity=53.15%, power=0.526kW, CR=1.1137
+2025-03-31 00:35:11,169 - INFO - Gửi dữ liệu 2025-03-31 10:27: temp=28.57°C, humidity=53.24%, power=0.49kW, CR=1.1220
+2025-03-31 00:35:11,236 - INFO - Gửi dữ liệu 2025-03-31 10:30: temp=28.41°C, humidity=51.45%, power=0.447kW, CR=1.1176
+2025-03-31 00:35:11,298 - INFO - Gửi dữ liệu 2025-03-31 10:33: temp=28.83°C, humidity=50.83%, power=0.432kW, CR=1.1176
+2025-03-31 00:35:11,360 - INFO - Gửi dữ liệu 2025-03-31 10:36: temp=28.2°C, humidity=50.98%, power=0.506kW, CR=1.1220
+2025-03-31 00:35:11,422 - INFO - Gửi dữ liệu 2025-03-31 10:39: temp=28.63°C, humidity=52.09%, power=0.515kW, CR=1.1176
+2025-03-31 00:35:11,486 - INFO - Gửi dữ liệu 2025-03-31 10:42: temp=29.55°C, humidity=50.85%, power=0.495kW, CR=1.1176
+2025-03-31 00:35:11,551 - INFO - Gửi dữ liệu 2025-03-31 10:45: temp=28.11°C, humidity=53.73%, power=0.466kW, CR=1.1176
+2025-03-31 00:35:11,615 - INFO - Gửi dữ liệu 2025-03-31 10:48: temp=28.4°C, humidity=50.88%, power=0.507kW, CR=1.5079
+2025-03-31 00:35:11,682 - INFO - Gửi dữ liệu 2025-03-31 10:51: temp=29.31°C, humidity=53.12%, power=0.433kW, CR=1.1176
+2025-03-31 00:35:11,743 - INFO - Gửi dữ liệu 2025-03-31 10:54: temp=28.1°C, humidity=52.31%, power=0.478kW, CR=1.1220
+2025-03-31 00:35:11,802 - INFO - Gửi dữ liệu 2025-03-31 10:57: temp=28.69°C, humidity=53.62%, power=0.482kW, CR=1.1176
+2025-03-31 00:35:11,803 - INFO - Đã hoàn thành 11/24 giờ dữ liệu (220/240 điểm)
+2025-03-31 00:35:11,865 - INFO - Gửi dữ liệu 2025-03-31 11:00: temp=28.59°C, humidity=53.11%, power=1.467kW, CR=1.5059
+2025-03-31 00:35:11,929 - INFO - Gửi dữ liệu 2025-03-31 11:03: temp=28.4°C, humidity=53.2%, power=1.487kW, CR=1.1265
+2025-03-31 00:35:11,995 - INFO - Gửi dữ liệu 2025-03-31 11:06: temp=29.01°C, humidity=53.14%, power=1.471kW, CR=1.1176
+2025-03-31 00:35:12,059 - INFO - Gửi dữ liệu 2025-03-31 11:09: temp=28.92°C, humidity=53.14%, power=1.437kW, CR=1.1176
+2025-03-31 00:35:12,127 - INFO - Gửi dữ liệu 2025-03-31 11:12: temp=29.4°C, humidity=51.29%, power=1.41kW, CR=1.5099
+2025-03-31 00:35:12,188 - INFO - Gửi dữ liệu 2025-03-31 11:15: temp=29.3°C, humidity=52.15%, power=1.428kW, CR=1.1220
+2025-03-31 00:35:12,248 - INFO - Gửi dữ liệu 2025-03-31 11:18: temp=28.43°C, humidity=53.23%, power=1.393kW, CR=1.1176
+2025-03-31 00:35:12,306 - INFO - Gửi dữ liệu 2025-03-31 11:21: temp=28.62°C, humidity=51.54%, power=1.47kW, CR=1.1220
+2025-03-31 00:35:12,370 - INFO - Gửi dữ liệu 2025-03-31 11:24: temp=28.57°C, humidity=51.84%, power=1.449kW, CR=1.1176
+2025-03-31 00:35:12,434 - INFO - Gửi dữ liệu 2025-03-31 11:27: temp=28.66°C, humidity=50.62%, power=1.414kW, CR=1.1176
+2025-03-31 00:35:12,501 - INFO - Gửi dữ liệu 2025-03-31 11:30: temp=28.68°C, humidity=52.52%, power=1.411kW, CR=1.1176
+2025-03-31 00:35:12,568 - INFO - Gửi dữ liệu 2025-03-31 11:33: temp=29.51°C, humidity=52.97%, power=1.459kW, CR=1.1176
+2025-03-31 00:35:12,630 - INFO - Gửi dữ liệu 2025-03-31 11:36: temp=28.76°C, humidity=51.58%, power=1.474kW, CR=1.1176
+2025-03-31 00:35:12,689 - INFO - Gửi dữ liệu 2025-03-31 11:39: temp=29.36°C, humidity=52.57%, power=1.436kW, CR=1.1176
+2025-03-31 00:35:12,751 - INFO - Gửi dữ liệu 2025-03-31 11:42: temp=28.91°C, humidity=50.7%, power=1.479kW, CR=1.1265
+2025-03-31 00:35:12,812 - INFO - Gửi dữ liệu 2025-03-31 11:45: temp=28.48°C, humidity=50.84%, power=1.432kW, CR=1.1176
+2025-03-31 00:35:12,874 - INFO - Gửi dữ liệu 2025-03-31 11:48: temp=29.78°C, humidity=51.9%, power=1.408kW, CR=1.1220
+2025-03-31 00:35:12,943 - INFO - Gửi dữ liệu 2025-03-31 11:51: temp=28.68°C, humidity=50.7%, power=1.438kW, CR=1.1220
+2025-03-31 00:35:13,010 - INFO - Gửi dữ liệu 2025-03-31 11:54: temp=28.7°C, humidity=52.06%, power=1.414kW, CR=1.1220
+2025-03-31 00:35:13,072 - INFO - Gửi dữ liệu 2025-03-31 11:57: temp=28.62°C, humidity=51.71%, power=1.44kW, CR=1.1220
+2025-03-31 00:35:13,072 - INFO - Đã hoàn thành 12/24 giờ dữ liệu (240/240 điểm)
+2025-03-31 00:35:13,124 - INFO - Đã hoàn thành tạo dữ liệu 24 giờ! Kích hoạt tổng hợp dữ liệu...
+2025-03-31 00:35:13,124 - INFO - Đang kích hoạt quá trình tổng hợp dữ liệu 24 giờ...
+2025-03-31 00:35:14,268 - INFO - Tổng hợp dữ liệu thành công! Đã xử lý 247 điểm dữ liệu
+2025-03-31 00:35:14,268 - INFO - Tỷ lệ nén trung bình: 1.1506
+2025-03-31 00:35:14,268 - INFO - Tỷ lệ hit: 0.9167
+2025-03-31 00:35:14,268 - INFO - Số điểm bất thường: 21
+2025-03-31 00:35:14,268 - INFO - Đã dừng mô phỏng
+2025-03-31 00:36:28,175 - INFO - Đã nhận lệnh dừng từ người dùng
+2025-03-31 00:36:28,176 - INFO - Đang dừng mô phỏng...
+2025-03-31 00:36:28,176 - INFO - Đã dừng mô phỏng

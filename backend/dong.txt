@@ -1,0 +1,1 @@
+Bạn có muốn đổi số lượng điểm dữ liệu cần tạo? (y/n, mặc định: n [60 điểm]): 
