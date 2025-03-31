@@ -71,19 +71,17 @@ python fetch_adafruit_data_manual.py --date 2023-11-20 --limit 100
 
 ```
 python fetch_adafruit_data_manual.py --date 2025-03-30 --force-reload
-
+```
 
 ## Công cụ giải nén dữ liệu
 
-Công cụ giải nén dữ liệu IDEALEM được cung cấp cho AI developers để phục hồi dữ liệu gốc từ dữ liệu nén. Xem chi tiết cách sử dụng tại [README_DATA_DECOMPRESSION.md](./README_DATA_DECOMPRESSION.md).
+Công cụ giải nén dữ liệu dùng để phục hồi dữ liệu gốc từ dữ liệu nén. Xem chi tiết cách sử dụng tại [README_DATA_DECOMPRESSION.md](./README_DATA_DECOMPRESSION.md).
 
 Cấu trúc sử dụng cơ bản:
 ```
 python decompress_data_for_ai.py --output data.json
 python decompress_data_for_ai.py --format csv --output data.csv
 ```
-
-
 
 ## Tài liệu khác
 
