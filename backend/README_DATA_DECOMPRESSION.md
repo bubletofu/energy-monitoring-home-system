@@ -1,4 +1,4 @@
-# Hướng dẫn sử dụng công cụ giải nén dữ liệu IDEALEM
+# Nén và giải nén
 
 ## Trường hợp không cần giải nén mà muốn sử dụng gốc 
 
