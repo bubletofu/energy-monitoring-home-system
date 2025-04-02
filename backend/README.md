@@ -80,6 +80,16 @@ python decompress.py --device-id <name_device>
 
 Output sẽ mặc định là <name_device>.json
 
+## Ghi chú 
+
+Mục tiêu tiếp theo:
+	•	Tối ưu frontend.
+	•	Tối ưu lại nội dung file data_compression.
+	•	Hiển thị các test case để đảm bảo tính chính xác.
+
+- compress.py để sử dụng thuật toán trong file data_compress.py 
+- visualization_analyzer.py để tạo biểu đồ thông qua compress.py 
+
 ## Tài liệu khác
 
 A data compression algorithm was used, based on the research paper “Dynamic Online Performance Optimization in Streaming Data Compression.”
