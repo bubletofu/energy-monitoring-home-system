@@ -11,27 +11,24 @@
 ### Sử dụng Docker (Khuyến nghị)
 
 1. Cài đặt Docker và Docker Compose
-2. Sao chép file `.env.example` thành `.env` và cập nhật thông tin kết nối
+2. Tạo file `.env` 
+
 3. Chạy hệ thống:
 ```
 docker-compose up -d
 ```
 
-4. Khởi chạy ứng dụng:
+4. Cài đặt các thư viện
+
+```
+pip install -r requirements.txt
+```
+
+5. Khởi chạy ứng dụng (cho Fast API) 
 ```
 uvicorn main:app --reload
 ```
 
-## Cấu trúc thư mục
-
-- `main.py`: Ứng dụng FastAPI chính
-- `models.py`: Định nghĩa các mô hình dữ liệu
-- `data_compression.py`: Thuật toán nén IDEALEM
-- `compression_api.py`: API liên quan đến nén dữ liệu
-- `mqtt_client.py`: Client kết nối với Adafruit IO
-- `decompress_data_for_ai.py`: Script giải nén dữ liệu cho nhà phát triển AI
-- `fetch_adafruit_data.py`: Script lấy dữ liệu từ Adafruit IO
-- `Dockerfile` và `docker-compose.yml`: Cấu hình Docker
 
 ## Lấy dữ liệu từ Adafruit theo ngày cụ thể
 
@@ -57,7 +54,6 @@ Mặc định sẽ lấy dữ liệu của ngày hiện tại.
 python fetch_adafruit_data_manual.py --date 2023-03-30
 ```
 
-  
 
 ### Giới hạn số lượng bản ghi:
 
@@ -73,16 +69,17 @@ python fetch_adafruit_data_manual.py --date 2023-11-20 --limit 100
 python fetch_adafruit_data_manual.py --date 2025-03-30 --force-reload
 ```
 
-## Công cụ giải nén dữ liệu
+## Công cụ nén và giải nén dữ liệu (Data Compression) 
 
 Công cụ giải nén dữ liệu dùng để phục hồi dữ liệu gốc từ dữ liệu nén. Xem chi tiết cách sử dụng tại [README_DATA_DECOMPRESSION.md](./README_DATA_DECOMPRESSION.md).
 
 Cấu trúc sử dụng cơ bản:
 ```
-python decompress_data_for_ai.py --output data.json
-python decompress_data_for_ai.py --format csv --output data.csv
+python decompress.py --device-id <name_device>
 ```
+
+Output sẽ mặc định là <name_device>.json
 
 ## Tài liệu khác
 
-- [Hướng dẫn giải nén dữ liệu](./README_DATA_DECOMPRESSION.md): Chi tiết về cách giải nén dữ liệu cho AI
+- [Hướng dẫn giải nén dữ liệu](./README_DATA_DECOMPRESSION.md): Chi tiết về cách sử dụng nén và giải nén dữ liệu cho AI
