@@ -24,7 +24,7 @@ docker-compose up -d
 pip install -r requirements.txt
 ```
 
-5. Khởi chạy ứng dụng (cho Fast API) 
+5. Khởi chạy ứng dụng 
 ```
 uvicorn main:app --reload
 ```
