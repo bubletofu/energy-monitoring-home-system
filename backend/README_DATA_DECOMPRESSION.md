@@ -57,10 +57,7 @@ Lệnh này sẽ giải nén tất cả dữ liệu của thiết bị đó nằ
 
 - `--h`: help
 
-## Cấu trúc dữ liệu đầu ra
-
 
 ## Lưu ý
 
 - Quá trình giải nén hoạt động tốt nhất khi bảng `original_samples` có đầy đủ dữ liệu.
-- Thời gian xử lý có thể tăng lên nếu lượng dữ liệu lớn, hãy sử dụng tham số `--start-date` và `--end-date` để lọc dữ liệu trong khoảng thời gian cụ thể. 
