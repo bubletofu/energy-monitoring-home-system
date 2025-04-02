@@ -82,4 +82,4 @@ Output sẽ mặc định là <name_device>.json
 
 ## Tài liệu khác
 
-- [Hướng dẫn giải nén dữ liệu](./README_DATA_DECOMPRESSION.md): Chi tiết về cách sử dụng nén và giải nén dữ liệu cho AI
+A data compression algorithm was used, based on the research paper “Dynamic Online Performance Optimization in Streaming Data Compression.”
