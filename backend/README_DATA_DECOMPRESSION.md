@@ -1,171 +1,66 @@
 # Hướng dẫn sử dụng công cụ giải nén dữ liệu IDEALEM
 
-Tài liệu này mô tả cách sử dụng script `decompress_data_for_ai.py` để giải nén dữ liệu từ thuật toán nén IDEALEM và chuẩn bị dữ liệu cho phân tích và huấn luyện AI.
+## Trường hợp không cần giải nén mà muốn sử dụng gốc 
 
-## Tổng quan
+Vui lòng tham khảo bảng: original_samples
 
-Script `decompress_data_for_ai.py` kết nối đến PostgreSQL database, trích xuất dữ liệu nén từ bảng `compressed_data` và các mẫu gốc từ bảng `original_samples`, sau đó tái tạo dữ liệu đầy đủ với tất cả các thông số cảm biến.
+## Tổng quan nguồn và đầu ra dữ liệu
 
-## Cài đặt
+**compressed_data**: Dùng để lưu dữ liệu sau khi nén, chỉ tập trung vào các mẫu để so sánh
+**compressed_data_optimized**: Dùng để lưu dữ liệu sau khi nén để phục vụ cho giải nén sau này
+**<name_device>.json**: đầu ra của dữ liệu sau khi đã được giải nén
 
-### Yêu cầu
+## Trước khi sử dụng nén và giải nén
 
-- Python 3.6+
-- PostgreSQL database chứa bảng `compressed_data` và `original_samples`
-- Các thư viện Python: sqlalchemy, psycopg2, pandas
+Đảm bảo bảng original_samples có dữ liệu. 
 
-### Cài đặt thư viện
+Dùng lệnh tạo giả lập nếu cần: 
+
 
 ```bash
-pip install sqlalchemy psycopg2-binary pandas
+python templates/gentwo.py --device-id <name_device> --num-days <number>
 ```
 
-## Cấu hình
-
-Script sử dụng biến môi trường `DATABASE_URL` để kết nối đến PostgreSQL database. Mặc định, script sẽ sử dụng URL sau nếu không tìm thấy biến môi trường:
-
-```
-postgresql://postgres:1234@localhost:5433/iot_db
-```
-
-Để thay đổi cấu hình database, bạn có thể:
-
-1. Thiết lập biến môi trường `DATABASE_URL`
-2. Hoặc sửa trực tiếp URL mặc định trong script
+Dữ liệu sẽ được lưu vào bảng original_samples.
 
 ## Sử dụng
 
-### Sử dụng cơ bản
+### Sử dụng cơ bản cho nén
+
+Muốn nén dữ liệu và lưu vào trong bảng compressed_data:
 
 ```bash
-python decompress_data_for_ai.py --output data.json
+python compress.py --device-id <name_device>
 ```
 
-Lệnh này sẽ giải nén tất cả dữ liệu nén và lưu kết quả vào file `data.json`.
+Muốn nén dữ liệu và tạo biểu đồ so sánh: 
+
+```bash
+python compress.py --device-id <name_device> --visualize
+```
+
+Muốn nén dữ liệu và sau này giải nén, sẽ được lưu vào bảng compressed_data_optimized: 
+
+```bash
+python compress.py --device-id <name_device> --use-optimized
+```
+
+### Sử dụng cơ bản cho giải nén
+
+```bash
+python decompress.py --device-id <name_device>
+```
+
+Lệnh này sẽ giải nén tất cả dữ liệu của thiết bị đó nằm trong bảng compressed_data_optimized và lưu kết quả vào file `<name_device>.json`.
 
 ### Tham số
 
-- `--output`: (Bắt buộc) Đường dẫn file đầu ra
-- `--start-date`: (Tùy chọn) Ngày bắt đầu để lọc dữ liệu (định dạng YYYY-MM-DD)
-- `--end-date`: (Tùy chọn) Ngày kết thúc để lọc dữ liệu (định dạng YYYY-MM-DD)
-- `--debug`: (Tùy chọn) Bật chế độ debug để hiển thị thông tin chi tiết
-- `--format`: (Tùy chọn) Định dạng file đầu ra, hỗ trợ `json` hoặc `csv` (mặc định: `json`)
-- `--csv-output`: (Tùy chọn) Đường dẫn file CSV đầu ra (chỉ khi `--format=csv`)
-
-### Ví dụ
-
-1. Lấy dữ liệu trong một khoảng thời gian:
-
-```bash
-python decompress_data_for_ai.py --output data.json --start-date 2025-03-01 --end-date 2025-03-31
-```
-
-2. Bật chế độ debug:
-
-```bash
-python decompress_data_for_ai.py --output data.json --debug
-```
-
-3. Xuất dữ liệu dạng CSV:
-
-```bash
-python decompress_data_for_ai.py --output data.csv --format csv
-```
-
-4. Xuất dữ liệu dạng CSV với tên file khác:
-
-```bash
-python decompress_data_for_ai.py --output data.json --format csv --csv-output sensor_data.csv
-```
+- `--h`: help
 
 ## Cấu trúc dữ liệu đầu ra
 
-File JSON đầu ra chứa một mảng các đối tượng với cấu trúc sau:
-
-```json
-[
-  {
-    "device_id": "sensor_01",
-    "timestamp": "2025-03-31T02:11:01.202996",
-    "readings": {
-      "temperature": 22.062,
-      "humidity": 68.407,
-      "pressure": 1013.713,
-      "power": 10.123,
-      "battery": 98
-    }
-  },
-  ...
-]
-```
-
-Mỗi đối tượng bao gồm:
-- `device_id`: ID của thiết bị
-- `timestamp`: Thời gian ghi nhận dữ liệu
-- `readings`: Các thông số cảm biến, bao gồm:
-  - `temperature`: Nhiệt độ (°C)
-  - `humidity`: Độ ẩm (%)
-  - `pressure`: Áp suất (hPa)
-  - `power`: Công suất (W)
-  - `battery`: Dung lượng pin (%)
-
-## Xử lý dữ liệu với Python
-
-Bạn có thể dễ dàng đọc và xử lý dữ liệu JSON đầu ra bằng Python:
-
-```python
-import json
-import pandas as pd
-
-# Đọc dữ liệu từ file JSON
-with open('data.json', 'r') as f:
-    data = json.load(f)
-
-# Chuyển đổi sang DataFrame
-rows = []
-for item in data:
-    row = {
-        'device_id': item['device_id'],
-        'timestamp': item['timestamp']
-    }
-    # Thêm các thông số readings
-    if 'readings' in item:
-        for key, value in item['readings'].items():
-            row[key] = value
-    rows.append(row)
-
-# Tạo DataFrame
-df = pd.DataFrame(rows)
-
-# Chuyển timestamp sang định dạng datetime
-df['timestamp'] = pd.to_datetime(df['timestamp'])
-
-# Bây giờ bạn có thể phân tích dữ liệu
-print(df.describe())
-```
-
-## Xử lý sự cố
-
-Nếu bạn gặp vấn đề khi chạy script, hãy thử các bước sau:
-
-1. Bật chế độ debug để xem thông tin chi tiết:
-   ```bash
-   python decompress_data_for_ai.py --output data.json --debug
-   ```
-
-2. Kiểm tra kết nối database:
-   ```bash
-   psql -U postgres -d iot_db -h localhost -p 5433 -c "SELECT COUNT(*) FROM compressed_data;"
-   ```
-
-3. Kiểm tra cấu trúc bảng trong database:
-   ```bash
-   psql -U postgres -d iot_db -h localhost -p 5433 -c "\d+ compressed_data"
-   psql -U postgres -d iot_db -h localhost -p 5433 -c "\d+ original_samples"
-   ```
 
 ## Lưu ý
 
-- Script này tự động tái tạo dữ liệu cảm biến từ templates được lưu trong database.
-- Quá trình giải nén hoạt động tốt nhất khi cả hai bảng `compressed_data` và `original_samples` đều có đầy đủ dữ liệu.
+- Quá trình giải nén hoạt động tốt nhất khi bảng `original_samples` có đầy đủ dữ liệu.
 - Thời gian xử lý có thể tăng lên nếu lượng dữ liệu lớn, hãy sử dụng tham số `--start-date` và `--end-date` để lọc dữ liệu trong khoảng thời gian cụ thể. 
