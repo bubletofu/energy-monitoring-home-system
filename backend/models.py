@@ -26,7 +26,7 @@ class User(Base):
     device_configs = relationship("DeviceConfig", back_populates="owner")
     
     def __repr__(self):
-        return f"<User(username='{self.username}', email='{self.email}')>"
+        return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
 
 class DeviceConfig(Base):
     """
@@ -42,7 +42,7 @@ class DeviceConfig(Base):
     device = relationship("Device", back_populates="device_configs")
     
     def __repr__(self):
-        return f"<DeviceConfig(device_id='{self.device_id}')>"
+        return f"<DeviceConfig(id={self.id}, user_id='{self.user_id}', device_id='{self.device_id}')>"
 
 class Device(Base):
     """
@@ -58,13 +58,12 @@ class Device(Base):
     
     # Relationship với các bảng khác
     original_samples = relationship("OriginalSample", back_populates="device")
-    compressed_data = relationship("CompressedData", back_populates="device")
     compressed_data_optimized = relationship("CompressedDataOptimized", back_populates="device")
     device_configs = relationship("DeviceConfig", back_populates="device")
     sensor_data = relationship("SensorData", back_populates="device")
     
     def __repr__(self):
-        return f"<Device(device_id='{self.device_id}', name='{self.name}')>"
+        return f"<Device(id={self.id}, device_id='{self.device_id}', name='{self.name}')>"
 
 class OriginalSample(Base):
     """
@@ -83,7 +82,7 @@ class OriginalSample(Base):
     device = relationship("Device", back_populates="original_samples")
     
     def __repr__(self):
-        return f"<OriginalSample(id={self.id}, device_id='{self.device_id}', timestamp='{self.timestamp}')>"
+        return f"<OriginalSample(id={self.id}, device_id='{self.device_id}')>"
 
 class SensorData(Base):
     """
@@ -103,26 +102,7 @@ class SensorData(Base):
     device = relationship("Device", back_populates="sensor_data")
     
     def __repr__(self):
-        return f"<SensorData(feed_id='{self.feed_id}', value={self.value}, timestamp='{self.timestamp}')>"
-
-class CompressedData(Base):
-    """
-    Bảng chứa dữ liệu nén theo cấu trúc cũ.
-    Mỗi bản ghi chứa thông tin về một block dữ liệu nén và liên kết với template.
-    Lưu ý: Bảng này giữ lại để tương thích ngược, nên sử dụng CompressedDataOptimized.
-    """
-    __tablename__ = "compressed_data"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(String, ForeignKey("devices.device_id"))
-    template_id = Column(Integer)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
-    
-    # Relationship
-    device = relationship("Device", back_populates="compressed_data")
-    
-    def __repr__(self):
-        return f"<CompressedData(id={self.id}, device_id='{self.device_id}', template_id={self.template_id})>"
+        return f"<SensorData(id={self.id}, device_id='{self.device_id}', feed_id='{self.feed_id}', value={self.value})>"
 
 class CompressedDataOptimized(Base):
     """

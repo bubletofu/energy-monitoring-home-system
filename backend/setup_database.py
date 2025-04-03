@@ -1,27 +1,19 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Script để thiết lập cơ sở dữ liệu PostgreSQL từ đầu.
-Bao gồm tạo database, các bảng cần thiết và thêm dữ liệu mẫu.
-
-Cách sử dụng:
-    python setup_database.py [--reset] [--sample-data]
-
-Tùy chọn:
-    --reset: Xóa và tạo lại database
-    --sample-data: Thêm dữ liệu mẫu vào database
+Utility để thiết lập cơ sở dữ liệu cho dự án.
+Script này giúp người mới dễ dàng thiết lập cơ sở dữ liệu và tạo cấu trúc bảng cần thiết.
 """
 
 import os
 import sys
-import argparse
 import logging
-import datetime
-import random
+import argparse
+from sqlalchemy import create_engine, text, inspect
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from pathlib import Path
 import time
 import json
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import OperationalError, ProgrammingError
 
 # Cấu hình logging
 logging.basicConfig(
@@ -34,322 +26,350 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def get_connection_string(database_name=None):
+def load_env_vars():
     """
-    Tạo chuỗi kết nối dựa trên các biến môi trường hoặc giá trị mặc định
-    """
-    # Lấy thông tin kết nối từ biến môi trường
-    db_host = os.getenv("DB_HOST", "localhost")
-    db_port = os.getenv("DB_PORT", "5433")
-    db_user = os.getenv("DB_USER", "postgres")
-    db_password = os.getenv("DB_PASSWORD", "1234")
-    
-    # Tạo URL kết nối
-    if database_name:
-        return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{database_name}"
-    else:
-        return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/postgres"
-
-def create_database(database_name="iot_db", reset=False):
-    """
-    Tạo database nếu chưa tồn tại hoặc reset nếu được chỉ định
-    """
-    # Kết nối đến database mặc định postgres để tạo database mới
-    engine = create_engine(get_connection_string())
-    conn = engine.connect()
-    conn.execute(text("COMMIT"))  # Commit transaction trước
-    
-    try:
-        if reset:
-            # Ngắt kết nối tất cả client kết nối đến database
-            conn.execute(text(f"""
-                SELECT pg_terminate_backend(pg_stat_activity.pid)
-                FROM pg_stat_activity
-                WHERE pg_stat_activity.datname = '{database_name}'
-                AND pid <> pg_backend_pid()
-            """))
-            conn.execute(text("COMMIT"))
-            
-            # Drop database nếu tồn tại
-            conn.execute(text(f"DROP DATABASE IF EXISTS {database_name}"))
-            logger.info(f"Đã xóa database {database_name} (nếu tồn tại)")
-        
-        # Kiểm tra xem database đã tồn tại chưa
-        result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{database_name}'"))
-        exists = result.scalar() == 1
-        
-        # Tạo database nếu chưa tồn tại
-        if not exists:
-            conn.execute(text(f"CREATE DATABASE {database_name}"))
-            logger.info(f"Đã tạo database {database_name}")
-        else:
-            logger.info(f"Database {database_name} đã tồn tại")
-            
-    except Exception as e:
-        logger.error(f"Lỗi khi tạo database: {str(e)}")
-        raise
-    finally:
-        conn.close()
-        engine.dispose()
-
-def create_tables(database_name="iot_db"):
-    """
-    Tạo tất cả các bảng được định nghĩa trong models.py
+    Kiểm tra và tải các biến môi trường cần thiết.
+    Nếu không có file .env, tạo từ file .env.example.
     """
     try:
-        # Import models ở đây để tránh lỗi circular import
+        # Thêm đường dẫn hiện tại vào sys.path
         sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-        from models import Base
         
-        # Kết nối đến database đã tạo
-        engine = create_engine(get_connection_string(database_name))
+        # Cố gắng import từ config.py
+        try:
+            from config import settings
+            logger.info("Đã tải cấu hình từ config.py")
+            database_url = settings.DATABASE_URL
+        except (ImportError, AttributeError):
+            # Nếu không thể import từ config.py, tải từ biến môi trường
+            logger.warning("Không thể tải cấu hình từ config.py, đang sử dụng biến môi trường.")
+            database_url = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5433/iot_db")
         
-        # Tạo tất cả các bảng đã định nghĩa
+        # Kiểm tra xem file .env có tồn tại không
+        env_path = Path(os.path.dirname(os.path.abspath(__file__))) / '.env'
+        if not env_path.exists():
+            example_env_path = Path(os.path.dirname(os.path.abspath(__file__))) / '.env.example'
+            if example_env_path.exists():
+                logger.warning("File .env không tồn tại. Đang tạo từ .env.example...")
+                with open(example_env_path, 'r') as src, open(env_path, 'w') as dst:
+                    dst.write(src.read())
+                logger.info("Đã tạo file .env từ .env.example. Vui lòng kiểm tra và cập nhật thông tin cấu hình.")
+        
+        return database_url
+    except Exception as e:
+        logger.error(f"Lỗi khi tải biến môi trường: {str(e)}")
+        raise
+
+def check_database_connection(database_url):
+    """
+    Kiểm tra kết nối đến cơ sở dữ liệu.
+    
+    Args:
+        database_url: URL kết nối đến cơ sở dữ liệu
+        
+    Returns:
+        bool: True nếu kết nối thành công, False nếu thất bại
+    """
+    try:
+        engine = create_engine(database_url)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        logger.info("Kết nối đến cơ sở dữ liệu thành công!")
+        return True
+    except OperationalError as e:
+        if "database" in str(e) and "does not exist" in str(e):
+            logger.error(f"Cơ sở dữ liệu không tồn tại: {str(e)}")
+            logger.info("Bạn cần tạo cơ sở dữ liệu trước khi thiết lập.")
+            
+            # Lấy thông tin DB từ URL
+            if "postgresql://" in database_url:
+                parts = database_url.split("/")
+                db_name = parts[-1].split("?")[0]
+                connection_string = "/".join(parts[:-1]) + "/postgres"  # Kết nối đến postgres db để tạo db mới
+                
+                logger.info(f"Đang thử kết nối đến database postgres để tạo '{db_name}'...")
+                try:
+                    engine = create_engine(connection_string)
+                    with engine.connect() as conn:
+                        conn.execute(text(f"CREATE DATABASE {db_name}"))
+                        conn.commit()
+                    logger.info(f"Đã tạo cơ sở dữ liệu '{db_name}' thành công!")
+                    return True
+                except Exception as create_err:
+                    logger.error(f"Không thể tự động tạo cơ sở dữ liệu: {str(create_err)}")
+                    logger.info(f"Vui lòng tạo cơ sở dữ liệu '{db_name}' thủ công và chạy lại script này.")
+        else:
+            logger.error(f"Lỗi kết nối đến cơ sở dữ liệu: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Lỗi không xác định khi kết nối đến cơ sở dữ liệu: {str(e)}")
+        return False
+
+def setup_tables(database_url):
+    """
+    Thiết lập các bảng cần thiết trong cơ sở dữ liệu.
+    
+    Args:
+        database_url: URL kết nối đến cơ sở dữ liệu
+        
+    Returns:
+        bool: True nếu cấu hình thành công, False nếu thất bại
+    """
+    try:
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+        
+        # Import các model
+        try:
+            from models import Base
+            logger.info("Đã tải các model từ models.py")
+        except ImportError:
+            logger.error("Không thể import models. Vui lòng kiểm tra file models.py")
+            return False
+        
+        # Tạo engine
+        engine = create_engine(database_url)
+        
+        # Tạo tất cả các bảng
         Base.metadata.create_all(bind=engine)
         
-        # Kiểm tra các bảng đã tạo
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
+        # Kiểm tra xem các bảng đã được tạo chưa
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            tables = inspector.get_table_names()
+            
+        # In ra các bảng đã tạo
+        logger.info(f"Các bảng hiện có trong cơ sở dữ liệu: {', '.join(tables)}")
         
-        logger.info(f"Đã tạo thành công các bảng: {', '.join(tables)}")
+        # Kiểm tra các bảng quan trọng
+        required_tables = ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized']
+        missing_tables = [table for table in required_tables if table not in tables]
         
-        return engine
-    except ImportError:
-        logger.error("Không thể import models. Đảm bảo file models.py tồn tại và có thể truy cập.")
-        raise
+        if missing_tables:
+            logger.warning(f"Các bảng sau chưa được tạo: {', '.join(missing_tables)}")
+        else:
+            logger.info("Tất cả các bảng cần thiết đã được tạo thành công!")
+        
+        return True
     except Exception as e:
-        logger.error(f"Lỗi khi tạo bảng: {str(e)}")
-        raise
+        logger.error(f"Lỗi khi thiết lập các bảng: {str(e)}")
+        return False
 
-def add_sample_data(engine):
+def create_sample_data(database_url):
     """
-    Thêm dữ liệu mẫu vào database
+    Tạo dữ liệu mẫu cho người mới bắt đầu.
+    
+    Args:
+        database_url: URL kết nối đến cơ sở dữ liệu
+        
+    Returns:
+        bool: True nếu thành công, False nếu thất bại
     """
     try:
-        # Import models ở đây để tránh lỗi circular import
-        from models import User, DeviceConfig, Device, OriginalSample, SensorData
-        
-        # Tạo session
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        db = SessionLocal()
-        
+        # Import các model
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
         try:
-            # Kiểm tra xem đã có dữ liệu chưa
-            existing_users = db.query(User).count()
-            existing_devices = db.query(Device).count()
-            
-            if existing_users > 0 and existing_devices > 0:
-                logger.info("Dữ liệu mẫu đã tồn tại, bỏ qua bước tạo dữ liệu mẫu.")
-                return
-            
-            # Tạo user mẫu
-            sample_user = User(
-                username="admin",
-                email="admin@example.com",
-                hashed_password="$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"  # "password"
-            )
-            db.add(sample_user)
-            db.commit()
-            db.refresh(sample_user)
-            logger.info(f"Đã tạo user mẫu: {sample_user.username}")
-            
-            # Tạo device mẫu
-            sample_devices = [
-                Device(device_id="motk", name="Motion Sensor Kitchen", description="Kitchen motion sensor"),
-                Device(device_id="temp01", name="Temperature Living Room", description="Living room temperature sensor"),
-                Device(device_id="humi01", name="Humidity Bathroom", description="Bathroom humidity sensor")
-            ]
-            
-            for device in sample_devices:
-                db.add(device)
-            
-            db.commit()
-            logger.info(f"Đã tạo {len(sample_devices)} thiết bị mẫu")
-            
-            # Tạo device config mẫu
+            from sqlalchemy.orm import sessionmaker
+            from models import User, Device, DeviceConfig
+            import datetime
+        except ImportError as e:
+            logger.error(f"Không thể import các model cần thiết: {str(e)}")
+            return False
+        
+        # Tạo engine và session
+        engine = create_engine(database_url)
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        
+        # Kiểm tra xem đã có dữ liệu chưa
+        existing_users = session.query(User).count()
+        existing_devices = session.query(Device).count()
+        
+        if existing_users > 0 and existing_devices > 0:
+            logger.info("Dữ liệu mẫu đã tồn tại, bỏ qua bước tạo dữ liệu mẫu.")
+            return True
+        
+        # Tạo user mẫu
+        sample_user = User(
+            username="admin",
+            email="admin@example.com",
+            hashed_password="$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"  # "password"
+        )
+        session.add(sample_user)
+        session.commit()
+        session.refresh(sample_user)
+        
+        # Tạo device mẫu
+        sample_devices = [
+            Device(device_id="device001", name="Temperature Sensor", description="Cảm biến nhiệt độ phòng khách"),
+            Device(device_id="device002", name="Humidity Sensor", description="Cảm biến độ ẩm phòng tắm"),
+            Device(device_id="device003", name="Light Sensor", description="Cảm biến ánh sáng sân vườn")
+        ]
+        
+        for device in sample_devices:
+            session.add(device)
+        
+        session.commit()
+        
+        # Tạo device config mẫu
+        for device in sample_devices:
             sample_config = DeviceConfig(
                 user_id=sample_user.id,
-                device_id="motk",
+                device_id=device.device_id,
                 config_data={"threshold": 25, "interval": 60}
             )
-            db.add(sample_config)
-            db.commit()
-            logger.info("Đã tạo cấu hình thiết bị mẫu")
-            
-            # Tạo dữ liệu cảm biến mẫu
-            now = datetime.datetime.utcnow()
-            
-            # Tạo dữ liệu cho mỗi thiết bị
-            for device in sample_devices:
-                logger.info(f"Đang tạo dữ liệu mẫu cho thiết bị {device.device_id}...")
-                
-                # Tạo dữ liệu mẫu cho bảng original_samples
-                for i in range(100):  # 100 mẫu cho mỗi thiết bị
-                    timestamp = now - datetime.timedelta(hours=i)
-                    
-                    # Tạo dữ liệu tùy theo loại thiết bị
-                    if "Temperature" in device.name:
-                        original_data = {
-                            "temperature": round(random.uniform(18, 30), 1),
-                            "humidity": round(random.uniform(40, 70), 1)
-                        }
-                    elif "Humidity" in device.name:
-                        original_data = {
-                            "humidity": round(random.uniform(40, 80), 1),
-                            "temperature": round(random.uniform(18, 28), 1)
-                        }
-                    else:  # Motion sensor
-                        original_data = {
-                            "power": round(random.uniform(0, 100), 1),
-                            "pressure": round(random.uniform(980, 1020), 1)
-                        }
-                    
-                    # Thêm vào bảng original_samples
-                    sample = OriginalSample(
-                        device_id=device.device_id,
-                        original_data=original_data,
-                        timestamp=timestamp
-                    )
-                    db.add(sample)
-                    
-                    # Thêm vào bảng sensor_data
-                    for key, value in original_data.items():
-                        sensor_data = SensorData(
-                            device_id=device.device_id,
-                            feed_id=f"{device.device_id}_{key}",
-                            value=value,
-                            timestamp=timestamp
-                        )
-                        db.add(sensor_data)
-                
-                # Commit sau mỗi thiết bị để tránh giao dịch quá lớn
-                db.commit()
-                logger.info(f"Đã tạo 100 mẫu dữ liệu cho thiết bị {device.device_id}")
-            
-            logger.info("Đã tạo dữ liệu mẫu thành công!")
-            
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Lỗi khi tạo dữ liệu mẫu: {str(e)}")
-            raise
-        finally:
-            db.close()
-            
-    except ImportError:
-        logger.error("Không thể import models. Đảm bảo file models.py tồn tại và có thể truy cập.")
-        raise
+            session.add(sample_config)
+        
+        session.commit()
+        logger.info("Đã tạo dữ liệu mẫu thành công!")
+        
+        return True
     except Exception as e:
-        logger.error(f"Lỗi khi thêm dữ liệu mẫu: {str(e)}")
-        raise
+        logger.error(f"Lỗi khi tạo dữ liệu mẫu: {str(e)}")
+        return False
+    finally:
+        if 'session' in locals():
+            session.close()
 
-def update_env_file(database_name="iot_db"):
+def run_migrations(migrations_dir=None):
     """
-    Cập nhật hoặc tạo file .env với thông tin kết nối database
+    Chạy các file migration SQL để cập nhật cấu trúc cơ sở dữ liệu.
+    
+    Args:
+        migrations_dir: Thư mục chứa các file migration
+        
+    Returns:
+        bool: True nếu thành công, False nếu thất bại
     """
     try:
-        # Lấy thông tin kết nối
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = os.getenv("DB_PORT", "5433")
-        db_user = os.getenv("DB_USER", "postgres")
-        db_password = os.getenv("DB_PASSWORD", "1234")
+        # Nếu không chỉ định thư mục, sử dụng thư mục mặc định
+        if migrations_dir is None:
+            migrations_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "migrations")
         
-        # Tạo chuỗi kết nối
-        database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{database_name}"
+        # Kiểm tra xem thư mục migrations có tồn tại không
+        if not os.path.exists(migrations_dir):
+            logger.info(f"Thư mục migrations không tồn tại: {migrations_dir}")
+            logger.info("Đang tạo thư mục migrations...")
+            os.makedirs(migrations_dir)
+            
+            # Tạo file README.md để hướng dẫn
+            readme_path = os.path.join(migrations_dir, "README.md")
+            with open(readme_path, "w") as f:
+                f.write("# Thư mục Migrations\n\n")
+                f.write("Thư mục này chứa các file SQL migration để cập nhật cấu trúc cơ sở dữ liệu.\n")
+                f.write("Mỗi file migration nên có định dạng: `XX-tên_migration.sql` với XX là số thứ tự.\n\n")
+                f.write("Để chạy một migration cụ thể, sử dụng lệnh:\n")
+                f.write("```\npython run_migrations.py --file /path/to/migration.sql\n```\n\n")
+                f.write("Để chạy tất cả các migration, sử dụng lệnh:\n")
+                f.write("```\npython run_migrations.py --all\n```\n")
+            
+            logger.info(f"Đã tạo thư mục migrations tại: {migrations_dir}")
+            return True
         
-        # Đọc file .env nếu đã tồn tại
-        env_content = ""
-        if os.path.exists(".env"):
-            with open(".env", "r") as f:
-                env_content = f.read()
+        # Kiểm tra xem có file SQL nào trong thư mục không
+        migration_files = [f for f in os.listdir(migrations_dir) if f.endswith('.sql')]
         
-        # Kiểm tra xem DATABASE_URL đã tồn tại trong file chưa
-        if "DATABASE_URL=" in env_content:
-            # Cập nhật DATABASE_URL
-            env_lines = env_content.split("\n")
-            updated_lines = []
-            for line in env_lines:
-                if line.startswith("DATABASE_URL="):
-                    updated_lines.append(f"DATABASE_URL={database_url}")
-                else:
-                    updated_lines.append(line)
-            env_content = "\n".join(updated_lines)
-        else:
-            # Thêm DATABASE_URL vào file
-            if env_content and not env_content.endswith("\n"):
-                env_content += "\n"
-            env_content += f"DATABASE_URL={database_url}\n"
+        if not migration_files:
+            logger.info("Không tìm thấy file migration nào trong thư mục.")
+            return True
+            
+        # Sắp xếp các file migration theo tên
+        migration_files.sort()
         
-        # Ghi lại file .env
-        with open(".env", "w") as f:
-            f.write(env_content)
-        
-        logger.info(f"Đã cập nhật file .env với DATABASE_URL={database_url}")
+        # Import hàm chạy migration
+        try:
+            sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+            from run_migrations import run_all_migrations
+            
+            # Chạy tất cả các migration
+            success_count = run_all_migrations()
+            
+            if success_count > 0:
+                logger.info(f"Đã chạy thành công {success_count} migration!")
+            
+            return True
+        except ImportError:
+            logger.warning("Không thể import run_migrations.py. Bỏ qua việc chạy migrations.")
+            return True
+            
     except Exception as e:
-        logger.error(f"Lỗi khi cập nhật file .env: {str(e)}")
+        logger.error(f"Lỗi khi chạy migrations: {str(e)}")
+        return False
 
 def main():
     """
-    Hàm chính để thiết lập database
+    Hàm chính để thiết lập cơ sở dữ liệu.
     """
-    parser = argparse.ArgumentParser(description="Thiết lập cơ sở dữ liệu PostgreSQL")
-    parser.add_argument("--reset", action="store_true", help="Xóa và tạo lại database")
-    parser.add_argument("--sample-data", action="store_true", help="Thêm dữ liệu mẫu vào database")
-    parser.add_argument("--database", type=str, default="iot_db", help="Tên database (mặc định: iot_db)")
-    parser.add_argument("--host", type=str, help="Host của PostgreSQL (mặc định: localhost)")
-    parser.add_argument("--port", type=str, help="Port của PostgreSQL (mặc định: 5433)")
-    parser.add_argument("--user", type=str, help="Username PostgreSQL (mặc định: postgres)")
-    parser.add_argument("--password", type=str, help="Password PostgreSQL (mặc định: 1234)")
-    
+    parser = argparse.ArgumentParser(description='Thiết lập cơ sở dữ liệu cho dự án')
+    parser.add_argument('--sample-data', action='store_true', help='Tạo dữ liệu mẫu')
+    parser.add_argument('--migrations', action='store_true', help='Chạy các file migration')
     args = parser.parse_args()
     
-    # Cập nhật biến môi trường nếu được cung cấp
-    if args.host:
-        os.environ["DB_HOST"] = args.host
-    if args.port:
-        os.environ["DB_PORT"] = args.port
-    if args.user:
-        os.environ["DB_USER"] = args.user
-    if args.password:
-        os.environ["DB_PASSWORD"] = args.password
-    
     try:
-        logger.info("Bắt đầu thiết lập database...")
+        # Hiển thị banner
+        print("""
+╔═══════════════════════════════════════════════════╗
+║                                                   ║
+║       THIẾT LẬP CƠ SỞ DỮ LIỆU CHO DỰ ÁN IoT      ║
+║                                                   ║
+╚═══════════════════════════════════════════════════╝
+        """)
         
-        # Tạo database
-        create_database(args.database, args.reset)
+        # Kiểm tra và tải các biến môi trường
+        logger.info("Bước 1: Kiểm tra cấu hình môi trường...")
+        database_url = load_env_vars()
         
-        # Tạo các bảng
-        engine = create_tables(args.database)
+        # Kiểm tra kết nối đến cơ sở dữ liệu
+        logger.info(f"Bước 2: Kiểm tra kết nối đến cơ sở dữ liệu...")
+        if not check_database_connection(database_url):
+            logger.error("Không thể kết nối đến cơ sở dữ liệu. Vui lòng kiểm tra cấu hình và thử lại.")
+            return 1
         
-        # Thêm dữ liệu mẫu nếu được yêu cầu
+        # Thiết lập các bảng
+        logger.info("Bước 3: Thiết lập các bảng...")
+        if not setup_tables(database_url):
+            logger.error("Không thể thiết lập các bảng. Vui lòng kiểm tra lỗi và thử lại.")
+            return 1
+        
+        # Tạo dữ liệu mẫu nếu có yêu cầu
         if args.sample_data:
-            add_sample_data(engine)
+            logger.info("Bước 4: Tạo dữ liệu mẫu...")
+            if not create_sample_data(database_url):
+                logger.error("Không thể tạo dữ liệu mẫu. Vui lòng kiểm tra lỗi và thử lại.")
+                return 1
         
-        # Cập nhật file .env
-        update_env_file(args.database)
+        # Chạy migrations nếu có yêu cầu
+        if args.migrations:
+            logger.info("Bước 5: Chạy các file migration...")
+            if not run_migrations():
+                logger.error("Không thể chạy các file migration. Vui lòng kiểm tra lỗi và thử lại.")
+                return 1
         
-        logger.info(f"Đã thiết lập database {args.database} thành công!")
+        # Hoàn thành
+        logger.info("Thiết lập cơ sở dữ liệu thành công!")
+        print("""
+╔═══════════════════════════════════════════════════╗
+║                                                   ║
+║       CƠ SỞ DỮ LIỆU ĐÃ ĐƯỢC THIẾT LẬP XONG       ║
+║                                                   ║
+║  Username: admin                                  ║
+║  Password: password                               ║
+║                                                   ║
+╚═══════════════════════════════════════════════════╝
+
+Để tạo dữ liệu mẫu:
+python setup_database.py --sample-data
+
+Để chạy các file migration:
+python setup_database.py --migrations
+
+Để thiết lập lại toàn bộ (bao gồm dữ liệu mẫu và migrations):
+python setup_database.py --sample-data --migrations
+        """)
         
-        # Hiển thị thông tin kết nối
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = os.getenv("DB_PORT", "5433")
-        db_user = os.getenv("DB_USER", "postgres")
-        db_password = os.getenv("DB_PASSWORD", "1234")
-        
-        print("\n" + "="*80)
-        print(f"Database đã sẵn sàng để sử dụng!")
-        print(f"  - Database: {args.database}")
-        print(f"  - Host: {db_host}")
-        print(f"  - Port: {db_port}")
-        print(f"  - User: {db_user}")
-        print(f"  - Password: {'*' * len(db_password)}")
-        print(f"  - Connection URL: postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{args.database}")
-        print("="*80 + "\n")
-        
+        return 0
     except Exception as e:
-        logger.error(f"Lỗi khi thiết lập database: {str(e)}")
-        print(f"\nLỗi: Không thể thiết lập database. Xem chi tiết trong file log: setup_database.log")
-        sys.exit(1)
+        logger.error(f"Lỗi không xác định: {str(e)}")
+        return 1
 
 if __name__ == "__main__":
-    main() 
+    sys.exit(main()) 

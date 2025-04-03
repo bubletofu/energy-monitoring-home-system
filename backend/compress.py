@@ -165,36 +165,6 @@ def ensure_device_exists(engine, device_id):
         logger.error(f"Lỗi khi đảm bảo thiết bị tồn tại: {str(e)}")
         return False
 
-def setup_database():
-    """
-    Thiết lập kết nối đến database và đảm bảo các bảng đã được tạo
-    
-    Returns:
-        engine: SQLAlchemy engine, hoặc None nếu không thể kết nối
-    """
-    try:
-        # Kết nối đến database
-        engine = create_engine(DATABASE_URL)
-        
-        # Kiểm tra kết nối
-        with engine.connect() as conn:
-            # Kiểm tra các bảng đã tồn tại
-            inspector = inspect(conn)
-            tables = inspector.get_table_names()
-            
-            required_tables = ['original_samples', 'compressed_data']
-            for table in required_tables:
-                if table not in tables:
-                    logger.error(f"Bảng {table} không tồn tại trong database")
-                    raise ValueError(f"Bảng {table} không tồn tại")
-                    
-            logger.info(f"Đã kết nối thành công đến database: {DATABASE_URL}")
-            return engine
-    except Exception as e:
-        logger.error(f"Lỗi khi kết nối đến database: {str(e)}")
-        raise
-
-
 def fetch_original_data(engine, limit=1000, device_id=None):
     """
     Lấy dữ liệu từ bảng original_samples
@@ -245,45 +215,6 @@ def fetch_original_data(engine, limit=1000, device_id=None):
     except Exception as e:
         logger.error(f"Lỗi khi lấy dữ liệu từ original_samples: {str(e)}")
         raise
-
-
-def save_compressed_data(engine, device_id, template_id):
-    """
-    Lưu dữ liệu nén vào bảng compressed_data
-    
-    Args:
-        engine: SQLAlchemy engine
-        device_id: ID của thiết bị
-        template_id: ID của template
-        
-    Returns:
-        int: ID của bản ghi đã lưu
-    """
-    try:
-        # Thực hiện truy vấn INSERT
-        query = """
-        INSERT INTO compressed_data (device_id, template_id)
-        VALUES (:device_id, :template_id)
-        RETURNING id
-        """
-        
-        params = {
-            'device_id': device_id,
-            'template_id': template_id
-        }
-        
-        # Thực hiện truy vấn và lấy ID
-        with engine.connect() as conn:
-            result = conn.execute(text(query), params)
-            compression_id = result.fetchone()[0]
-            conn.commit()
-            
-        logger.info(f"Đã lưu dữ liệu nén với ID: {compression_id}")
-        return compression_id
-    except Exception as e:
-        logger.error(f"Lỗi khi lưu dữ liệu nén: {str(e)}")
-        raise
-
 
 def save_optimized_compression_result(engine, device_id, compression_result, timestamps=None):
     """
@@ -371,15 +302,13 @@ def save_optimized_compression_result(engine, device_id, compression_result, tim
         logger.error(f"Lỗi khi lưu kết quả nén tối ưu: {str(e)}")
         raise
 
-
-def run_compression(device_id=None, limit=10000, use_optimized=True, save_result=False, output_file=None, visualize=False, output_dir=None, visualize_max_points=5000, visualize_sampling='adaptive', visualize_chunks=0):
+def run_compression(device_id=None, limit=10000, save_result=False, output_file=None, visualize=False, output_dir=None, visualize_max_points=5000, visualize_sampling='adaptive', visualize_chunks=0):
     """
     Nén dữ liệu từ bảng original_samples
     
     Args:
         device_id: ID của thiết bị cần lấy dữ liệu, None để lấy tất cả
         limit: Số lượng bản ghi tối đa cần xử lý
-        use_optimized: Sử dụng cấu trúc bảng tối ưu (True) hoặc cấu trúc cũ (False)
         save_result: Lưu kết quả nén vào file JSON
         output_file: Đường dẫn file để lưu kết quả nén
         visualize: Tạo biểu đồ trực quan hóa
@@ -392,11 +321,8 @@ def run_compression(device_id=None, limit=10000, use_optimized=True, save_result
         dict: Thông tin về quá trình nén
     """
     try:
-        # Thiết lập kết nối database
-        if use_optimized:
-            engine = setup_optimized_database()
-        else:
-            engine = setup_database()
+        # Thiết lập kết nối database (luôn sử dụng bảng tối ưu)
+        engine = setup_optimized_database()
         
         # Lấy dữ liệu từ bảng original_samples
         records = fetch_original_data(engine, limit, device_id)
@@ -518,8 +444,8 @@ def run_compression(device_id=None, limit=10000, use_optimized=True, save_result
         compression_config = {
             'device_id': current_device_id,
             'p_threshold': 0.1,  # Ngưỡng xác suất
-            'block_size': 40,    # Kích thước block ban đầu
-            'min_block_size': 5,  # Kích thước block tối thiểu
+            'block_size': 10,    # Kích thước block ban đầu
+            'min_block_size': 10,  # Kích thước block tối thiểu
             'max_block_size': 120,  # Kích thước block tối đa
             'adaptive_block_size': True,  # Bật tính năng điều chỉnh kích thước block
             'similarity_threshold': 0.7,  # Ngưỡng tương đồng
@@ -582,53 +508,29 @@ def run_compression(device_id=None, limit=10000, use_optimized=True, save_result
             'compression_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         
-        # Lưu kết quả nén vào database nếu không có tùy chọn save-result
-        if not save_result:
-            try:
-                # Thiết lập kết nối database
-                if use_optimized:
-                    engine = setup_optimized_database()
+        # Lưu kết quả nén vào database nếu cần
+        try:
+            # Thiết lập kết nối database
+            if engine:
+                # Đảm bảo thiết bị tồn tại trong bảng devices
+                if ensure_device_exists(engine, current_device_id):
+                    # Lưu kết quả nén vào bảng compressed_data_optimized
+                    logger.info("Đang lưu kết quả vào bảng compressed_data_optimized...")
+                    compression_id = save_optimized_compression_result(
+                        engine, 
+                        current_device_id, 
+                        compression_result,
+                        timestamps
+                    )
+                    logger.info(f"Đã lưu kết quả nén vào bảng compressed_data_optimized với ID: {compression_id}")
                 else:
-                    engine = setup_database()
-                    
-                if engine:
-                    # Lưu kết quả nén vào database
-                    if use_optimized:
-                        # Đảm bảo thiết bị tồn tại trong bảng devices
-                        if ensure_device_exists(engine, current_device_id):
-                            # Sử dụng cấu trúc bảng tối ưu
-                            compression_id = save_optimized_compression_result(
-                                engine, 
-                                current_device_id, 
-                                compression_result,
-                                timestamps
-                            )
-                            logger.info(f"Đã lưu kết quả nén vào bảng compressed_data_optimized với ID: {compression_id}")
-                        else:
-                            logger.error(f"Không thể đảm bảo thiết bị '{current_device_id}' tồn tại trong bảng devices")
-                    else:
-                        # Sử dụng cấu trúc bảng cũ (compressed_data)
-                        logger.info("Đang lưu kết quả vào bảng compressed_data...")
-                        compression_ids = []
-                        
-                        # Lưu kết quả nén theo encoded stream
-                        for encoded_block in compression_result['encoded_stream']:
-                            template_id = encoded_block['template_id']
-                            start_idx = encoded_block['start_idx']
-                            length = encoded_block['length']
-                            end_idx = start_idx + length
-                            
-                            # Lưu vào bảng compressed_data
-                            compression_id = save_compressed_data(engine, current_device_id, template_id)
-                            compression_ids.append(compression_id)
-                        
-                        logger.info(f"Đã lưu {len(compression_ids)} bản ghi nén")
-                else:
-                    logger.error("Không thể kết nối đến database để lưu kết quả nén")
-            except Exception as e:
-                logger.error(f"Lỗi khi lưu kết quả nén vào database: {str(e)}")
-                import traceback
-                logger.error(traceback.format_exc())
+                    logger.error(f"Không thể đảm bảo thiết bị '{current_device_id}' tồn tại trong bảng devices")
+            else:
+                logger.error("Không thể kết nối đến database để lưu kết quả nén")
+        except Exception as e:
+            logger.error(f"Lỗi khi lưu kết quả nén vào database: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
         
         # Lưu kết quả vào file JSON nếu có tùy chọn save-result
         if save_result:
@@ -671,60 +573,55 @@ def run_compression(device_id=None, limit=10000, use_optimized=True, save_result
         print(f"CER trung bình: {compression_result['avg_cer']:.4f}")
         print(f"Tương đồng trung bình: {compression_result.get('avg_similarity', 0):.4f}")
         
-        # Tạo biểu đồ trực quan hóa
+        # Tạo biểu đồ nếu cần
         if visualize:
             try:
-                # Thêm device_id vào compression_result để visualization_analyzer có thể sử dụng
-                if device_id:
-                    compression_result['device_id'] = device_id
-                
-                # Tính kích thước dữ liệu từ database và thêm vào compression_result
-                try:
-                    from compare import calculate_data_size
-                    
-                    # Tính kích thước dữ liệu từ database
-                    size_info = calculate_data_size(device_id)
-                    
-                    # Thêm thông tin kích thước vào compression_result
-                    if size_info:
-                        compression_result['db_size_info'] = size_info
-                        logger.info(f"Đã thêm thông tin kích thước dữ liệu từ database vào compression_result")
-                except Exception as e:
-                    logger.error(f"Lỗi khi tính kích thước dữ liệu từ database cho biểu đồ: {str(e)}")
-                
-                # Thêm thông tin time_range vào compression_result cho biểu đồ
-                if timestamps and len(timestamps) > 0:
-                    min_time = min(timestamps)
-                    max_time = max(timestamps)
-                    
-                    # Định dạng thời gian với định dạng rõ ràng hơn
-                    min_time_str = min_time.strftime("%Y-%m-%dT%H:%M:%S")
-                    max_time_str = max_time.strftime("%Y-%m-%dT%H:%M:%S")
-                    compression_result['time_range'] = f"[{min_time_str},{max_time_str}]"
-                    
-                    # Thêm thông tin cho log dưới dạng dễ đọc
-                    min_time_readable = min_time.strftime("%d/%m/%Y %H:%M")
-                    max_time_readable = max_time.strftime("%d/%m/%Y %H:%M")
-                    logger.info(f"Phạm vi thời gian: {min_time_readable} - {max_time_readable}")
-                
                 # Tạo biểu đồ sử dụng hàm từ module visualization_analyzer
                 from visualization_analyzer import create_visualizations
                 
                 # Đảm bảo thư mục đầu ra tồn tại
-                if not output_dir:
-                    output_dir = f"visualization_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                    
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir)
                 
-                logger.info(f"Tạo biểu đồ phân tích với dữ liệu đa chiều trong thư mục: {output_dir}")
+                # Chuyển các thông tin về thời gian cho module visualization_analyzer
+                time_info = None
+                if timestamps and len(timestamps) > 0:
+                    time_info = {
+                        'min_time': min(timestamps),
+                        'max_time': max(timestamps)
+                    }
+                
+                # Lấy thông tin compression_id từ database để truy vấn kích thước chính xác
+                # compression_id đã được định nghĩa nếu dùng use_optimized
+                compression_id_for_size = None
+                if not save_result and 'compression_id' in locals():
+                    compression_id_for_size = compression_id
+                    logger.info(f"Sử dụng compression_id: {compression_id_for_size} để truy vấn kích thước từ database")
+                else:
+                    # Nếu không có compression_id (trường hợp không lưu vào database), thử lấy ID mới nhất
+                    try:
+                        if 'engine' in locals() and engine:
+                            from sqlalchemy import text
+                            with engine.connect() as conn:
+                                # Lấy compression_id mới nhất
+                                result = conn.execute(text("SELECT id FROM compressed_data_optimized ORDER BY timestamp DESC LIMIT 1")).fetchone()
+                                if result:
+                                    compression_id_for_size = result[0]
+                                    logger.info(f"Lấy compression_id mới nhất từ database: {compression_id_for_size}")
+                    except Exception as e:
+                        logger.error(f"Lỗi khi lấy compression_id từ database: {str(e)}")
+                
+                logger.info(f"Gọi module visualization_analyzer để tạo biểu đồ phân tích")
                 chart_files = create_visualizations(
                     data=multi_data,
                     compression_result=compression_result, 
                     output_dir=output_dir,
                     max_points=visualize_max_points,
                     sampling_method=visualize_sampling,
-                    num_chunks=visualize_chunks
+                    num_chunks=visualize_chunks,
+                    time_info=time_info,
+                    compression_id=compression_id_for_size,
+                    device_id=current_device_id
                 )
                 
                 if chart_files:
@@ -761,8 +658,7 @@ def main():
     # Thiết lập tham số dòng lệnh
     parser = argparse.ArgumentParser(description='Nén dữ liệu từ database')
     parser.add_argument('--device-id', type=str, help='ID của thiết bị cần nén dữ liệu')
-    parser.add_argument('--limit', type=int, default=10000, help='Số lượng bản ghi tối đa cần nén (mặc định: 10000)')
-    parser.add_argument('--use-optimized', action='store_true', help='Sử dụng cấu trúc bảng tối ưu')
+    parser.add_argument('--limit', type=int, default=100000, help='Số lượng bản ghi tối đa cần nén (mặc định: 100000)')
     parser.add_argument('--save-result', action='store_true', help='Lưu kết quả nén vào file JSON')
     parser.add_argument('--output-file', type=str, help='Đường dẫn file để lưu kết quả nén')
     
@@ -780,11 +676,10 @@ def main():
     # Parse tham số
     args = parser.parse_args()
     
-    # Sử dụng nén thông qua database
+    # Sử dụng nén thông qua database (luôn sử dụng bảng tối ưu)
     result = run_compression(
         device_id=args.device_id, 
         limit=args.limit,
-        use_optimized=args.use_optimized,
         save_result=args.save_result,
         output_file=args.output_file,
         visualize=args.visualize,

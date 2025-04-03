@@ -4,11 +4,6 @@
 Script giải nén dữ liệu từ bảng compressed_data_optimized và lưu kết quả vào file JSON.
 Cách tiếp cận tối ưu không sử dụng bảng ref.
 Hỗ trợ dữ liệu đa chiều (power, humidity, pressure, temperature)
-
-Cách sử dụng đơn giản:
-    python decompress.py --device-id <tên thiết bị>
-    
-    Kết quả sẽ được tự động lưu vào file <tên thiết bị>.json
 """
 
 import sys
@@ -430,16 +425,8 @@ def decompress_data(compression_record):
         for template_id, template_data in templates.items():
             if isinstance(template_data, dict):
                 dimensions.update(template_data.keys())
-        
-        # Đảm bảo 'power' là chiều dữ liệu đầu tiên
-        dimensions_list = list(dimensions)
-        if 'power' in dimensions_list:
-            dimensions_list.remove('power')
-            dimensions_list = ['power'] + sorted(dimensions_list)  # Đặt 'power' lên đầu, các chiều khác sắp xếp theo bảng chữ cái
-        else:
-            dimensions_list = sorted(dimensions_list)
-            
-        decompressed_results['metadata']['dimensions'] = dimensions_list if dimensions else ['power']
+                
+        decompressed_results['metadata']['dimensions'] = sorted(list(dimensions)) if dimensions else ['power']
         
         # Phân phối thời gian cho các block nếu có thông tin thời gian và không có start_time trong block
         time_distribution = None
@@ -497,13 +484,7 @@ def decompress_data(compression_record):
             
             # Thêm thông tin về chiều dữ liệu
             if isinstance(template_data, dict):
-                block_dimensions = list(template_data.keys())
-                if 'power' in block_dimensions:
-                    block_dimensions.remove('power')
-                    block_dimensions = ['power'] + sorted(block_dimensions)  # Đặt 'power' lên đầu, các chiều khác sắp xếp
-                else:
-                    block_dimensions = sorted(block_dimensions)
-                decompressed_block['dimensions'] = block_dimensions
+                decompressed_block['dimensions'] = sorted(list(template_data.keys()))
             else:
                 decompressed_block['dimensions'] = ['power']
             
@@ -610,9 +591,6 @@ def save_decompressed_data(decompressed_results, output_file):
         file_size = os.path.getsize(output_file) / 1024  # Kích thước theo KB
         logger.info(f"Đã lưu kết quả giải nén vào file: {output_file} ({file_size:.2f} KB)")
         
-        # Hiển thị hướng dẫn sử dụng file
-        logger.info("File JSON chứa dữ liệu template và giá trị cho việc phân tích hoặc hiển thị.")
-        
         return True
     except Exception as e:
         logger.error(f"Lỗi khi lưu kết quả giải nén: {str(e)}")
@@ -652,7 +630,6 @@ def main():
                 logger.info("Danh sách các thiết bị có dữ liệu nén:")
                 for device in devices:
                     logger.info(f"  - {device}")
-                logger.info(f"Vui lòng chọn một thiết bị bằng cách sử dụng --device-id hoặc chỉ định --compression-id")
             else:
                 logger.warning("Không tìm thấy thiết bị nào trong database")
             return
@@ -675,7 +652,7 @@ def main():
             # Tìm theo device_id
             records = find_compression_by_device_id(engine, args.device_id, args.limit)
         else:
-            logger.warning("Vui lòng cung cấp --compression-id hoặc --device-id")
+            logger.warning("Không có đủ tham số để thực hiện giải nén")
             return
             
         # Kiểm tra kết quả tìm kiếm
@@ -837,20 +814,11 @@ def main():
             if target_dimension:
                 if target_dimension not in dimensions:
                     logger.warning(f"Chiều dữ liệu '{target_dimension}' không tồn tại. Chiều dữ liệu có sẵn: {', '.join(dimensions)}")
-                    # Ưu tiên sử dụng 'power' làm chiều mặc định
-                    if 'power' in dimensions:
-                        target_dimension = 'power'
-                        logger.info(f"Sử dụng chiều dữ liệu 'power' làm mặc định")
-                    else:
-                        available_dimension = next(iter(dimensions), 'power')
-                        logger.info(f"Sử dụng chiều dữ liệu '{available_dimension}' mặc định")
-                        target_dimension = available_dimension
+                    available_dimension = next(iter(dimensions), 'power')
+                    logger.info(f"Sử dụng chiều dữ liệu '{available_dimension}' mặc định")
+                    target_dimension = available_dimension
             else:
-                # Ưu tiên sử dụng 'power' làm chiều mặc định nếu có
-                if 'power' in dimensions:
-                    target_dimension = 'power'
-                else:
-                    target_dimension = next(iter(dimensions), 'power')
+                target_dimension = next(iter(dimensions), 'power')
             
             for i, block in enumerate(result_to_use.get('decompressed_data', [])[:display_count]):
                 template_id = block.get('template_id', 'N/A')
@@ -902,15 +870,6 @@ def main():
             if output_file:
                 print(f"\nKết quả đã được lưu vào file: {output_file}")
                 
-            # Hiển thị gợi ý bổ sung chỉ khi có lỗi hoặc khi không có dữ liệu
-            if not result_to_use or not result_to_use.get('decompressed_data'):
-                print("\nGợi ý sử dụng:")
-                print("- Chỉ cần --device-id để tự động lưu kết quả vào file <tên thiết bị>.json")
-                print("- Sử dụng --output để chỉ định tên file khác")
-                print("- Sử dụng --console-only để chỉ hiển thị kết quả trên màn hình, không lưu file")
-                print(f"- Sử dụng --dimension để chỉ định chiều dữ liệu hiển thị (Chiều dữ liệu có sẵn: {', '.join(dimensions)})")
-                print("- Sử dụng --show-time để hiển thị thông tin thời gian chi tiết của các block")
-            
     except Exception as e:
         logger.error(f"Lỗi khi thực thi script: {str(e)}")
         import traceback
