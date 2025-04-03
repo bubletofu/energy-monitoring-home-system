@@ -224,11 +224,11 @@ def analyze_compression_ratio(compression_data, output_dir):
     
     # Tạo biểu đồ
     plt.figure(figsize=(10, 6))
-    bars = plt.bar(['Dữ liệu gốc', 'Dữ liệu đã nén'], [original_size, compressed_size], color=['#3498db', '#2ecc71'])
+    bars = plt.bar(['Original Data', 'Compressed Data'], [original_size, compressed_size], color=['#3498db', '#2ecc71'])
     
     # Thêm nhãn
-    plt.title('So sánh kích thước dữ liệu trước và sau khi nén', fontsize=14)
-    plt.ylabel('Kích thước (số giá trị)', fontsize=12)
+    plt.title('Data Size Comparison Before and After Compression', fontsize=14)
+    plt.ylabel('Size (values count)', fontsize=12)
     
     # Thêm giá trị lên đầu thanh
     for bar in bars:
@@ -238,10 +238,10 @@ def analyze_compression_ratio(compression_data, output_dir):
     
     # Thêm thông tin tỷ lệ nén
     textstr = f"""
-    Tỷ lệ nén: {compression_ratio:.2f}x
-    Tổng số giá trị: {total_values}
-    Số mẫu: {templates_count}
-    Số block: {blocks_processed}
+    Compression Ratio: {compression_ratio:.2f}x
+    Total Values: {total_values}
+    Templates: {templates_count}
+    Blocks: {blocks_processed}
     """
     
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
@@ -303,9 +303,9 @@ def analyze_templates(compression_data: Dict[str, Any], output_prefix: str = Non
     top_templates = template_df.nlargest(top_n, 'use_count')
     
     bars = axs[0].bar(top_templates['id'], top_templates['use_count'], color='orange')
-    axs[0].set_title(f"Top {top_n} templates được sử dụng nhiều nhất")
+    axs[0].set_title(f"Top {top_n} Most Used Templates")
     axs[0].set_xlabel("Template ID")
-    axs[0].set_ylabel("Số lần sử dụng")
+    axs[0].set_ylabel("Usage Count")
     
     # Thêm số liệu lên biểu đồ
     for bar in bars:
@@ -316,9 +316,9 @@ def analyze_templates(compression_data: Dict[str, Any], output_prefix: str = Non
     
     # 2. Biểu đồ phân bố số lần sử dụng template
     axs[1].hist(template_df['use_count'], bins=10, color='skyblue', edgecolor='black')
-    axs[1].set_title("Phân bố số lần sử dụng template")
-    axs[1].set_xlabel("Số lần sử dụng")
-    axs[1].set_ylabel("Số lượng template")
+    axs[1].set_title("Template Usage Distribution")
+    axs[1].set_xlabel("Usage Count")
+    axs[1].set_ylabel("Number of Templates")
     
     plt.tight_layout()
     
@@ -378,28 +378,28 @@ def analyze_blocks(compression_data: Dict[str, Any], output_prefix: str = None):
     # 1. Biểu đồ tỷ lệ template mới/tái sử dụng
     template_reuse = block_df['is_template_match'].value_counts()
     axs[0, 0].pie(template_reuse, 
-                labels=['Template tái sử dụng', 'Template mới'] if len(template_reuse) > 1 else ['Template tái sử dụng'],
+                labels=['Template Reuse', 'New Template'] if len(template_reuse) > 1 else ['Template Reuse'],
                 autopct='%1.1f%%', 
                 colors=['lightgreen', 'lightcoral'] if len(template_reuse) > 1 else ['lightgreen'])
-    axs[0, 0].set_title("Tỷ lệ tái sử dụng template")
+    axs[0, 0].set_title("Template Reuse Ratio")
     
     # 2. Biểu đồ phân bố điểm tương đồng (similarity score)
     axs[0, 1].hist(block_df['similarity_score'], bins=20, color='skyblue', edgecolor='black')
-    axs[0, 1].set_title("Phân bố điểm tương đồng (Similarity Score)")
-    axs[0, 1].set_xlabel("Điểm tương đồng")
-    axs[0, 1].set_ylabel("Số lượng khối")
+    axs[0, 1].set_title("Similarity Score Distribution")
+    axs[0, 1].set_xlabel("Similarity Score")
+    axs[0, 1].set_ylabel("Number of Blocks")
     
     # 3. Biểu đồ phân bố CER
     axs[1, 0].hist(block_df['cer'], bins=20, color='lightgreen', edgecolor='black')
-    axs[1, 0].set_title("Phân bố Compression Error Rate (CER)")
+    axs[1, 0].set_title("Compression Error Rate (CER) Distribution")
     axs[1, 0].set_xlabel("CER")
-    axs[1, 0].set_ylabel("Số lượng khối")
+    axs[1, 0].set_ylabel("Number of Blocks")
     
     # 4. Biểu đồ phân bố kích thước khối
     axs[1, 1].hist(block_df['length'], bins=20, color='orange', edgecolor='black')
-    axs[1, 1].set_title("Phân bố kích thước khối")
-    axs[1, 1].set_xlabel("Kích thước khối")
-    axs[1, 1].set_ylabel("Số lượng khối")
+    axs[1, 1].set_title("Block Size Distribution")
+    axs[1, 1].set_xlabel("Block Size")
+    axs[1, 1].set_ylabel("Number of Blocks")
     
     plt.tight_layout()
     
@@ -921,7 +921,7 @@ def create_pattern_recognition_chart(data, compression_result, output_dir):
         plt.figure(figsize=(15, 8))
         
         # Vẽ dữ liệu gốc
-        plt.plot(primary_data, color='blue', alpha=0.5, label='Dữ liệu gốc')
+        plt.plot(primary_data, color='blue', alpha=0.5, label='Original Data')
         
         # Lấy giới hạn dữ liệu để tính toán vị trí nhãn
         y_min = min(primary_data) if primary_data else 0
@@ -978,23 +978,23 @@ def create_pattern_recognition_chart(data, compression_result, output_dir):
                 template_seen[template_id] = template_color
         
         # Cập nhật tiêu đề và nhãn trục không nhấn mạnh vào một chiều cụ thể
-        title = 'Nhận dạng mẫu và phân khúc dữ liệu'
+        title = 'Pattern Recognition and Data Segmentation'
         if time_info:
             title += time_info
         plt.title(title)
-        plt.xlabel('Chỉ số mẫu')
-        plt.ylabel('Giá trị dữ liệu')
+        plt.xlabel('Sample Index')
+        plt.ylabel('Data Value')
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
         plt.savefig(pattern_recognition_chart, dpi=300, bbox_inches='tight')
         plt.close()
         
-        logger.info(f"Đã tạo biểu đồ nhận dạng mẫu: {pattern_recognition_chart}")
+        logger.info(f"Created pattern recognition chart: {pattern_recognition_chart}")
         return pattern_recognition_chart
         
     except Exception as e:
-        logger.error(f"Lỗi khi tạo biểu đồ nhận dạng mẫu: {str(e)}")
+        logger.error(f"Error creating pattern recognition chart: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return None
@@ -1048,24 +1048,24 @@ def create_block_size_chart(compression_result, output_dir):
             plt.axhline(y=max_size, color='blue', linestyle='--', label=f'Max: {max_size}')
         
         # Thêm thông tin thời gian vào tiêu đề nếu có
-        title = 'Điều chỉnh kích thước khối theo thời gian'
+        title = 'Block Size Adjustment Over Time'
         if time_info:
             title += time_info
             
         plt.title(title)
-        plt.xlabel('Block index')
-        plt.ylabel('Kích thước khối')
+        plt.xlabel('Block Index')
+        plt.ylabel('Block Size')
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
         plt.savefig(block_size_chart, dpi=300, bbox_inches='tight')
         plt.close()
         
-        logger.info(f"Đã tạo biểu đồ điều chỉnh kích thước khối: {block_size_chart}")
+        logger.info(f"Created block size adjustment chart: {block_size_chart}")
         return block_size_chart
         
     except Exception as e:
-        logger.error(f"Lỗi khi tạo biểu đồ điều chỉnh kích thước khối: {str(e)}")
+        logger.error(f"Error creating block size adjustment chart: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return None
@@ -1086,66 +1086,170 @@ def create_size_comparison_chart(data, compression_result, output_dir):
         # Tạo thư mục đầu ra nếu không tồn tại
         os.makedirs(output_dir, exist_ok=True)
         
-        # Lấy thông tin từ compression_result
-        templates = compression_result.get('templates', {})
-        encoded_stream = compression_result.get('encoded_stream', [])
+        # Đường dẫn file
+        size_comparison_chart = os.path.join(output_dir, 'size_comparison.png')
+        
+        # Lấy device_id từ compression_result nếu có
+        device_id = compression_result.get('device_id', 'unknown')
+        
+        # Kiểm tra xem có thông tin kích thước từ database không
+        db_size_info = compression_result.get('db_size_info', {})
+        
+        if db_size_info and isinstance(db_size_info, dict) and db_size_info.get('original_size', 0) > 0:
+            # Sử dụng thông tin kích thước từ database (chính xác hơn)
+            original_size = db_size_info.get('original_size', 0)
+            compressed_size = db_size_info.get('compressed_size', 0)
+            compression_ratio = db_size_info.get('compression_ratio', 1.0)
+            original_count = db_size_info.get('original_count', 0)
+            space_saving = db_size_info.get('space_saving', 0.0)
+            
+            logger.info(f"Sử dụng thông tin kích thước từ db_size_info: gốc={original_size}, nén={compressed_size}, tỷ lệ={compression_ratio:.2f}x")
+        else:
+            # Truy vấn database trực tiếp
+            try:
+                # Lấy thông tin kết nối đến database từ biến môi trường
+                database_url = os.getenv("DATABASE_URL")
+                
+                if not database_url:
+                    # Lấy thông tin kết nối từ biến môi trường riêng lẻ
+                    db_host = os.getenv("DB_HOST", "localhost")
+                    db_port = os.getenv("DB_PORT", "5433")
+                    db_name = os.getenv("DB_NAME", "iot_db")
+                    db_user = os.getenv("DB_USER", "postgres")
+                    db_password = os.getenv("DB_PASSWORD", "1234")
+                    
+                    # Tạo URL kết nối
+                    database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+                
+                # Tạo engine kết nối
+                engine = create_engine(database_url)
+                
+                if device_id and device_id != 'unknown':
+                    logger.info(f"Đang truy vấn trực tiếp database để tính kích thước dữ liệu cho thiết bị: {device_id}")
+                    
+                    with engine.connect() as conn:
+                        # Đếm số lượng bản ghi gốc
+                        query_count = text("""
+                            SELECT COUNT(*) as count
+                            FROM original_samples 
+                            WHERE device_id = :device_id
+                        """)
+                        
+                        result_count = conn.execute(query_count, {"device_id": device_id}).fetchone()
+                        original_count = result_count[0] if result_count else 0
+                        
+                        if original_count == 0:
+                            logger.warning(f"Không tìm thấy dữ liệu gốc cho thiết bị {device_id}")
+                            
+                        # Tính kích thước dữ liệu gốc
+                        # Giả định 8 bytes cho mỗi cột dữ liệu số (timestamp, temperature, humidity, etc.)
+                        avg_size_per_record = 40  # 8 bytes * 5 columns (timestamp + 4 data columns)
+                        original_size = original_count * avg_size_per_record
+                        
+                        # Lấy kích thước dữ liệu nén
+                        query_compressed = text("""
+                            SELECT SUM(LENGTH(CAST(compression_metadata AS TEXT)) + 
+                                       LENGTH(CAST(templates AS TEXT)) + 
+                                       LENGTH(CAST(encoded_stream AS TEXT))) as compressed_size
+                            FROM compressed_data_optimized
+                            WHERE device_id = :device_id
+                        """)
+                        
+                        result_compressed = conn.execute(query_compressed, {"device_id": device_id}).fetchone()
+                        compressed_size = result_compressed[0] if result_compressed and result_compressed[0] else 0
+                        
+                        # Tính tỷ lệ nén và tiết kiệm không gian
+                        compression_ratio = original_size / max(1, compressed_size) if compressed_size > 0 else 1.0
+                        space_saving = 1.0 - (compressed_size / max(1, original_size)) if original_size > 0 else 0.0
+                        
+                        logger.info(f"Kết quả truy vấn database: original_count={original_count}, original_size={original_size}, compressed_size={compressed_size}, ratio={compression_ratio:.2f}x")
+                else:
+                    # Tính từ dữ liệu đã có
+                    logger.warning(f"Không có device_id hợp lệ để truy vấn database, sử dụng kích thước từ dữ liệu có sẵn")
+                    compression_ratio = compression_result.get('compression_ratio', 1.0)
+                    
+                    # Đếm số dòng dữ liệu từ encoded_stream
+                    total_values = 0
+                    encoded_stream = compression_result.get('encoded_stream', [])
+                    for block in encoded_stream:
+                        total_values += block.get('length', 0)
+                    
+                    # Tính kích thước dựa trên bytes per value
+                    bytes_per_value = 8
+                    original_size = total_values * bytes_per_value
+                    compressed_size = original_size / compression_ratio if compression_ratio > 0 else original_size
+                    space_saving = 1.0 - (compressed_size / original_size) if original_size > 0 else 0.0
+                    original_count = total_values
+            except Exception as e:
+                logger.error(f"Lỗi khi truy vấn database: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+                
+                # Fallback - tính từ dữ liệu đã có
+                compression_ratio = compression_result.get('compression_ratio', 1.0)
+                
+                # Đếm số dòng dữ liệu từ encoded_stream
+                total_values = 0
+                encoded_stream = compression_result.get('encoded_stream', [])
+                for block in encoded_stream:
+                    total_values += block.get('length', 0)
+                
+                # Tính kích thước dựa trên bytes per value
+                bytes_per_value = 8
+                original_size = total_values * bytes_per_value
+                compressed_size = original_size / compression_ratio if compression_ratio > 0 else original_size
+                space_saving = 1.0 - (compressed_size / original_size) if original_size > 0 else 0.0
+                original_count = total_values
         
         # Lấy thông tin thời gian
         time_info = extract_time_info(compression_result)
         
-        # Tạo đường dẫn file
-        size_comparison_chart = os.path.join(output_dir, 'size_comparison.png')
-        
-        # Tính kích thước chính xác hơn
-        # Tính kích thước của dữ liệu gốc (json serialized)
-        original_size_bytes = sum(len(json.dumps(item)) for item in data)
-        
-        # Tính kích thước sau khi nén: gồm templates + encoded_stream
-        templates_size = len(json.dumps(templates))
-        encoded_stream_size = len(json.dumps(encoded_stream))
-        compressed_size_bytes = templates_size + encoded_stream_size
-        
-        # Cập nhật tỷ lệ nén thực tế
-        actual_compression_ratio = original_size_bytes / compressed_size_bytes if compressed_size_bytes > 0 else 1.0
-        
+        # Tạo biểu đồ
         plt.figure(figsize=(10, 6))
         
         # Vẽ biểu đồ cột so sánh kích thước
-        sizes = [original_size_bytes, compressed_size_bytes]
-        labels = ['Dữ liệu gốc', 'Dữ liệu nén']
-        colors = ['blue', 'green']
+        sizes = [original_size, compressed_size]
+        labels = ['Original Data', 'Compressed Data']  # Đổi từ 'Dữ liệu gốc', 'Dữ liệu nén'
+        colors = ['#3498db', '#2ecc71']
         
-        plt.bar(labels, sizes, color=colors, alpha=0.7)
+        bars = plt.bar(labels, sizes, color=colors, alpha=0.7)
         
-        # Thêm nhãn giá trị lên cột (định dạng theo KB nếu lớn)
-        for i, v in enumerate(sizes):
-            if v > 1024:
-                plt.text(i, v + 0.1, f"{v/1024:.1f} KB", ha='center', va='bottom')
-            else:
-                plt.text(i, v + 0.1, f"{v:,} bytes", ha='center', va='bottom')
+        # Thêm nhãn giá trị lên cột
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2., height + 5,
+                    f'{int(height):,}', ha='center', va='bottom', fontsize=11)
         
-        # Thêm thông tin tỷ lệ nén
-        plt.text(0.5, 0.9, f"Tỷ lệ nén: {actual_compression_ratio:.2f}x", 
-                transform=plt.gca().transAxes, ha='center', va='center',
-                bbox=dict(facecolor='white', alpha=0.8))
+        # Thêm thông tin tỷ lệ nén trong textbox
+        textstr = f"""
+        Compression Ratio: {compression_ratio:.2f}x
+        Space Saving: {space_saving*100:.2f}%
+        Original Records: {original_count:,}
+        Original Size: {original_size:,} bytes
+        Compressed Size: {compressed_size:,} bytes
+        """
+        
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
+                verticalalignment='top', bbox=props)
         
         # Thêm thông tin thời gian vào tiêu đề nếu có
-        title = 'So sánh kích thước dữ liệu trước và sau khi nén'
+        title = f'Size Comparison - Device {device_id}'  # Đổi từ 'So sánh kích thước dữ liệu - Thiết bị {device_id}'
         if time_info:
             title += time_info
             
-        plt.title(title)
-        plt.ylabel('Kích thước (bytes)')
+        plt.title(title, fontsize=14)
+        plt.ylabel('Size (bytes)', fontsize=12)  # Đổi từ 'Kích thước (bytes)'
         plt.grid(axis='y', alpha=0.3)
         plt.tight_layout()
         plt.savefig(size_comparison_chart, dpi=300, bbox_inches='tight')
         plt.close()
         
-        logger.info(f"Đã tạo biểu đồ so sánh kích thước: {size_comparison_chart}")
+        logger.info(f"Created size comparison chart: {size_comparison_chart}")
         return size_comparison_chart
         
     except Exception as e:
-        logger.error(f"Lỗi khi tạo biểu đồ so sánh kích thước: {str(e)}")
+        logger.error(f"Error creating size comparison chart: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return None
@@ -1257,7 +1361,7 @@ def compare_compression_results(compression_ids: List[int], output_dir: str = No
             
         # Tạo thư mục đầu ra nếu chưa có
         if not output_dir:
-            output_dir = f"comparison_analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            output_dir = f"visualization_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         os.makedirs(output_dir, exist_ok=True)
         
@@ -1306,22 +1410,22 @@ def compare_compression_results(compression_ids: List[int], output_dir: str = No
         width = 0.35
         
         # Trụ cột cho tỷ lệ hit
-        plt.bar(x - width/2, hit_ratios, width, label='Tỷ lệ hit', color='skyblue')
+        plt.bar(x - width/2, hit_ratios, width, label='Hit Ratio', color='skyblue')
         
         # Tạo trục y thứ hai cho tỷ lệ nén
         ax2 = plt.twinx()
-        ax2.bar(x + width/2, comp_ratios, width, label='Tỷ lệ nén', color='lightgreen')
+        ax2.bar(x + width/2, comp_ratios, width, label='Compression Ratio', color='lightgreen')
         
         # Thiết lập trục x
         plt.xticks(x, comp_ids, rotation=45)
         
         # Thêm nhãn và tiêu đề
-        plt.xlabel('ID bản ghi nén')
-        plt.ylabel('Tỷ lệ hit')
-        ax2.set_ylabel('Tỷ lệ nén')
+        plt.xlabel('Compression Record ID')
+        plt.ylabel('Hit Ratio')
+        ax2.set_ylabel('Compression Ratio')
         
         # Thêm tiêu đề
-        plt.title('So sánh tỷ lệ hit và tỷ lệ nén')
+        plt.title('Hit Ratio vs Compression Ratio Comparison')
         
         # Thêm legend
         plt.legend(loc='upper left')
@@ -1335,36 +1439,36 @@ def compare_compression_results(compression_ids: List[int], output_dir: str = No
         plt.figure(figsize=(14, 8))
         
         # Trụ cột cho CER
-        plt.bar(x - width/2, avg_cers, width, label='Trung bình CER', color='salmon')
+        plt.bar(x - width/2, avg_cers, width, label='Average CER', color='salmon')
         
         # Trục y thứ hai cho Similarity
         ax2 = plt.twinx()
-        ax2.bar(x + width/2, avg_similarities, width, label='Trung bình Similarity', color='skyblue')
+        ax2.bar(x + width/2, avg_similarities, width, label='Average Similarity', color='skyblue')
         
         # Thiết lập trục x
         plt.xticks(x, comp_ids, rotation=45)
         
         # Thêm nhãn và tiêu đề
-        plt.xlabel('ID bản ghi nén')
+        plt.xlabel('Compression Record ID')
         plt.ylabel('CER')
         ax2.set_ylabel('Similarity')
         
         # Thêm tiêu đề
-        plt.title('So sánh chất lượng nén (CER và Similarity)')
+        plt.title('Compression Quality Comparison (CER vs Similarity)')
         
         # Thêm legend
         plt.legend(loc='upper left')
         ax2.legend(loc='upper right')
         
         plt.tight_layout()
-        plt.savefig(f"{output_dir}/comparison_cer_similarity.png", bbox_inches='tight', dpi=300)
+        plt.savefig(f"{output_dir}/comparison_quality.png", bbox_inches='tight', dpi=300)
         plt.close()
         
         # 3. Biểu đồ so sánh số lượng template và cost
         plt.figure(figsize=(14, 8))
         
-        # Trụ cột cho template count
-        plt.bar(x - width/2, template_counts, width, label='Số lượng template', color='orchid')
+        # Trụ cột cho số lượng template
+        plt.bar(x - width/2, template_counts, width, label='Template Count', color='lightcoral')
         
         # Trục y thứ hai cho cost
         ax2 = plt.twinx()
@@ -1374,12 +1478,12 @@ def compare_compression_results(compression_ids: List[int], output_dir: str = No
         plt.xticks(x, comp_ids, rotation=45)
         
         # Thêm nhãn và tiêu đề
-        plt.xlabel('ID bản ghi nén')
-        plt.ylabel('Số lượng template')
+        plt.xlabel('Compression Record ID')
+        plt.ylabel('Template Count')
         ax2.set_ylabel('Cost')
         
         # Thêm tiêu đề
-        plt.title('So sánh số lượng template và cost')
+        plt.title('Template Count vs Cost Comparison')
         
         # Thêm legend
         plt.legend(loc='upper left')
@@ -1389,106 +1493,51 @@ def compare_compression_results(compression_ids: List[int], output_dir: str = No
         plt.savefig(f"{output_dir}/comparison_templates_cost.png", bbox_inches='tight', dpi=300)
         plt.close()
         
-        # 4. Biểu đồ radar cho so sánh tổng thể
-        # Tạo dữ liệu radar chart
-        fig = plt.figure(figsize=(14, 10))
+        # 4. Tạo biểu đồ size_comparison.png cho mỗi ID nén
+        for i, comp_id in enumerate(comp_ids):
+            try:
+                # Lấy dữ liệu gốc để tính kích thước
+                original_data = []
+                
+                # Tạo đối tượng compression_result cho biểu đồ
+                compression_result = {
+                    'device_id': f"ID: {comp_id}",
+                    'templates': compression_data_list[i].get('templates', {}),
+                    'encoded_stream': compression_data_list[i].get('encoded_stream', []),
+                    'compression_ratio': comp_ratios[i],
+                    'hit_ratio': hit_ratios[i],
+                    'avg_cer': avg_cers[i],
+                    'avg_similarity': avg_similarities[i]
+                }
+                
+                # Nếu có thông tin device_id thực tế
+                device_id = compression_data_list[i].get('device_id')
+                if device_id:
+                    compression_result['device_id'] = device_id
+                    
+                    # Thử lấy thông tin kích thước từ database
+                    try:
+                        from compare import calculate_data_size
+                        size_info = calculate_data_size(device_id)
+                        if size_info:
+                            compression_result['db_size_info'] = size_info
+                    except Exception as e:
+                        logger.warning(f"Không thể lấy thông tin kích thước cho ID {comp_id}: {str(e)}")
+                
+                # Tạo biểu đồ size_comparison cho ID này
+                size_chart = create_size_comparison_chart(original_data, compression_result, output_dir)
+                if size_chart:
+                    logger.info(f"Đã tạo biểu đồ so sánh kích thước cho ID {comp_id}: {size_chart}")
+            except Exception as e:
+                logger.error(f"Lỗi khi tạo biểu đồ so sánh kích thước cho ID {comp_id}: {str(e)}")
         
-        # Các chỉ số để so sánh
-        metrics = ['Tỷ lệ hit', 'Tỷ lệ nén', 'Điểm tương đồng', 'Kháng CER', 'Kháng Cost']
-        
-        # Chuẩn hóa dữ liệu cho radar chart
-        # Đảm bảo dữ liệu nằm trong khoảng [0, 1]
-        radar_data = []
-        for i, _ in enumerate(comp_ids):
-            # Chuẩn hóa CER và Cost để có giá trị cao = tốt
-            normalized_cer = 1.0 - min(1.0, avg_cers[i] / 0.15)  # Giả sử 0.15 là ngưỡng tối đa cho CER
-            normalized_cost = 1.0 - min(1.0, costs[i])  # Giả sử cost đã nằm trong [0, 1]
-            
-            # Chuẩn hóa tỷ lệ nén để phù hợp với thang đo radar
-            normalized_comp_ratio = min(1.0, comp_ratios[i] / 10.0)  # Giả sử 10x là tỷ lệ nén tốt nhất
-            
-            radar_values = [
-                hit_ratios[i],                # Tỷ lệ hit
-                normalized_comp_ratio,        # Tỷ lệ nén chuẩn hóa
-                avg_similarities[i],          # Điểm tương đồng
-                normalized_cer,               # Kháng CER
-                normalized_cost               # Kháng Cost
-            ]
-            radar_data.append(radar_values)
-        
-        # Góc cho mỗi trục
-        angles = np.linspace(0, 2*np.pi, len(metrics), endpoint=False).tolist()
-        
-        # Đóng vòng tròn
-        angles += angles[:1]
-        
-        # Tạo biểu đồ con
-        ax = plt.subplot(111, polar=True)
-        
-        # Thêm dữ liệu cho mỗi bản ghi nén
-        for i, values in enumerate(radar_data):
-            values_closed = values + values[:1]  # Đóng vòng tròn cho giá trị
-            ax.plot(angles, values_closed, linewidth=2, label=f'ID {comp_ids[i]}')
-            ax.fill(angles, values_closed, alpha=0.1)
-        
-        # Thiết lập nhãn cho mỗi trục
-        ax.set_thetagrids(np.degrees(angles[:-1]), metrics)
-        
-        # Thiết lập giới hạn trục r
-        ax.set_ylim(0, 1)
-        
-        # Thêm tiêu đề
-        plt.title('So sánh hiệu suất nén tổng thể')
-        
-        # Thêm legend
-        plt.legend(loc='upper right', bbox_to_anchor=(1.2, 1.0))
-        
-        plt.tight_layout()
-        plt.savefig(f"{output_dir}/comparison_radar.png", bbox_inches='tight', dpi=300)
-        plt.close()
-        
-        # 5. Bảng so sánh chi tiết dạng văn bản
-        # Tạo bảng thông tin chi tiết
-        comparison_table = pd.DataFrame({
-            'ID': comp_ids,
-            'Tỷ lệ hit': hit_ratios,
-            'Tỷ lệ nén': comp_ratios,
-            'Số template': template_counts,
-            'Avg Similarity': avg_similarities,
-            'Avg CER': avg_cers,
-            'Cost': costs
-        })
-        
-        # Lưu bảng thành file CSV
-        comparison_table.to_csv(f"{output_dir}/comparison_details.csv", index=False)
-        
-        # Tạo một bản tóm tắt dạng HTML để dễ xem
-        html_table = comparison_table.to_html(index=False)
-        with open(f"{output_dir}/comparison_details.html", 'w') as f:
-            f.write(f"""
-            <html>
-            <head>
-                <title>Bảng so sánh chi tiết</title>
-                <style>
-                    table {{ border-collapse: collapse; width: 100%; }}
-                    th, td {{ text-align: left; padding: 8px; border: 1px solid #ddd; }}
-                    tr:nth-child(even) {{ background-color: #f2f2f2; }}
-                    th {{ background-color: #4CAF50; color: white; }}
-                </style>
-            </head>
-            <body>
-                <h1>So sánh chi tiết các bản ghi nén</h1>
-                {html_table}
-                <p>Tạo lúc: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
-            </body>
-            </html>
-            """)
-        
-        logger.info(f"Đã tạo các biểu đồ so sánh và lưu vào thư mục: {output_dir}")
+        logger.info(f"Đã tạo các biểu đồ so sánh trong thư mục: {output_dir}")
         return output_dir
         
     except Exception as e:
-        logger.error(f"Lỗi khi so sánh kết quả nén: {str(e)}")
+        logger.error(f"Lỗi khi tạo biểu đồ so sánh: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return None
 
 def extract_time_info(compression_result):
@@ -1532,12 +1581,12 @@ def extract_time_info(compression_result):
                     start_formatted = start_datetime.strftime("%d/%m/%Y %H:%M")
                     end_formatted = end_datetime.strftime("%d/%m/%Y %H:%M")
                     
-                    time_info = f" - Từ {start_formatted} đến {end_formatted}"
+                    time_info = f" - From {start_formatted} to {end_formatted}"
                 except:
                     # Nếu có lỗi, vẫn sử dụng chuỗi gốc
-                    time_info = f" - Từ {start_time} đến {end_time}"
+                    time_info = f" - From {start_time} to {end_time}"
             else:
-                time_info = f" - Phạm vi thời gian: {time_range}"
+                time_info = f" - Time range: {time_range}"
         else:
             # Nếu time_range là một đối tượng có thuộc tính lower và upper
             try:
@@ -1550,10 +1599,10 @@ def extract_time_info(compression_result):
                         start_time = time_range.lower.isoformat() if time_range.lower else "N/A"
                         end_time = time_range.upper.isoformat() if time_range.upper else "N/A"
                     
-                    time_info = f" - Từ {start_time} đến {end_time}"
+                    time_info = f" - From {start_time} to {end_time}"
             except:
                 # Sử dụng chuỗi hoặc đối tượng nguyên bản nếu không thể trích xuất
-                time_info = f" - Phạm vi thời gian: {str(time_range)}"
+                time_info = f" - Time range: {str(time_range)}"
     
     return time_info
 

@@ -671,15 +671,26 @@ def run_compression(device_id=None, limit=10000, use_optimized=True, save_result
         print(f"CER trung bình: {compression_result['avg_cer']:.4f}")
         print(f"Tương đồng trung bình: {compression_result.get('avg_similarity', 0):.4f}")
         
-        # Tạo biểu đồ nếu cần
+        # Tạo biểu đồ trực quan hóa
         if visualize:
             try:
-                # Tạo biểu đồ sử dụng hàm từ module visualization_analyzer
-                from visualization_analyzer import create_visualizations
+                # Thêm device_id vào compression_result để visualization_analyzer có thể sử dụng
+                if device_id:
+                    compression_result['device_id'] = device_id
                 
-                # Đảm bảo thư mục đầu ra tồn tại
-                if not os.path.exists(output_dir):
-                    os.makedirs(output_dir)
+                # Tính kích thước dữ liệu từ database và thêm vào compression_result
+                try:
+                    from compare import calculate_data_size
+                    
+                    # Tính kích thước dữ liệu từ database
+                    size_info = calculate_data_size(device_id)
+                    
+                    # Thêm thông tin kích thước vào compression_result
+                    if size_info:
+                        compression_result['db_size_info'] = size_info
+                        logger.info(f"Đã thêm thông tin kích thước dữ liệu từ database vào compression_result")
+                except Exception as e:
+                    logger.error(f"Lỗi khi tính kích thước dữ liệu từ database cho biểu đồ: {str(e)}")
                 
                 # Thêm thông tin time_range vào compression_result cho biểu đồ
                 if timestamps and len(timestamps) > 0:
@@ -694,10 +705,19 @@ def run_compression(device_id=None, limit=10000, use_optimized=True, save_result
                     # Thêm thông tin cho log dưới dạng dễ đọc
                     min_time_readable = min_time.strftime("%d/%m/%Y %H:%M")
                     max_time_readable = max_time.strftime("%d/%m/%Y %H:%M")
-                    logger.info(f"Đã thêm time_range từ {min_time_str} đến {max_time_str} vào compression_result")
                     logger.info(f"Phạm vi thời gian: {min_time_readable} - {max_time_readable}")
                 
-                logger.info(f"Tạo biểu đồ phân tích với dữ liệu đa chiều")
+                # Tạo biểu đồ sử dụng hàm từ module visualization_analyzer
+                from visualization_analyzer import create_visualizations
+                
+                # Đảm bảo thư mục đầu ra tồn tại
+                if not output_dir:
+                    output_dir = f"visualization_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    
+                if not os.path.exists(output_dir):
+                    os.makedirs(output_dir)
+                
+                logger.info(f"Tạo biểu đồ phân tích với dữ liệu đa chiều trong thư mục: {output_dir}")
                 chart_files = create_visualizations(
                     data=multi_data,
                     compression_result=compression_result, 

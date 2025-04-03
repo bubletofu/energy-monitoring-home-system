@@ -430,8 +430,16 @@ def decompress_data(compression_record):
         for template_id, template_data in templates.items():
             if isinstance(template_data, dict):
                 dimensions.update(template_data.keys())
-                
-        decompressed_results['metadata']['dimensions'] = sorted(list(dimensions)) if dimensions else ['power']
+        
+        # Đảm bảo 'power' là chiều dữ liệu đầu tiên
+        dimensions_list = list(dimensions)
+        if 'power' in dimensions_list:
+            dimensions_list.remove('power')
+            dimensions_list = ['power'] + sorted(dimensions_list)  # Đặt 'power' lên đầu, các chiều khác sắp xếp theo bảng chữ cái
+        else:
+            dimensions_list = sorted(dimensions_list)
+            
+        decompressed_results['metadata']['dimensions'] = dimensions_list if dimensions else ['power']
         
         # Phân phối thời gian cho các block nếu có thông tin thời gian và không có start_time trong block
         time_distribution = None
@@ -489,7 +497,13 @@ def decompress_data(compression_record):
             
             # Thêm thông tin về chiều dữ liệu
             if isinstance(template_data, dict):
-                decompressed_block['dimensions'] = sorted(list(template_data.keys()))
+                block_dimensions = list(template_data.keys())
+                if 'power' in block_dimensions:
+                    block_dimensions.remove('power')
+                    block_dimensions = ['power'] + sorted(block_dimensions)  # Đặt 'power' lên đầu, các chiều khác sắp xếp
+                else:
+                    block_dimensions = sorted(block_dimensions)
+                decompressed_block['dimensions'] = block_dimensions
             else:
                 decompressed_block['dimensions'] = ['power']
             
@@ -823,11 +837,20 @@ def main():
             if target_dimension:
                 if target_dimension not in dimensions:
                     logger.warning(f"Chiều dữ liệu '{target_dimension}' không tồn tại. Chiều dữ liệu có sẵn: {', '.join(dimensions)}")
-                    available_dimension = next(iter(dimensions), 'power')
-                    logger.info(f"Sử dụng chiều dữ liệu '{available_dimension}' mặc định")
-                    target_dimension = available_dimension
+                    # Ưu tiên sử dụng 'power' làm chiều mặc định
+                    if 'power' in dimensions:
+                        target_dimension = 'power'
+                        logger.info(f"Sử dụng chiều dữ liệu 'power' làm mặc định")
+                    else:
+                        available_dimension = next(iter(dimensions), 'power')
+                        logger.info(f"Sử dụng chiều dữ liệu '{available_dimension}' mặc định")
+                        target_dimension = available_dimension
             else:
-                target_dimension = next(iter(dimensions), 'power')
+                # Ưu tiên sử dụng 'power' làm chiều mặc định nếu có
+                if 'power' in dimensions:
+                    target_dimension = 'power'
+                else:
+                    target_dimension = next(iter(dimensions), 'power')
             
             for i, block in enumerate(result_to_use.get('decompressed_data', [])[:display_count]):
                 template_id = block.get('template_id', 'N/A')
@@ -879,13 +902,14 @@ def main():
             if output_file:
                 print(f"\nKết quả đã được lưu vào file: {output_file}")
                 
-            # Hiển thị hướng dẫn bổ sung
-            print("\nGợi ý sử dụng:")
-            print("- Chỉ cần --device-id để tự động lưu kết quả vào file <tên thiết bị>.json")
-            print("- Sử dụng --output để chỉ định tên file khác")
-            print("- Sử dụng --console-only để chỉ hiển thị kết quả trên màn hình, không lưu file")
-            print(f"- Sử dụng --dimension để chỉ định chiều dữ liệu hiển thị (Chiều dữ liệu có sẵn: {', '.join(dimensions)})")
-            print("- Sử dụng --show-time để hiển thị thông tin thời gian chi tiết của các block")
+            # Hiển thị gợi ý bổ sung chỉ khi có lỗi hoặc khi không có dữ liệu
+            if not result_to_use or not result_to_use.get('decompressed_data'):
+                print("\nGợi ý sử dụng:")
+                print("- Chỉ cần --device-id để tự động lưu kết quả vào file <tên thiết bị>.json")
+                print("- Sử dụng --output để chỉ định tên file khác")
+                print("- Sử dụng --console-only để chỉ hiển thị kết quả trên màn hình, không lưu file")
+                print(f"- Sử dụng --dimension để chỉ định chiều dữ liệu hiển thị (Chiều dữ liệu có sẵn: {', '.join(dimensions)})")
+                print("- Sử dụng --show-time để hiển thị thông tin thời gian chi tiết của các block")
             
     except Exception as e:
         logger.error(f"Lỗi khi thực thi script: {str(e)}")
