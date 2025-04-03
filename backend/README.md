@@ -28,13 +28,19 @@ pip install docker-compose==1.29.2
 
 ### Thủ công
 
-4. Cài đặt các thư viện
+4. Thiết lặp database PostGre
+
+Mình dùng port 5433 
+```
+python setup_database.py
+```
+5. Cài đặt các thư viện
 
 ```
 pip install -r requirements.txt
 ```
 
-5. Khởi chạy ứng dụng 
+6. Khởi chạy ứng dụng 
 ```
 uvicorn main:app --reload
 ```
