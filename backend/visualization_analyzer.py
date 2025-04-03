@@ -1039,7 +1039,7 @@ def create_block_size_chart(compression_result, output_dir):
         
         # Nếu không có trong compression_result, thử lấy từ block đầu tiên
         if (min_size == 0 or max_size == 0) and block_size_history:
-            min_size = block_size_history[0].get('min_block_size', 30)  # Giá trị mặc định
+            min_size = block_size_history[0].get('min_block_size', 5)  # Cập nhật giá trị mặc định từ 30 xuống 5
             max_size = block_size_history[0].get('max_block_size', 120)  # Giá trị mặc định
         
         if min_size > 0:

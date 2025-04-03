@@ -27,13 +27,13 @@ class DataCompressor:
             'p_threshold': 0.1,       # Ngưỡng p-value cho KS test
             'max_templates': 100,     # Số lượng template tối đa
             'min_values': 10,         # Số lượng giá trị tối thiểu để xem xét
-            'min_block_size': 20,     # Kích thước block tối thiểu
+            'min_block_size': 5,      # Kích thước block tối thiểu giảm từ 20 xuống 5
             'max_block_size': 120,    # Kích thước block tối đa
             'adaptive_block_size': True, # Tự động điều chỉnh kích thước block
-            'min_blocks_before_adjustment': 5, # Giảm số block tối thiểu trước khi điều chỉnh
+            'min_blocks_before_adjustment': 3, # Giảm số block tối thiểu trước khi điều chỉnh từ 5 xuống 3
             'confidence_level': 0.95, # Mức độ tin cậy
             'pmin': 0.5,              # Xác suất tối thiểu để xem xét block khớp với template
-            'block_size': 30,         # Kích thước block ban đầu nhỏ hơn để khởi động nhanh
+            'block_size': 5,          # Kích thước block ban đầu giảm từ 10 xuống 5
             'w1': 0.6,                # Trọng số cho CER trong cost function
             'w2': 0.4,                # Trọng số cho CR trong cost function
             'max_acceptable_cer': 0.15, # Ngưỡng CER tối đa chấp nhận được
@@ -1107,10 +1107,10 @@ class DataCompressor:
                 
                 # Quyết định điều chỉnh dựa trên điểm số
                 if increase_score > decrease_score + 0.2:  # Ưu tiên tăng từ từ
-                    # Tăng từ từ với hệ số thấp hơn
-                    adjustment_factor = min(0.1, (increase_score - decrease_score) * 0.3)
+                    # Tăng nhanh hơn với hệ số cao hơn
+                    adjustment_factor = min(0.25, (increase_score - decrease_score) * 0.5)
                     nnew = int(nbest * (1 + adjustment_factor))
-                    adjustment_reason = "slow_increase_by_weighted_score"
+                    adjustment_reason = "increase_by_weighted_score"
                 elif decrease_score > increase_score + 0.1:  # Ưu tiên giảm nhanh
                     # Giảm nhanh hơn với hệ số cao hơn
                     adjustment_factor = min(0.3, (decrease_score - increase_score) * 0.6)
@@ -1119,8 +1119,8 @@ class DataCompressor:
                 else:
                     # Điểm số gần nhau -> giữ nguyên hoặc điều chỉnh nhẹ dựa trên xu hướng
                     if hit_ratio_trend > 0.1 and similarity_trend > 0:
-                        nnew = int(nbest * 1.05)  # Tăng nhẹ 5% khi cả hit ratio và độ tương đồng đều tăng
-                        adjustment_reason = "slight_increase_by_trend"
+                        nnew = int(nbest * 1.15)  # Tăng 15% khi cả hit ratio và độ tương đồng đều tăng
+                        adjustment_reason = "moderate_increase_by_trend"
                     elif hit_ratio_trend < -0.1 or similarity_trend < -0.05:
                         nnew = int(nbest * 0.9)  # Giảm 10% khi hit ratio hoặc độ tương đồng giảm
                         adjustment_reason = "moderate_decrease_by_trend"
@@ -1154,8 +1154,14 @@ class DataCompressor:
             
             # Tương tự, nếu đang ở kích thước nhỏ nhất và hit ratio tăng -> tăng dần từ từ
             if nbest == self.config['min_block_size'] and hit_ratio_trend > 0 and similarity_trend > 0:
-                new_block_size = int(nbest * 1.1)  # Tăng 10% (tăng chậm hơn)
-                adjustment_reason = "gradual_increase_from_min_due_to_improving_metrics"
+                new_block_size = int(nbest * 1.3)  # Tăng 30% (tăng nhanh hơn từ kích thước nhỏ nhất)
+                adjustment_reason = "rapid_increase_from_min_due_to_improving_metrics"
+                
+            # Trường hợp đặc biệt: khi block size vẫn ở mức tối thiểu sau một số blocks, tăng kích thước
+            # (giúp tránh bị mắc kẹt ở kích thước nhỏ nhất)
+            if self.blocks_processed > 10 and nbest == self.config['min_block_size']:
+                new_block_size = int(nbest * 1.5)  # Tăng 50% sau 10 blocks nếu vẫn ở mức tối thiểu
+                adjustment_reason = "forced_increase_from_min_to_explore"
             
             # Lưu lịch sử thay đổi với thông tin chi tiết hơn
             self.block_size_history.append({
@@ -1178,7 +1184,7 @@ class DataCompressor:
             logger.info(f"Điều chỉnh kích thước block: {self.current_block_size} -> {new_block_size} "
                       f"(hit ratio: {current_hit_ratio:.2f}, window HR: {recent_hit_ratio:.2f}, "
                       f"CER: {recent_cer:.4f}, Similarity: {recent_similarity:.4f}, "
-                      f"Similarity trend: {similarity_trend:.4f}, "
+                      f"Blocks processed: {self.blocks_processed}, "
                       f"Lý do: {adjustment_reason})")
             
             self.current_block_size = new_block_size
@@ -1214,7 +1220,7 @@ class DataCompressor:
             n = len(data)
             
             if n < self.config['min_block_size']:
-                logger.warning(f"Dữ liệu quá nhỏ để nén: {n} mẫu")
+                logger.warning(f"Dữ liệu quá nhỏ để nén theo blocks: {n} mẫu < {self.config['min_block_size']} (min_block_size)")
                 return {
                     'templates': {},
                     'encoded_stream': [],
@@ -1393,7 +1399,7 @@ class DataCompressor:
         n = len(values)
         
         if n < self.config['min_block_size']:
-            logger.warning(f"Dữ liệu quá nhỏ để nén: {n} giá trị")
+            logger.warning(f"Dữ liệu quá nhỏ để nén theo blocks: {n} giá trị < {self.config['min_block_size']} (min_block_size)")
             return {
                 'templates': {},
                 'encoded_stream': [],

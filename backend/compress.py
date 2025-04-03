@@ -519,7 +519,7 @@ def run_compression(device_id=None, limit=10000, use_optimized=True, save_result
             'device_id': current_device_id,
             'p_threshold': 0.1,  # Ngưỡng xác suất
             'block_size': 40,    # Kích thước block ban đầu
-            'min_block_size': 30,  # Kích thước block tối thiểu
+            'min_block_size': 5,  # Kích thước block tối thiểu
             'max_block_size': 120,  # Kích thước block tối đa
             'adaptive_block_size': True,  # Bật tính năng điều chỉnh kích thước block
             'similarity_threshold': 0.7,  # Ngưỡng tương đồng
