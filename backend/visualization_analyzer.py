@@ -274,11 +274,11 @@ def analyze_compression_ratio(compression_data, output_dir):
     
     # Tạo biểu đồ
     plt.figure(figsize=(10, 6))
-    bars = plt.bar(['Dữ liệu gốc', 'Dữ liệu đã nén'], [original_size, compressed_size], color=['#3498db', '#2ecc71'])
+    bars = plt.bar(['Original Data', 'Compressed Data'], [original_size, compressed_size], color=['#3498db', '#2ecc71'])
     
     # Thêm nhãn
-    plt.title('So sánh kích thước dữ liệu trước và sau khi nén', fontsize=14)
-    plt.ylabel('Kích thước (bytes)', fontsize=12)
+    plt.title('Compare the size of data', fontsize=14)
+    plt.ylabel('Size (bytes)', fontsize=12)
     
     # Thêm giá trị lên đầu thanh
     for bar in bars:
@@ -644,12 +644,12 @@ def analyze_memory_usage(compression_data: Dict[str, Any], output_prefix: str = 
             fig, axs = plt.subplots(1, 2, figsize=(16, 6))
             
             # 1. Biểu đồ so sánh kích thước bytes
-            bars1 = axs[0].bar(["Dữ liệu gốc", "Dữ liệu nén"], 
+            bars1 = axs[0].bar(["Original Data", "Compressed Data"], 
                               [original_size, compressed_size], 
                               color=['blue', 'green'])
             
-            axs[0].set_title("So sánh kích thước dữ liệu (Bytes)")
-            axs[0].set_ylabel("Kích thước (Bytes)")
+            axs[0].set_title("Compare data (Bytes)")
+            axs[0].set_ylabel("Size (Bytes)")
             
             # Thêm số liệu lên biểu đồ
             for bar in bars1:
@@ -1357,39 +1357,58 @@ def create_size_comparison_chart(data, compression_result, output_dir='visualiza
     # Tạo biểu đồ
     plt.figure(figsize=(10, 6))
     
-    # Biểu đồ so sánh kích thước với định dạng đơn vị tự động
-    bars = plt.bar(["Dữ liệu gốc", "Dữ liệu nén"], 
-                  [original_size, compressed_size], 
-                  color=['blue', 'green'],
-                  width=0.6)
+    # Chuẩn bị màu sắc cầu vồng cho dữ liệu gốc
+    rainbow_colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3']  # Đỏ, Cam, Vàng, Lục, Lam, Chàm, Tím
     
-    plt.title(f"So sánh kích thước dữ liệu (từ database){time_info}", fontsize=14)
-    plt.ylabel("Kích thước")
+    # Chia dữ liệu gốc thành 7 phần bằng nhau
+    original_parts = [original_size / 7] * 7
+    
+    # Tạo vị trí cho các cột
+    x = np.array([0, 1])  # Vị trí trục x cho hai cột
+    width = 0.6  # Độ rộng cột
+    
+    # Vẽ 7 phần của dữ liệu gốc với màu sắc cầu vồng
+    bottom = 0
+    for i, (part, color) in enumerate(zip(original_parts, rainbow_colors)):
+        plt.bar(x[0], part, width, bottom=bottom, color=color, edgecolor='white', linewidth=0.5)
+        bottom += part
+    
+    # Vẽ cột dữ liệu nén
+    bar_compressed = plt.bar(x[1], compressed_size, width, color='green')
+    
+    # Đặt nhãn cho trục x
+    plt.xticks(x, ["Original data", "Compressed data"])
+    
+    plt.title(f"Compare data {time_info}", fontsize=14)
+    plt.ylabel("Size")
     plt.grid(axis='y', alpha=0.3)
     
     # Format y-axis with bytes formatter
     plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(format_bytes))
     
     # Add source of size information
-    size_info_text = f"Nguồn dữ liệu: database (pg_column_size)"
+    size_info_text = f"(From database)"
     plt.annotate(size_info_text, xy=(0.05, 0.95), xycoords='axes fraction',
                 ha='left', va='top', fontsize=9, 
                 bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
     
-    # Add compression ratio and detailed size information
-    for i, bar in enumerate(bars):
-        height = bar.get_height()
-        if i == 0:  # Original data
-            label = f"{format_bytes(height, 0)}"
-        else:  # Compressed data
-            label = f"{format_bytes(height, 0)}\n({compression_ratio:.2f}x)"
-        
-        plt.annotate(label,
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3),  # 3 points vertical offset
-                    textcoords="offset points",
-                    ha='center', va='bottom',
-                    fontweight='bold')
+    # Thêm thông tin tỷ lệ nén và kích thước
+    # Chú thích cho dữ liệu gốc
+    plt.annotate(f"{format_bytes(original_size, 0)}",
+                xy=(x[0], original_size),
+                xytext=(0, 5),
+                textcoords="offset points",
+                ha='center', va='bottom',
+                fontweight='bold')
+    
+    # Chú thích cho dữ liệu nén (kèm tỷ lệ nén)
+    plt.annotate(f"{format_bytes(compressed_size, 0)}\n({compression_ratio:.2f}x)",
+                xy=(x[1], compressed_size),
+                xytext=(0, 5),
+                textcoords="offset points",
+                ha='center', va='bottom',
+                fontweight='bold')
+
     
     # Save the chart
     chart_path = os.path.join(output_dir, 'size_comparison.png')
