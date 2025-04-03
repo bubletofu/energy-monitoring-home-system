@@ -12,7 +12,22 @@
 
 1. Cài đặt Docker và Docker Compose
 2. Tạo file `.env` 
+``` bash
+DATABASE_URL=postgresql://postgres:1234@localhost:5433/iot_db
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 
+# config cho Adafruit IO
+ADAFRUIT_IO_USERNAME=
+ADAFRUIT_IO_KEY=
+MQTT_HOST=io.adafruit.com
+MQTT_PORT=8883 
+MQTT_USERNAME=${ADAFRUIT_IO_USERNAME}
+MQTT_PASSWORD=${ADAFRUIT_IO_KEY}
+MQTT_TOPIC=${ADAFRUIT_IO_USERNAME}/feeds/#
+MQTT_SSL=true  # Thêm flag để xác định có sử dụng SSL hay không
+
+```
 3. Chạy hệ thống:
 ```
 # Tạo môi trường ảo mới
