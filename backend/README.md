@@ -28,16 +28,18 @@ pip install docker-compose==1.29.2
 
 ### Thủ công
 
-4. Thiết lặp database PostGre
-
-Mình dùng port 5433 
-```
-python setup_database.py
-```
-5. Cài đặt các thư viện
+4. Cài đặt các thư viện
 
 ```
 pip install -r requirements.txt
+```
+
+5. Thiết lặp database PostGre
+
+Mình dùng port 5433 
+
+```
+python setup_database.py
 ```
 
 6. Khởi chạy ứng dụng 
