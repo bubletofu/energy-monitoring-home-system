@@ -209,19 +209,68 @@ def analyze_compression_ratio(compression_data, output_dir):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         
-    # Lấy các chỉ số cần thiết từ dữ liệu nén
-    total_values = compression_data.get('total_values', 0)
-    templates_count = compression_data.get('templates_count', 0)
-    blocks_processed = compression_data.get('blocks_processed', 0)
-    compression_ratio = compression_data.get('compression_ratio', 0)
+    # Lấy thông tin từ compression_data
+    device_id = compression_data.get('device_id')
+    compression_id = compression_data.get('id')
+    total_values = compression_data.get('metadata', {}).get('total_values', 0)
+    templates_count = len(compression_data.get('templates', {}))
+    blocks_processed = len(compression_data.get('encoded_stream', []))
+    compression_ratio = compression_data.get('metadata', {}).get('compression_ratio', 0)
     
-    if not total_values or not compression_ratio:
-        logger.warning("Không có đủ dữ liệu để phân tích tỷ lệ nén")
+    if not compression_id or not device_id:
+        logger.warning("Không có thông tin compression_id hoặc device_id, không thể phân tích tỷ lệ nén từ database")
         return
         
-    # Tính toán kích thước
-    original_size = total_values
-    compressed_size = original_size / compression_ratio if compression_ratio else 0
+    # Kết nối đến database để lấy kích thước thực tế
+    engine = get_database_connection()
+    if not engine:
+        logger.error("Không thể kết nối đến database")
+        return
+    
+    try:
+        # Lấy kích thước dữ liệu nén từ bảng compressed_data_optimized
+        query_compressed = """
+        SELECT 
+            pg_column_size(templates) as templates_size,
+            pg_column_size(encoded_stream) as encoded_size,
+            pg_column_size(compression_metadata) as metadata_size
+        FROM compressed_data_optimized
+        WHERE id = :compression_id
+        """
+        
+        # Lấy kích thước dữ liệu gốc từ bảng original_samples
+        query_original = """
+        SELECT 
+            SUM(pg_column_size(original_data)) as original_size
+        FROM original_samples
+        WHERE device_id = :device_id
+        """
+        
+        with engine.connect() as conn:
+            # Lấy kích thước dữ liệu nén
+            result_compressed = conn.execute(text(query_compressed), {"compression_id": compression_id})
+            row_compressed = result_compressed.fetchone()
+            
+            # Lấy kích thước dữ liệu gốc
+            result_original = conn.execute(text(query_original), {"device_id": device_id})
+            row_original = result_original.fetchone()
+            
+            if not row_compressed or not row_original:
+                logger.error("Không thể lấy thông tin kích thước từ database")
+                return
+                
+            templates_size = row_compressed[0] or 0
+            encoded_size = row_compressed[1] or 0
+            metadata_size = row_compressed[2] or 0
+            compressed_size = templates_size + encoded_size + metadata_size
+            
+            original_size = row_original[0] or 0
+            
+            # Tính toán tỷ lệ nén thực tế từ database
+            real_compression_ratio = original_size / compressed_size if compressed_size > 0 else 1.0
+    except Exception as e:
+        logger.error(f"Lỗi khi truy vấn kích thước từ database: {str(e)}")
+        return
     
     # Tạo biểu đồ
     plt.figure(figsize=(10, 6))
@@ -229,7 +278,7 @@ def analyze_compression_ratio(compression_data, output_dir):
     
     # Thêm nhãn
     plt.title('So sánh kích thước dữ liệu trước và sau khi nén', fontsize=14)
-    plt.ylabel('Kích thước (số giá trị)', fontsize=12)
+    plt.ylabel('Kích thước (bytes)', fontsize=12)
     
     # Thêm giá trị lên đầu thanh
     for bar in bars:
@@ -239,10 +288,13 @@ def analyze_compression_ratio(compression_data, output_dir):
     
     # Thêm thông tin tỷ lệ nén
     textstr = f"""
-    Tỷ lệ nén: {compression_ratio:.2f}x
+    Tỷ lệ nén thực tế: {real_compression_ratio:.2f}x
+    Tỷ lệ nén báo cáo: {compression_ratio:.2f}x
     Tổng số giá trị: {total_values}
-    Số mẫu: {templates_count}
+    Số templates: {templates_count}
     Số block: {blocks_processed}
+    Kích thước dữ liệu gốc: {original_size/1024:.2f} KB
+    Kích thước dữ liệu nén: {compressed_size/1024:.2f} KB
     """
     
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
@@ -251,8 +303,7 @@ def analyze_compression_ratio(compression_data, output_dir):
     
     # Lưu biểu đồ
     output_file = os.path.join(output_dir, 'compression_ratio.png')
-    plt.tight_layout()
-    plt.savefig(output_file)
+    plt.savefig(output_file, bbox_inches='tight')
     plt.close()
     
     logger.info(f"Đã tạo biểu đồ phân tích tỷ lệ nén: {output_file}")
@@ -515,80 +566,142 @@ def analyze_parameter_adjustments(compression_data: Dict[str, Any], output_prefi
 
 def analyze_memory_usage(compression_data: Dict[str, Any], output_prefix: str = None):
     """
-    Phân tích và tạo biểu đồ sử dụng bộ nhớ
+    Phân tích sử dụng bộ nhớ của dữ liệu nén, lấy kích thước trực tiếp từ database.
     
     Args:
-        compression_data: Dict chứa dữ liệu nén
-        output_prefix: Tiền tố cho tên file biểu đồ
+        compression_data: Dữ liệu nén từ database
+        output_prefix: Tiền tố cho tên file đầu ra
     """
-    # Lấy dữ liệu nén đã xử lý
-    compressed_data_field = compression_data.get("compressed_data", {})
-    if isinstance(compressed_data_field, str):
-        try:
-            compressed_data = json.loads(compressed_data_field)
-        except json.JSONDecodeError:
-            logger.error("Lỗi giải mã JSON từ trường compressed_data")
-            return
-    else:
-        compressed_data = compressed_data_field
+    try:
+        # Lấy thông tin từ compression_data
+        compression_id = compression_data.get('id')
+        device_id = compression_data.get('device_id')
         
-    # Tính kích thước của dữ liệu gốc và dữ liệu nén
-    # Sử dụng cơ chế ước tính nếu không có thông tin chính xác
-    total_values = compression_data.get("total_values", 0)
-    compression_ratio = compression_data.get("compression_ratio", 1.0)
-    
-    # Ước tính kích thước (giả định mỗi giá trị là 8 bytes)
-    bytes_per_value = 8
-    original_size = total_values * bytes_per_value
-    compressed_size = original_size / compression_ratio if compression_ratio else original_size
-    
-    # Chuyển đổi sang KB và MB
-    original_kb = original_size / 1024
-    compressed_kb = compressed_size / 1024
-    
-    original_mb = original_kb / 1024
-    compressed_mb = compressed_kb / 1024
-    
-    # Tạo biểu đồ
-    fig, axs = plt.subplots(1, 2, figsize=(16, 6))
-    
-    # 1. Biểu đồ so sánh kích thước bytes
-    bars1 = axs[0].bar(["Dữ liệu gốc", "Dữ liệu nén"], 
-                      [original_size, compressed_size], 
-                      color=['blue', 'green'])
-    
-    axs[0].set_title("So sánh kích thước dữ liệu (Bytes)")
-    axs[0].set_ylabel("Kích thước (Bytes)")
-    
-    # Thêm số liệu lên biểu đồ
-    for bar in bars1:
-        height = bar.get_height()
-        axs[0].text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                  f'{height:.0f}',
-                  ha='center', va='bottom', fontweight='bold')
-    
-    # 2. Biểu đồ so sánh kích thước MB
-    bars2 = axs[1].bar(["Dữ liệu gốc", "Dữ liệu nén"], 
-                      [original_mb, compressed_mb], 
-                      color=['blue', 'green'])
-    
-    axs[1].set_title("So sánh kích thước dữ liệu (MB)")
-    axs[1].set_ylabel("Kích thước (MB)")
-    
-    # Thêm số liệu lên biểu đồ
-    for bar in bars2:
-        height = bar.get_height()
-        axs[1].text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                  f'{height:.4f}',
-                  ha='center', va='bottom', fontweight='bold')
-    
-    plt.tight_layout()
-    
-    # Lưu biểu đồ
-    if output_prefix:
-        plt.savefig(f"{output_prefix}_memory_usage.png", bbox_inches='tight', dpi=300)
-    
-    plt.close()
+        if not compression_id or not device_id:
+            logger.error("Không tìm thấy compression_id hoặc device_id")
+            return
+            
+        # Kết nối đến database
+        engine = get_database_connection()
+        if not engine:
+            logger.error("Không thể kết nối đến database")
+            return
+            
+        # Lấy kích thước dữ liệu nén từ bảng compressed_data_optimized
+        query_compressed = """
+        SELECT 
+            pg_column_size(templates) as templates_size,
+            pg_column_size(encoded_stream) as encoded_size,
+            pg_column_size(compression_metadata) as metadata_size
+        FROM compressed_data_optimized
+        WHERE id = :compression_id
+        """
+        
+        # Lấy kích thước dữ liệu gốc từ bảng original_samples
+        query_original = """
+        SELECT 
+            SUM(pg_column_size(original_data)) as original_size
+        FROM original_samples
+        WHERE device_id = :device_id
+        """
+        
+        # Thực hiện truy vấn
+        with engine.connect() as conn:
+            # Lấy kích thước dữ liệu nén
+            result_compressed = conn.execute(text(query_compressed), {"compression_id": compression_id})
+            row_compressed = result_compressed.fetchone()
+            
+            if not row_compressed:
+                logger.error(f"Không tìm thấy dữ liệu nén cho compression_id: {compression_id}")
+                return
+                
+            templates_size = row_compressed[0] or 0
+            encoded_size = row_compressed[1] or 0
+            metadata_size = row_compressed[2] or 0
+            compressed_size = templates_size + encoded_size + metadata_size
+            
+            # Lấy kích thước dữ liệu gốc
+            result_original = conn.execute(text(query_original), {"device_id": device_id})
+            row_original = result_original.fetchone()
+            
+            if not row_original:
+                logger.error(f"Không tìm thấy dữ liệu gốc cho device_id: {device_id}")
+                return
+                
+            original_size = row_original[0] or 0
+            
+            # Tính tỷ lệ nén thực tế từ database
+            compression_ratio = original_size / compressed_size if compressed_size > 0 else 1.0
+            
+            # Chuyển đổi sang KB và MB
+            original_kb = original_size / 1024
+            compressed_kb = compressed_size / 1024
+            
+            original_mb = original_kb / 1024
+            compressed_mb = compressed_kb / 1024
+            
+            # Tạo biểu đồ
+            fig, axs = plt.subplots(1, 2, figsize=(16, 6))
+            
+            # 1. Biểu đồ so sánh kích thước bytes
+            bars1 = axs[0].bar(["Dữ liệu gốc", "Dữ liệu nén"], 
+                              [original_size, compressed_size], 
+                              color=['blue', 'green'])
+            
+            axs[0].set_title("So sánh kích thước dữ liệu (Bytes)")
+            axs[0].set_ylabel("Kích thước (Bytes)")
+            
+            # Thêm số liệu lên biểu đồ
+            for bar in bars1:
+                height = bar.get_height()
+                axs[0].text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                          f'{height:.0f}',
+                          ha='center', va='bottom', fontweight='bold')
+            
+            # 2. Biểu đồ so sánh kích thước MB
+            bars2 = axs[1].bar(["Dữ liệu gốc", "Dữ liệu nén"], 
+                              [original_mb, compressed_mb], 
+                              color=['blue', 'green'])
+            
+            axs[1].set_title("So sánh kích thước dữ liệu (MB)")
+            axs[1].set_ylabel("Kích thước (MB)")
+            
+            # Thêm số liệu lên biểu đồ
+            for bar in bars2:
+                height = bar.get_height()
+                axs[1].text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                          f'{height:.2f}',
+                          ha='center', va='bottom', fontweight='bold')
+            
+            # Thêm thông tin chi tiết về kích thước
+            details_text = f"""
+            Chi tiết kích thước:
+            - Templates: {templates_size/1024:.2f} KB
+            - Encoded Stream: {encoded_size/1024:.2f} KB
+            - Metadata: {metadata_size/1024:.2f} KB
+            - Tổng kích thước nén: {compressed_kb:.2f} KB
+            - Tổng kích thước gốc: {original_kb:.2f} KB
+            - Tỷ lệ nén thực tế: {compression_ratio:.2f}x
+            """
+            
+            plt.figtext(0.02, 0.02, details_text, fontsize=10, va='bottom')
+            
+            # Lưu biểu đồ
+            if output_prefix:
+                output_file = f"{output_prefix}_memory_usage.png"
+            else:
+                output_file = "memory_usage.png"
+                
+            plt.tight_layout()
+            plt.savefig(output_file)
+            plt.close()
+            
+            logger.info(f"Đã tạo biểu đồ phân tích sử dụng bộ nhớ: {output_file}")
+            
+    except Exception as e:
+        logger.error(f"Lỗi khi phân tích sử dụng bộ nhớ: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 def create_summary_chart(compression_data: Dict[str, Any], output_prefix: str = None):
     """
@@ -1177,21 +1290,21 @@ def create_block_size_chart(compression_result, output_dir):
 
 def create_size_comparison_chart(data, compression_result, output_dir='visualization', database_size_info=None):
     """
-    Create size comparison chart between original and compressed data
+    Tạo biểu đồ so sánh kích thước giữa dữ liệu gốc và dữ liệu nén dựa trên thông tin từ database
     
     Args:
-        data: Original data
-        compression_result: Compression result
-        output_dir: Output directory
-        database_size_info: Size information from database (if available)
+        data: Dữ liệu gốc (sử dụng cho tên file nếu không có device_id)
+        compression_result: Kết quả nén (dùng để lấy device_id và compression_id)
+        output_dir: Thư mục đầu ra
+        database_size_info: Thông tin kích thước từ database (nếu đã có)
     
     Returns:
-        str: Path to the created chart
+        str: Đường dẫn đến biểu đồ đã tạo hoặc None nếu không thể tạo biểu đồ
     """
-    # Create output directory if it doesn't exist
+    # Tạo thư mục đầu ra nếu chưa tồn tại
     os.makedirs(output_dir, exist_ok=True)
     
-    # Format bytes for display
+    # Hàm định dạng bytes cho hiển thị
     def format_bytes(bytes, pos):
         if bytes < 1024:
             return f"{bytes:.0f} B"
@@ -1202,101 +1315,90 @@ def create_size_comparison_chart(data, compression_result, output_dir='visualiza
         else:
             return f"{bytes/1024**3:.1f} GB"
     
-    # Use size information from database if available, otherwise use estimates
-    if database_size_info and 'original_size_bytes' in database_size_info and 'compressed_size_bytes' in database_size_info:
-        # Use actual size from database
-        original_size = database_size_info['original_size_bytes']
-        compressed_size = database_size_info['compressed_size_bytes']
-        compression_ratio = database_size_info['compression_ratio']
-        size_source = "database"
-        row_count = database_size_info.get('row_count', 0)
-        
-        logger.info(f"Using size from database: Original={original_size/1024:.2f}KB ({row_count} rows), Compressed={compressed_size/1024:.2f}KB, Ratio={compression_ratio:.2f}x")
+    # Nếu đã có thông tin kích thước từ database, sử dụng nó
+    if database_size_info:
+        original_size = database_size_info.get('original_size_bytes', 0)
+        compressed_size = database_size_info.get('compressed_size_bytes', 0)
+        compression_ratio = database_size_info.get('compression_ratio', 1.0)
+        logger.info(f"Sử dụng kích thước từ database: Original={original_size/1024:.2f}KB, Compressed={compressed_size/1024:.2f}KB, Ratio={compression_ratio:.2f}x")
     else:
-        # Không hiển thị thông báo cảnh báo nữa, chỉ ghi log ở cấp độ DEBUG
-        logger.debug("Sử dụng kích thước ước tính vì không thể lấy được từ database")
+        # Nếu không có thông tin từ database, lấy từ database
+        device_id = compression_result.get('device_id')
+        compression_id = compression_result.get('compression_id')
         
-        # Use estimated size from compression algorithm
-        # Check if new estimated fields exist
-        if 'estimated_original_size' in compression_result and 'estimated_compressed_size' in compression_result:
-            original_size = compression_result['estimated_original_size']
-            compressed_size = compression_result['estimated_compressed_size']
-            compression_ratio = compression_result['estimated_compression_ratio']
-        else:
-            # Use old estimation method
-            n = len(data)
-            bytes_per_value = 8  # 8 bytes per float value
+        if not device_id or not compression_id:
+            logger.error("Không có device_id hoặc compression_id, không thể lấy kích thước từ database")
+            return None
+        
+        # Kết nối đến database
+        engine = get_database_connection()
+        if not engine:
+            logger.error("Không thể kết nối đến database")
+            return None
+        
+        # Lấy kích thước từ database
+        database_info = get_data_size_from_database(compression_id, device_id)
+        if not database_info:
+            logger.error("Không thể lấy thông tin kích thước từ database")
+            return None
             
-            # Estimate original size based on data dimensions
-            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-                # Multi-dimensional data
-                dimensions = compression_result.get('dimensions', list(data[0].keys()))
-                total_values = n * len(dimensions)
-            else:
-                # One-dimensional data
-                total_values = n
-                
-            original_size = total_values * bytes_per_value
-            compression_ratio = compression_result.get('compression_ratio', 1.0)
-            compressed_size = original_size / compression_ratio if compression_ratio else original_size
-        
-        size_source = "estimate"
-        logger.info(f"Using estimated size: Original={original_size/1024:.2f}KB, Compressed={compressed_size/1024:.2f}KB, Ratio={compression_ratio:.2f}x")
+        original_size = database_info.get('original_size_bytes', 0)
+        compressed_size = database_info.get('compressed_size_bytes', 0)
+        compression_ratio = database_info.get('compression_ratio', 1.0)
     
-    # Get time information
+    # Kiểm tra nếu không có dữ liệu hợp lệ
+    if original_size <= 0 or compressed_size <= 0:
+        logger.error(f"Dữ liệu kích thước không hợp lệ: Original={original_size}, Compressed={compressed_size}")
+        return None
+    
+    # Lấy thông tin thời gian
     time_info = extract_time_info(compression_result)
     
-    # Create chart
+    # Tạo biểu đồ
     plt.figure(figsize=(10, 6))
     
-    # Size comparison chart with automatic unit formatting
-    bars = plt.bar(["Original Data", "Compressed Data"], 
+    # Biểu đồ so sánh kích thước với định dạng đơn vị tự động
+    bars = plt.bar(["Dữ liệu gốc", "Dữ liệu nén"], 
                   [original_size, compressed_size], 
                   color=['blue', 'green'],
                   width=0.6)
     
-    plt.title(f"Data Size Comparison{time_info}", fontsize=14)
-    plt.ylabel("Size")
+    plt.title(f"So sánh kích thước dữ liệu (từ database){time_info}", fontsize=14)
+    plt.ylabel("Kích thước")
     plt.grid(axis='y', alpha=0.3)
     
-    # Add labels with automatic unit formatting
-    for bar in bars:
+    # Format y-axis with bytes formatter
+    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(format_bytes))
+    
+    # Add source of size information
+    size_info_text = f"Nguồn dữ liệu: database (pg_column_size)"
+    plt.annotate(size_info_text, xy=(0.05, 0.95), xycoords='axes fraction',
+                ha='left', va='top', fontsize=9, 
+                bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
+    
+    # Add compression ratio and detailed size information
+    for i, bar in enumerate(bars):
         height = bar.get_height()
-        if height >= 1024*1024:  # > 1MB
-            formatted = f"{height/(1024*1024):.2f} MB"
-        elif height >= 1024:  # > 1KB
-            formatted = f"{height/1024:.2f} KB"
-        else:
-            formatted = f"{height:.0f} bytes"
-            
-        plt.text(bar.get_x() + bar.get_width()/2., height + (original_size * 0.01),
-                formatted,
-                ha='center', va='bottom', fontweight='bold')
+        if i == 0:  # Original data
+            label = f"{format_bytes(height, 0)}"
+        else:  # Compressed data
+            label = f"{format_bytes(height, 0)}\n({compression_ratio:.2f}x)"
+        
+        plt.annotate(label,
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom',
+                    fontweight='bold')
     
-    # Add compression ratio information
-    plt.text(0.5, 0.92, f"Compression Ratio: {compression_ratio:.2f}x", 
-             transform=plt.gca().transAxes, ha='center', 
-             bbox=dict(facecolor='white', alpha=0.8),
-             fontsize=12)
-    
-    # Format y-axis
-    plt.gca().yaxis.set_major_formatter(FuncFormatter(format_bytes))
-    
-    # Add source note
-    if size_source == "database":
-        note = "Size calculated directly from database (pg_column_size)"
-    else:
-        note = "Size estimated (8 bytes per float value)"
-    
-    plt.figtext(0.5, 0.01, note, ha='center', fontsize=10, style='italic')
-    
-    # Save chart
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    output_file = os.path.join(output_dir, 'size_comparison.png')
-    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    # Save the chart
+    chart_path = os.path.join(output_dir, 'size_comparison.png')
+    plt.tight_layout()
+    plt.savefig(chart_path, dpi=300)
     plt.close()
     
-    return output_file
+    logger.info(f"Đã tạo biểu đồ so sánh kích thước tại: {chart_path}")
+    return chart_path
 
 def get_data_size_from_database(compression_id=None, device_id=None):
     """
@@ -1344,9 +1446,7 @@ def get_data_size_from_database(compression_id=None, device_id=None):
                 id,
                 pg_column_size(templates) as templates_size,
                 pg_column_size(encoded_stream) as encoded_size,
-                pg_column_size(compression_metadata) as metadata_size,
-                pg_column_size(compressed_data_optimized) as total_row_size,
-                compression_metadata
+                pg_column_size(compression_metadata) as metadata_size
             FROM compressed_data_optimized 
             WHERE device_id = :device_id
             """
@@ -1356,108 +1456,74 @@ def get_data_size_from_database(compression_id=None, device_id=None):
                 query_compressed += " AND id = :compression_id"
                 params = {"device_id": device_id, "compression_id": compression_id}
             else:
-                # Lấy bản ghi nén mới nhất
+                # Lấy bản ghi mới nhất
                 query_compressed += " ORDER BY timestamp DESC LIMIT 1"
                 params = {"device_id": device_id}
-            
+                
             result_compressed = conn.execute(text(query_compressed), params).fetchone()
             
-            if not result_compressed or not result_compressed[0]:
-                logger.error(f"Không tìm thấy dữ liệu nén cho device_id: {device_id}" +
-                             (f" và compression_id: {compression_id}" if compression_id else ""))
+            if not result_compressed:
+                logger.error(f"Không tìm thấy bản ghi nén cho device_id: {device_id}")
                 return None
-            
-            # Lấy thông tin metadata
-            selected_compression_id = result_compressed[0]
+                
+            compression_id = result_compressed[0]
             templates_size = result_compressed[1] or 0
             encoded_size = result_compressed[2] or 0
             metadata_size = result_compressed[3] or 0
-            total_row_size = result_compressed[4] or 0
-            compression_metadata = result_compressed[5] or {}
-
-            # Chuyển đổi JSON metadata nếu cần
-            if isinstance(compression_metadata, str):
-                try:
-                    import json
-                    compression_metadata = json.loads(compression_metadata)
-                except Exception as e:
-                    logger.warning(f"Không thể chuyển đổi compression_metadata: {e}")
-                    compression_metadata = {}
             
-            # 3. Lấy kích thước dữ liệu gốc từ bảng original_samples
-            original_size_bytes = 0
-            row_count = 0
-            
+            # 3. Lấy kích thước dữ liệu gốc từ original_samples
             query_original = """
             SELECT 
-                SUM(pg_column_size(original_data)) as data_size,
-                COUNT(*) as row_count
+                COUNT(*) as row_count,
+                SUM(pg_column_size(original_data)) as original_size
             FROM original_samples 
             WHERE device_id = :device_id
             """
             
             result_original = conn.execute(text(query_original), {"device_id": device_id}).fetchone()
             
-            # Xử lý khi không tìm thấy dữ liệu gốc
-            if not result_original or not result_original[0]:
-                logger.warning(f"Không tìm thấy dữ liệu gốc cho device_id: {device_id}")
+            if not result_original or not result_original[1]:
+                logger.error(f"Không tìm thấy dữ liệu gốc cho device_id: {device_id}")
+                return None
                 
-                # Nếu không có dữ liệu gốc, ước tính từ metadata
-                logger.info("Ước tính kích thước dữ liệu gốc từ metadata...")
-                
-                # Dùng thông tin từ metadata để ước tính
-                total_values = compression_metadata.get('total_values', 0)
-                bytes_per_value = 8  # 8 bytes per float value
-                
-                # Tạo kết quả giả lập
-                original_size_bytes = total_values * bytes_per_value
-                row_count = compression_metadata.get('num_records', 0)
-                
-                logger.info(f"Ước tính kích thước dữ liệu gốc: {original_size_bytes} bytes từ {total_values} giá trị")
-            else:
-                original_size_bytes = result_original[0] or 0
-                row_count = result_original[1] or 0
-                logger.info(f"Đã lấy kích thước dữ liệu gốc: {original_size_bytes} bytes từ {row_count} bản ghi")
+            row_count = result_original[0] or 0
+            original_size = result_original[1] or 0
             
-            # Tính kích thước nén
-            compressed_size_bytes = templates_size + encoded_size + metadata_size
+            # Tính tổng kích thước nén
+            compressed_size = templates_size + encoded_size + metadata_size
             
-            # Đảm bảo không có giá trị 0 gây lỗi khi tính tỷ lệ
-            if original_size_bytes <= 0:
-                logger.warning(f"Kích thước dữ liệu gốc là 0, sử dụng giá trị mặc định")
-                original_size_bytes = 1
-            if compressed_size_bytes <= 0:
-                logger.warning(f"Kích thước dữ liệu nén là 0, sử dụng giá trị mặc định")
-                compressed_size_bytes = 1
-                
-            # Tính tỷ lệ nén
-            compression_ratio = original_size_bytes / compressed_size_bytes
+            # Tính tỷ lệ nén thực tế
+            compression_ratio = original_size / max(1, compressed_size)
             
-            # Ghi log thông tin
-            logger.info(f"Kích thước từ database - ID: {selected_compression_id}, Device ID: {device_id}")
-            logger.info(f"  Gốc: {original_size_bytes} bytes ({original_size_bytes/1024:.2f} KB) từ {row_count} dòng")
-            logger.info(f"  Nén: {compressed_size_bytes} bytes ({compressed_size_bytes/1024:.2f} KB)")
-            logger.info(f"  Templates: {templates_size} bytes, Encoded stream: {encoded_size} bytes, Metadata: {metadata_size} bytes")
-            logger.info(f"  Tỷ lệ nén: {compression_ratio:.2f}x")
-            
-            return {
-                'compression_id': selected_compression_id,
-                'original_size_bytes': original_size_bytes,
-                'compressed_size_bytes': compressed_size_bytes,
+            # Tạo kết quả
+            result = {
+                'compression_id': compression_id,
+                'device_id': device_id,
+                'original_size_bytes': original_size,
+                'compressed_size_bytes': compressed_size,
                 'compression_ratio': compression_ratio,
+                'row_count': row_count,
                 'templates_size': templates_size,
                 'encoded_size': encoded_size,
-                'metadata_size': metadata_size,
-                'row_count': row_count,
-                'device_id': device_id
+                'metadata_size': metadata_size
             }
+            
+            logger.info(f"""
+            Kích thước dữ liệu từ database:
+            - Device ID: {device_id}
+            - Compression ID: {compression_id}
+            - Kích thước gốc: {original_size/1024:.2f} KB ({row_count} hàng)
+            - Kích thước nén: {compressed_size/1024:.2f} KB (templates: {templates_size/1024:.2f} KB, encoded: {encoded_size/1024:.2f} KB, metadata: {metadata_size/1024:.2f} KB)
+            - Tỷ lệ nén: {compression_ratio:.2f}x
+            """)
+            
+            return result
+            
     except Exception as e:
-        logger.error(f"Lỗi khi truy vấn kích thước từ database: {str(e)}")
+        logger.error(f"Lỗi khi truy vấn kích thước dữ liệu từ database: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
-        
-    # Trả về None nếu có lỗi
-    return None
+        return None
 
 def create_visualizations(data, compression_result, output_dir='visualization', max_points=5000, sampling_method='adaptive', num_chunks=0, time_info=None, compression_id=None, device_id=None):
     """

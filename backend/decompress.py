@@ -726,7 +726,10 @@ def main():
                 
                 # Hiển thị các phạm vi thời gian của tất cả các bản ghi
                 if time_ranges:
-                    combined_results['metadata']['time_ranges'] = time_ranges
+                    # Loại bỏ các phạm vi thời gian trùng lặp
+                    unique_time_ranges = list(set(time_ranges))
+                    if len(unique_time_ranges) > 1:
+                        combined_results['metadata']['time_ranges'] = unique_time_ranges
                     
                     # Nỗ lực tìm phạm vi thời gian tổng hợp nếu có thể
                     try:
