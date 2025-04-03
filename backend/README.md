@@ -8,9 +8,7 @@
 
 ## Cài đặt và Sử dụng
 
-### Sử dụng Docker (Khuyến nghị)
-
-1. Cài đặt Docker và Docker Compose
+1. Cài đặt Docker và Docker Compose (Khuyến nghị & tuỳ chọn) 
 2. Tạo file `.env` 
 ``` bash
 DATABASE_URL=postgresql://postgres:1234@localhost:5433/iot_db
