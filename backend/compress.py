@@ -220,8 +220,8 @@ def fetch_original_data(engine, limit=1000, device_id=None):
             query += " WHERE device_id = :device_id"
             params['device_id'] = device_id
             
-        # Thêm limit và sắp xếp
-        query += " ORDER BY timestamp ASC LIMIT :limit"
+        # Thêm limit và sắp xếp theo thời gian giảm dần (mới nhất trước)
+        query += " ORDER BY timestamp DESC LIMIT :limit"
         params['limit'] = limit
         
         # Thực hiện truy vấn
@@ -236,6 +236,9 @@ def fetch_original_data(engine, limit=1000, device_id=None):
                     'timestamp': row[3]
                 }
                 records.append(record)
+        
+        # Đảo ngược lại danh sách để có thứ tự tăng dần theo thời gian khi xử lý
+        records.reverse()
                 
         logger.info(f"Đã lấy {len(records)} bản ghi từ bảng original_samples")
         return records
@@ -680,10 +683,19 @@ def run_compression(device_id=None, limit=10000, use_optimized=True, save_result
                 
                 # Thêm thông tin time_range vào compression_result cho biểu đồ
                 if timestamps and len(timestamps) > 0:
-                    min_time = min(timestamps).isoformat()
-                    max_time = max(timestamps).isoformat()
-                    compression_result['time_range'] = f"[{min_time},{max_time}]"
-                    logger.info(f"Đã thêm time_range từ {min_time} đến {max_time} vào compression_result")
+                    min_time = min(timestamps)
+                    max_time = max(timestamps)
+                    
+                    # Định dạng thời gian với định dạng rõ ràng hơn
+                    min_time_str = min_time.strftime("%Y-%m-%dT%H:%M:%S")
+                    max_time_str = max_time.strftime("%Y-%m-%dT%H:%M:%S")
+                    compression_result['time_range'] = f"[{min_time_str},{max_time_str}]"
+                    
+                    # Thêm thông tin cho log dưới dạng dễ đọc
+                    min_time_readable = min_time.strftime("%d/%m/%Y %H:%M")
+                    max_time_readable = max_time.strftime("%d/%m/%Y %H:%M")
+                    logger.info(f"Đã thêm time_range từ {min_time_str} đến {max_time_str} vào compression_result")
+                    logger.info(f"Phạm vi thời gian: {min_time_readable} - {max_time_readable}")
                 
                 logger.info(f"Tạo biểu đồ phân tích với dữ liệu đa chiều")
                 chart_files = create_visualizations(

@@ -1518,13 +1518,38 @@ def extract_time_info(compression_result):
             if len(time_parts) == 2:
                 start_time = time_parts[0].strip('"\'')
                 end_time = time_parts[1].strip('"\'')
-                time_info = f" - Từ {start_time} đến {end_time}"
+                
+                # Thử chuyển đổi thành đối tượng datetime để định dạng ngày tháng đẹp hơn
+                try:
+                    from datetime import datetime
+                    from dateutil import parser
+                    
+                    # Phân tích chuỗi thời gian
+                    start_datetime = parser.parse(start_time)
+                    end_datetime = parser.parse(end_time)
+                    
+                    # Định dạng lại để hiển thị
+                    start_formatted = start_datetime.strftime("%d/%m/%Y %H:%M")
+                    end_formatted = end_datetime.strftime("%d/%m/%Y %H:%M")
+                    
+                    time_info = f" - Từ {start_formatted} đến {end_formatted}"
+                except:
+                    # Nếu có lỗi, vẫn sử dụng chuỗi gốc
+                    time_info = f" - Từ {start_time} đến {end_time}"
+            else:
+                time_info = f" - Phạm vi thời gian: {time_range}"
         else:
             # Nếu time_range là một đối tượng có thuộc tính lower và upper
             try:
                 if hasattr(time_range, 'lower') and hasattr(time_range, 'upper'):
-                    start_time = time_range.lower.isoformat() if time_range.lower else "N/A"
-                    end_time = time_range.upper.isoformat() if time_range.upper else "N/A"
+                    # Thử chuyển đổi thành đối tượng datetime để định dạng ngày tháng đẹp hơn
+                    try:
+                        start_time = time_range.lower.strftime("%d/%m/%Y %H:%M") if time_range.lower else "N/A"
+                        end_time = time_range.upper.strftime("%d/%m/%Y %H:%M") if time_range.upper else "N/A"
+                    except:
+                        start_time = time_range.lower.isoformat() if time_range.lower else "N/A"
+                        end_time = time_range.upper.isoformat() if time_range.upper else "N/A"
+                    
                     time_info = f" - Từ {start_time} đến {end_time}"
             except:
                 # Sử dụng chuỗi hoặc đối tượng nguyên bản nếu không thể trích xuất
