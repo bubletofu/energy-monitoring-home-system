@@ -87,14 +87,14 @@ Mặc định sẽ lấy dữ liệu của ngày hiện tại.
 ### Lấy dữ liệu theo ngày cụ thể:
 
 ```
-python fetch_adafruit_data_manual.py --date 2023-03-30
+python fetch.py --date 2023-03-30
 ```
 
 
 ### Giới hạn số lượng bản ghi:
 
 ```
-python fetch_adafruit_data_manual.py --date 2023-11-20 --limit 100
+python fetch.py --date 2023-11-20 --limit 100
 ```
 
   
@@ -102,7 +102,7 @@ python fetch_adafruit_data_manual.py --date 2023-11-20 --limit 100
 ### Nếu gặp lỗi, thử ép buộc tải lại dữ liệu:
 
 ```
-python fetch_adafruit_data_manual.py --date 2025-03-30 --force-reload
+python fetch.py --date 2025-03-30 --force-reload
 ```
 
 ## Công cụ nén và giải nén dữ liệu (Data Compression) 
