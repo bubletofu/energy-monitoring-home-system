@@ -20,7 +20,7 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 import requests
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from typing import List, Dict, Any, Optional
@@ -101,8 +101,11 @@ class AdafruitIOManualFetcher:
         try:
             db = self.SessionLocal()
             
-            # Kiểm tra xem bảng devices có tồn tại không
-            if not self.engine.dialect.has_table(self.engine, "devices"):
+            # Kiểm tra xem bảng devices có tồn tại không bằng cách sử dụng inspect
+            inspector = inspect(self.engine)
+            has_devices_table = inspector.has_table("devices")
+            
+            if not has_devices_table:
                 # Nếu không có bảng devices, tạo bản ghi trực tiếp trong SensorData
                 logger.warning("Bảng devices không tồn tại, lưu trực tiếp vào SensorData")
                 db.close()
@@ -110,16 +113,23 @@ class AdafruitIOManualFetcher:
                 
             # Nếu có bảng devices, kiểm tra và tạo thiết bị nếu cần
             from sqlalchemy import text
-            result = db.execute(text(f"SELECT id FROM devices WHERE device_id = '{device_id}'")).fetchone()
+            result = db.execute(text(f"SELECT id FROM devices WHERE device_id = :device_id"), 
+                               {"device_id": device_id}).fetchone()
             
             if not result:
                 # Tạo thiết bị mới
-                db.execute(text(f"""
+                db.execute(text("""
                     INSERT INTO devices (device_id, name, description, created_at) 
-                    VALUES ('{device_id}', 'Adafruit IO Device', 'Thiết bị dữ liệu từ Adafruit IO', NOW())
-                """))
+                    VALUES (:device_id, :name, :description, NOW())
+                """), {
+                    "device_id": device_id,
+                    "name": f"Feed {device_id}",
+                    "description": f"Thiết bị dữ liệu từ Adafruit IO feed: {device_id}"
+                })
                 db.commit()
                 logger.info(f"Đã tạo thiết bị với ID: {device_id}")
+            else:
+                logger.info(f"Thiết bị {device_id} đã tồn tại trong bảng devices")
             
             db.close()
             return True
@@ -208,7 +218,7 @@ class AdafruitIOManualFetcher:
                 logger.info(f"Không có dữ liệu từ feed {feed_id}")
                 return 0
                 
-            self._ensure_device_exists()
+            self._ensure_device_exists(feed_id)
             db = self.SessionLocal()
             count = 0
             
@@ -244,7 +254,7 @@ class AdafruitIOManualFetcher:
                     
                     # Tạo bản ghi mới
                     new_data = SensorData(
-                        device_id="default",
+                        device_id=feed_id,
                         feed_id=feed_id,
                         value=value,
                         raw_data=json.dumps(point),
