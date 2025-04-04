@@ -5,7 +5,7 @@ Models cho các bảng dữ liệu trong hệ thống.
 Các lớp này định nghĩa cấu trúc dữ liệu cho SQLAlchemy ORM.
 """
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Boolean, Text, Numeric
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB, TSRANGE
@@ -57,7 +57,7 @@ class Device(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     # Relationship với các bảng khác
-    original_samples = relationship("OriginalSample", back_populates="device")
+    original_samples = relationship("OriginalSamples", back_populates="device")
     compressed_data_optimized = relationship("CompressedDataOptimized", back_populates="device")
     device_configs = relationship("DeviceConfig", back_populates="device")
     sensor_data = relationship("SensorData", back_populates="device")
@@ -65,24 +65,22 @@ class Device(Base):
     def __repr__(self):
         return f"<Device(id={self.id}, device_id='{self.device_id}', name='{self.name}')>"
 
-class OriginalSample(Base):
+class OriginalSamples(Base):
     """
-    Bảng chứa dữ liệu gốc từ các thiết bị IoT.
-    Mỗi bản ghi chứa dữ liệu theo định dạng JSONB có thể chứa nhiều chiều dữ liệu
-    như power, humidity, pressure, temperature.
+    Bảng chứa dữ liệu gốc từ thiết bị.
     """
     __tablename__ = "original_samples"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(String, ForeignKey("devices.device_id"))
-    original_data = Column(JSONB, nullable=False)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    value = Column(Numeric(10,2), nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     
     # Relationship với Device
     device = relationship("Device", back_populates="original_samples")
     
     def __repr__(self):
-        return f"<OriginalSample(id={self.id}, device_id='{self.device_id}')>"
+        return f"<OriginalSamples(id={self.id}, device_id='{self.device_id}')>"
 
 class SensorData(Base):
     """

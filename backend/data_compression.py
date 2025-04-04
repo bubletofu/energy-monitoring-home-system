@@ -25,58 +25,37 @@ class DataCompressor:
         # Cấu hình mặc định
         self.config = {
             'p_threshold': 0.1,       # Ngưỡng p-value cho KS test
-            'max_templates': 200,     # Tăng từ 100 lên 200 - Số lượng template tối đa
+            'max_templates': 200,     # Số lượng template tối đa
             'min_values': 10,         # Số lượng giá trị tối thiểu để xem xét
             'min_block_size': 10,     # Kích thước block tối thiểu
             'max_block_size': 120,    # Kích thước block tối đa
             'adaptive_block_size': True, # Tự động điều chỉnh kích thước block
-            'min_blocks_before_adjustment': 5, # Giảm số block tối thiểu trước khi điều chỉnh
+            'min_blocks_before_adjustment': 5, # Số block tối thiểu trước khi điều chỉnh
             'confidence_level': 0.95, # Mức độ tin cậy
-            'pmin': 0.5,              # Xác suất tối thiểu để xem xét block khớp với template
-            'block_size': 10,         # Kích thước block ban đầu nhỏ hơn để khởi động nhanh
-            'w1': 0.6,                # Trọng số cho CER trong cost function
-            'w2': 0.4,                # Trọng số cho CR trong cost function
+            'pmin': 0.5,             # Xác suất tối thiểu để xem xét block khớp với template
+            'block_size': 10,        # Kích thước block ban đầu
+            'w1': 0.6,               # Trọng số cho CER trong cost function
+            'w2': 0.4,               # Trọng số cho CR trong cost function
             'max_acceptable_cer': 0.15, # Ngưỡng CER tối đa chấp nhận được
             'correlation_threshold': 0.6, # Ngưỡng tương quan Pearson
-            'similarity_weights': {   # Trọng số cho các phương pháp so sánh cơ bản
-                'ks_test': 0.2,       # Trọng số cho KS test
+            'similarity_weights': {   # Trọng số cho các phương pháp so sánh
+                'ks_test': 0.2,      # Trọng số cho KS test
                 'correlation': 0.5,   # Trọng số cho tương quan Pearson 
-                'cer': 0.3            # Trọng số cho CER
+                'cer': 0.3           # Trọng số cho CER
             },
-            'enhanced_similarity_weights': { # Trọng số cho phương pháp so sánh nâng cao
-                'ks_test': 0.15,      # Giảm trọng số KS test
-                'correlation': 0.25,  # Giảm trọng số tương quan Pearson
-                'cer': 0.15,          # Giảm trọng số CER
-                'shape': 0.25,        # Trọng số cho độ tương đồng hình dạng
-                'trend': 0.20         # Trọng số cho độ tương đồng xu hướng
-            },
-            # Thêm cấu hình mới cho quản lý template
-            'template_expiration': 300,  # Tăng từ 200 lên 300 - Số block tối đa không dùng trước khi hết hạn template
-            'template_usage_threshold': 1,  # Giảm từ 2 xuống 1 - Số lần sử dụng tối thiểu để giữ một template
-            'max_template_age': 150,  # Tăng từ 100 lên 150 - Tuổi tối đa (số block) một template có thể tồn tại
+            'template_expiration': 300,  # Số block tối đa không dùng trước khi hết hạn
+            'template_usage_threshold': 1,  # Số lần sử dụng tối thiểu để giữ template
+            'max_template_age': 150,  # Tuổi tối đa của template
             'trend_detection_window': 5,  # Số block để phát hiện xu hướng
-            'trend_threshold': 0.7,  # Ngưỡng để xác định một xu hướng rõ ràng
-            # Cấu hình mới cho dữ liệu đa chiều
-            'multi_dimensional': False, # Cờ bật/tắt tính năng nén đa chiều
-            'dimension_weights': {},  # Trọng số cho từng chiều dữ liệu, mặc định bằng nhau
-            'primary_dimension': 'power',  # Chiều dữ liệu chính để phát hiện template
-            # Thêm cấu hình mới để quản lý template tốt hơn
-            'template_merge_threshold': 0.9,  # Ngưỡng tương đồng để gộp các template
-            'enable_template_merging': True,  # Bật tính năng gộp template
-            'template_merge_interval': 20,    # Số block giữa các lần kiểm tra gộp template
-            'template_importance_weight': {   # Trọng số để tính tầm quan trọng của template
-                'usage_count': 0.5,           # Trọng số cho số lần sử dụng
-                'recency': 0.3,               # Trọng số cho độ gần đây
-                'age': 0.2                    # Trọng số cho tuổi template
-            },
-            'max_templates_to_remove': 0.05,  # Tỷ lệ tối đa template bị xóa mỗi lần (giảm từ 10% xuống 5%)
+            'trend_threshold': 0.7,  # Ngưỡng để xác định xu hướng
+            'template_merge_threshold': 0.9,  # Ngưỡng tương đồng để gộp template
+            'template_merge_interval': 20     # Số block giữa các lần kiểm tra gộp
         }
         
         # Cập nhật cấu hình nếu được cung cấp
         if config:
             self.config.update(config)
             
-        # Khởi tạo các biến trạng thái
         self.reset()
         logger.info(f"Khởi tạo Data Compressor với cấu hình: {self.config}")
         
@@ -102,23 +81,18 @@ class DataCompressor:
         self.template_last_used = {}       # Block cuối cùng template được sử dụng
         self.template_creation_time = {}   # Block khi template được tạo
         self.continuous_hit_ratio = []     # Theo dõi hit ratio liên tục theo thời gian
+        self.hit_ratio_by_block = []       # Thêm biến này để lưu hit ratio theo block
         self.window_hit_count = 0          # Đếm hit trong cửa sổ hiện tại
         self.window_blocks = 0             # Đếm blocks trong cửa sổ hiện tại
         self.window_size = 10              # Kích thước cửa sổ để tính hit ratio động
         self.previous_adjustments = []     # Lịch sử các điều chỉnh trước đó
-        self.min_adjustment_interval = 3   # Số block tối thiểu giữa các lần điều chỉnh (giảm từ 5 xuống 3)
+        self.min_adjustment_interval = 3   # Số block tối thiểu giữa các lần điều chỉnh
         self.last_adjustment_block = 0     # Block cuối cùng được điều chỉnh
         self.last_merge_check = 0          # Block cuối cùng kiểm tra gộp template
         self.merged_templates = {}         # Dict lưu thông tin template đã gộp
         self.template_importance = {}      # Dict lưu tầm quan trọng của các template
-        
-        # Các biến mới cho dữ liệu đa chiều
-        self.dimensions = []               # Các chiều dữ liệu được phát hiện
-        self.dimension_stats = {}          # Thống kê về từng chiều dữ liệu
-        self.multi_dimensional = self.config.get('multi_dimensional', False)  # Chế độ đa chiều
-        self.primary_dimension = self.config.get('primary_dimension', 'power')  # Chiều dữ liệu chính
-        
-        logger.info(f"Đã reset Data Compressor, chế độ đa chiều: {self.multi_dimensional}")
+
+        logger.info("Đã reset Data Compressor")
         
     def update_template_metrics(self, template_id, used=True):
         """
@@ -143,7 +117,7 @@ class DataCompressor:
         Phát hiện xu hướng trong dữ liệu gần đây
         
         Args:
-            data: Dữ liệu hiện tại (mảng 1D, dictionary, hoặc rỗng để chỉ sử dụng dữ liệu đã lưu)
+            data: Dữ liệu hiện tại (mảng numpy 1D)
             
         Returns:
             tuple: (has_trend, trend_type, trend_strength)
@@ -151,45 +125,33 @@ class DataCompressor:
                 trend_type: 1 (tăng), -1 (giảm), 0 (không xác định)
                 trend_strength: Độ mạnh của xu hướng (0-1)
         """
-        # Trường hợp dữ liệu đa chiều
-        if self.multi_dimensional and data and isinstance(data, dict):
-            # Sử dụng chiều dữ liệu chính
-            primary_dim = self.primary_dimension
-            if primary_dim in data and len(data[primary_dim]) > 0:
-                values = data[primary_dim]
-                data_mean = np.mean(values)
-                # Thêm dữ liệu mới vào danh sách giá trị gần đây
-                self.recent_values.append(data_mean)
-            else:
-                # Không có dữ liệu mới
-                pass
-        elif data is not None and len(data) > 0:  # Dữ liệu một chiều thông thường
-            # Thêm dữ liệu mới vào danh sách giá trị gần đây
-            data_mean = np.mean(data)
-            self.recent_values.append(data_mean)
+        # Thêm dữ liệu mới vào danh sách giá trị gần đây
+        data_mean = np.mean(data)
+        self.recent_values.append(data_mean)
         
         # Giữ kích thước cửa sổ phát hiện xu hướng
         window_size = self.config['trend_detection_window']
         if len(self.recent_values) > window_size:
             self.recent_values = self.recent_values[-window_size:]
         
-        # Không đủ dữ liệu để phát hiện xu hướng
+        # Cần ít nhất 3 giá trị để phát hiện xu hướng
         if len(self.recent_values) < 3:
             return False, 0, 0.0
         
-        # Tính độ dốc bằng hồi quy tuyến tính đơn giản
+        # Tính xu hướng bằng hệ số góc của đường hồi quy tuyến tính
         x = np.arange(len(self.recent_values))
         y = np.array(self.recent_values)
-        
-        # Tính hệ số góc của đường thẳng khớp
         slope, _, r_value, _, _ = stats.linregress(x, y)
         
-        # Đánh giá xu hướng
-        trend_strength = abs(r_value)  # Độ mạnh của xu hướng dựa trên hệ số tương quan
-        trend_type = 1 if slope > 0 else -1 if slope < 0 else 0
-        has_trend = trend_strength > self.config['trend_threshold']
+        # Tính độ mạnh của xu hướng dựa trên hệ số tương quan
+        trend_strength = abs(r_value)
         
-        return has_trend, trend_type, trend_strength
+        # Xác định loại xu hướng
+        if trend_strength > self.config['trend_threshold']:
+            trend_type = 1 if slope > 0 else -1
+            return True, trend_type, trend_strength
+        
+        return False, 0, trend_strength
     
     def clean_expired_templates(self):
         """
@@ -412,78 +374,37 @@ class DataCompressor:
                 
         return templates_merged
         
-    def calculate_cer(self, original_data, template_data):
+    def calculate_cer(self, block1: np.ndarray, block2: np.ndarray) -> float:
         """
-        Tính toán Compression Error Rate (CER) giữa dữ liệu gốc và template
-        
-        CER = |X - X̂| / X, trong đó:
-        - X là dữ liệu gốc
-        - X̂ là dữ liệu mẫu (template)
-        
-        Phiên bản nâng cao hỗ trợ dữ liệu đa chiều.
+        Tính Compression Error Rate giữa hai block
         
         Args:
-            original_data: Dữ liệu gốc (có thể là mảng 1D hoặc dictionary của các mảng)
-            template_data: Dữ liệu template (có thể là mảng 1D hoặc dictionary của các mảng)
+            block1: Block dữ liệu thứ nhất
+            block2: Block dữ liệu thứ hai
         
         Returns:
-            float: Giá trị CER trung bình
+            float: Giá trị CER từ 0 đến 1
         """
-        # Trường hợp dữ liệu đa chiều (dictionary)
-        if self.multi_dimensional and isinstance(original_data, dict) and isinstance(template_data, dict):
-            total_cer = 0.0
-            total_weight = 0.0
-            dimension_weights = self.config.get('dimension_weights', {})
+        try:
+            if len(block1) != len(block2):
+                return 1.0
+
+            # Tính MSE
+            mse = np.mean((block1 - block2) ** 2)
             
-            # Tính CER cho từng chiều dữ liệu
-            for dim in original_data.keys():
-                if dim in template_data:
-                    # Lấy trọng số cho chiều này, mặc định là 1.0
-                    weight = dimension_weights.get(dim, 1.0)
-                    if weight > 0:
-                        # Tính CER cho chiều này
-                        orig_values = np.array(original_data[dim])
-                        temp_values = np.array(template_data[dim])
-                        
-                        # Đảm bảo dữ liệu có cùng kích thước để so sánh
-                        min_len = min(len(orig_values), len(temp_values))
-                        orig_values = orig_values[:min_len]
-                        temp_values = temp_values[:min_len]
-                        
-                        # Tránh chia cho 0
-                        nonzero_mask = orig_values != 0
-                        if np.any(nonzero_mask):
-                            # Tính lỗi chỉ cho các giá trị khác 0
-                            error = np.abs(orig_values[nonzero_mask] - temp_values[nonzero_mask])
-                            relative_error = error / np.abs(orig_values[nonzero_mask])
-                            dim_cer = np.mean(relative_error)
-                            
-                            # Cộng vào tổng có trọng số
-                            total_cer += dim_cer * weight
-                            total_weight += weight
+            # Chuẩn hóa MSE về khoảng [0, 1]
+            max_val = max(np.max(block1), np.max(block2))
+            min_val = min(np.min(block1), np.min(block2))
+            range_val = max(1.0, max_val - min_val)  # Tránh chia cho 0
             
-            # Trả về giá trị CER trung bình có trọng số
-            if total_weight > 0:
-                return total_cer / total_weight
-            return 0.0
-        
-        # Trường hợp dữ liệu một chiều (mảng 1D) - giữ nguyên code cũ
-        # Đảm bảo dữ liệu có cùng kích thước để so sánh
-        min_len = min(len(original_data), len(template_data))
-        original = np.array(original_data[:min_len])
-        template = np.array(template_data[:min_len])
-        
-        # Tránh chia cho 0
-        nonzero_mask = original != 0
-        if not np.any(nonzero_mask):
-            return 0.0
-        
-        # Tính lỗi chỉ cho các giá trị khác 0
-        error = np.abs(original[nonzero_mask] - template[nonzero_mask])
-        relative_error = error / np.abs(original[nonzero_mask])
-        
-        # Trả về giá trị CER trung bình
-        return np.mean(relative_error)
+            # Tính CER và giới hạn trong khoảng [0, 1]
+            cer = min(1.0, mse / (range_val ** 2))
+            
+            return cer
+
+        except Exception as e:
+            logger.error(f"Lỗi khi tính CER: {str(e)}")
+            return 1.0
     
     def calculate_correlation(self, data1, data2):
         """
@@ -778,100 +699,48 @@ class DataCompressor:
         return similarity_score, ks_pvalue, correlation, cer, details
     
     def is_similar(self, data1, data2):
-
-        # Trường hợp dữ liệu đa chiều
-        if self.multi_dimensional and isinstance(data1, dict) and isinstance(data2, dict):
-            # Kiểm tra kích thước cho từng chiều
-            for dim in data1.keys():
-                if dim in data2:
-                    if len(data1[dim]) < self.config['min_values'] or len(data2[dim]) < self.config['min_values']:
-                        # Nếu một trong các chiều có dữ liệu không đủ, vẫn tiếp tục kiểm tra các chiều khác
-                        logger.debug(f"Chiều {dim} có kích thước không đủ: {len(data1[dim])}, {len(data2[dim])}")
-            
-            # Tính điểm tương đồng và các chỉ số
-            similarity_score, ks_pvalue, correlation, cer, full_details = self.calculate_similarity_score(data1, data2)
-            
-            # Thông tin chi tiết
-            details = {
-                'ks_pvalue': ks_pvalue,
-                'correlation': correlation,
-                'cer': cer,
-                'similarity_score': similarity_score,
-                'dimensions': full_details.get('dimensions', {}),
-                'shape_similarity': full_details.get('shape_similarity', 0),
-                'trend_similarity': full_details.get('trend_similarity', 0)
-            }
-            
-            # Cải tiến: Sử dụng ngưỡng động để xác định tính tương đồng
-            # Với dữ liệu đa chiều, có thể điều chỉnh ngưỡng dựa trên số lượng chiều đã xử lý
-            similarity_threshold = 0.35  # Mặc định
-            
-            # Nếu có pattern rõ ràng (tương quan cao), yêu cầu similarity cao hơn
-            if correlation > 0.8:
-                similarity_threshold = 0.45
-            
-            # Điều chỉnh ngưỡng dựa trên số lượng chiều
-            dimensions_processed = full_details.get('dimensions_processed', 0)
-            if dimensions_processed > 2:
-                # Khi có nhiều chiều, giảm ngưỡng để dễ dàng tìm thấy template
-                similarity_threshold *= 0.9
-            
-            # Cải tiến: Bổ sung thêm điều kiện phụ cho trường hợp đặc biệt
-            # Ngay cả khi similarity_score không đủ cao, vẫn chấp nhận nếu:
-            # 1. Tương quan rất cao (> 0.9) VÀ
-            # 2. Hình dạng tương tự (> 0.8)
-            shape_trend_match = (details['shape_similarity'] > 0.8 and correlation > 0.9)
-            
-            # Xác định dữ liệu có tương tự nhau không
-            # Điều kiện 1: Điểm tương đồng đủ cao HOẶC pattern rất tương đồng
-            # Điều kiện 2: CER dưới ngưỡng chấp nhận được
-            is_similar = (
-                (similarity_score > similarity_threshold or shape_trend_match) and
-                cer < self.config['max_acceptable_cer']
-            )
-            
-            if is_similar:
-                self.similarity_scores.append(similarity_score)
-                logger.debug(f"Dữ liệu đa chiều tương tự: score={similarity_score:.4f}, KS={ks_pvalue:.4f}, corr={correlation:.4f}, CER={cer:.4f}")
-            
-            return is_similar, similarity_score, details
+        """
+        Kiểm tra tính tương đồng giữa hai mảng dữ liệu một chiều
         
-        # Trường hợp dữ liệu một chiều - giữ nguyên code cũ
+        Args:
+            data1, data2: Hai mảng numpy một chiều cần so sánh
+            
+        Returns:
+            tuple: (is_similar, similarity_score, details)
+        """
         if len(data1) < self.config['min_values'] or len(data2) < self.config['min_values']:
             return False, 0.0, {}
         
         # Tính điểm tương đồng và các chỉ số
-        similarity_score, ks_pvalue, correlation, cer, full_details = self.calculate_similarity_score(data1, data2)
+        similarity_score = self.calculate_similarity(data1, data2)
+        
+        # Tính các chỉ số bổ sung
+        correlation = np.corrcoef(data1, data2)[0, 1]
+        if np.isnan(correlation):
+            correlation = 0.0
+        correlation = abs(correlation)
+        
+        _, ks_pvalue = stats.ks_2samp(data1, data2)
+        cer = self.calculate_cer(data1, data2)
         
         # Thông tin chi tiết
         details = {
             'ks_pvalue': ks_pvalue,
             'correlation': correlation,
             'cer': cer,
-            'similarity_score': similarity_score,
-            'shape_similarity': full_details.get('shape_similarity', 0),
-            'trend_similarity': full_details.get('trend_similarity', 0)
+            'similarity_score': similarity_score
         }
         
         # Cải tiến: Sử dụng ngưỡng động để xác định tính tương đồng
-        # Với dữ liệu có pattern rõ ràng, đặt ngưỡng cao hơn để phân biệt tốt hơn
         similarity_threshold = 0.35  # Mặc định
         
         # Nếu có pattern rõ ràng (tương quan cao), yêu cầu similarity cao hơn
         if correlation > 0.8:
             similarity_threshold = 0.45
         
-        # Cải tiến: Bổ sung thêm điều kiện phụ cho trường hợp đặc biệt
-        # Ngay cả khi similarity_score không đủ cao, vẫn chấp nhận nếu:
-        # 1. Tương quan rất cao (> 0.9) VÀ
-        # 2. Hình dạng tương tự (> 0.8)
-        shape_trend_match = (details['shape_similarity'] > 0.8 and correlation > 0.9)
-        
         # Xác định dữ liệu có tương tự nhau không
-        # Điều kiện 1: Điểm tương đồng đủ cao HOẶC pattern rất tương đồng
-        # Điều kiện 2: CER dưới ngưỡng chấp nhận được
         is_similar = (
-            (similarity_score > similarity_threshold or shape_trend_match) and
+            similarity_score > similarity_threshold and
             cer < self.config['max_acceptable_cer']
         )
         
@@ -880,86 +749,51 @@ class DataCompressor:
             logger.debug(f"Dữ liệu tương tự: score={similarity_score:.4f}, KS={ks_pvalue:.4f}, corr={correlation:.4f}, CER={cer:.4f}")
         
         return is_similar, similarity_score, details
-        
+    
     def find_matching_template(self, data):
         """
-        Tìm template khớp với dữ liệu
+        Tìm template khớp với dữ liệu một chiều
         
         Args:
-            data: Dữ liệu cần tìm template (mảng 1D hoặc dictionary)
+            data: Mảng numpy một chiều chứa dữ liệu cần tìm template
             
         Returns:
             tuple: (template_id, similarity_score, is_match) nếu tìm thấy, hoặc (None, 0, False)
         """
-        # Trường hợp dữ liệu đa chiều
-        if self.multi_dimensional and isinstance(data, dict):
-            # Kiểm tra xem dữ liệu có chiều dữ liệu chính không
-            primary_dim = self.primary_dimension
-            if primary_dim not in data or len(data[primary_dim]) < self.config['min_values']:
-                logger.warning(f"Dữ liệu không có chiều chính {primary_dim} hoặc không đủ dữ liệu")
-                return None, 0, False
-            
-            # Phát hiện xu hướng trong dữ liệu gần đây cho chiều chính
-            has_trend, trend_type, trend_strength = self.detect_trend(data[primary_dim])
-            
         best_template_id = None
-        best_template_data = None
         best_cer = float('inf')
         best_similarity = -1.0
-            
-        # Tính các đặc trưng cơ bản của dữ liệu mới cho chiều chính
-        if self.multi_dimensional and isinstance(data, dict):
-            primary_values = np.array(data[primary_dim])
-            data_mean = np.mean(primary_values)
-            data_std = np.std(primary_values)
-            data_min = np.min(primary_values)
-            data_max = np.max(primary_values)
-            data_range = data_max - data_min
-        else:
-            # Dữ liệu một chiều
-            has_trend, trend_type, trend_strength = self.detect_trend(data)
-            data_mean = np.mean(data)
-            data_std = np.std(data)
-            data_min = np.min(data)
-            data_max = np.max(data)
-            data_range = data_max - data_min
-            
+        
+        # Tính các đặc trưng cơ bản của dữ liệu mới
+        data_mean = np.mean(data)
+        data_std = np.std(data)
+        data_min = np.min(data)
+        data_max = np.max(data)
+        data_range = data_max - data_min
+        
+        # Phát hiện xu hướng trong dữ liệu gần đây
+        has_trend, trend_type, trend_strength = self.detect_trend(data)
+        
         potential_matches = []
-            
+        
         # Khi phát hiện xu hướng mạnh, điều chỉnh cách chọn template
         if has_trend and trend_strength > 0.85:
             logger.debug(f"Đã phát hiện xu hướng mạnh: {trend_type}, độ mạnh: {trend_strength:.2f}")
-            # Với xu hướng mạnh, ưu tiên tạo template mới thay vì sử dụng template cũ
-            similarity_boost = 0.15  # Cần tăng điểm tương đồng lên 15% so với bình thường
+            similarity_boost = 0.15  # Với xu hướng mạnh, cần tăng điểm tương đồng lên 15%
         else:
             similarity_boost = 0.0
         
-        for template_id, template_data in self.templates.items():
-            # Kiểm tra xem template có cùng định dạng với dữ liệu hiện tại không
-            if self.multi_dimensional and isinstance(data, dict):
-                if not isinstance(template_data, dict) or primary_dim not in template_data:
-                    continue
-                    
-                # Kiểm tra nhanh các đặc trưng thống kê cơ bản cho chiều chính
-                template_values = np.array(template_data[primary_dim])
-                template_mean = np.mean(template_values)
-                template_std = np.std(template_values)
-                template_min = np.min(template_values)
-                template_max = np.max(template_values)
-                template_range = template_max - template_min
-            else:
-                # Dữ liệu một chiều
-                if isinstance(template_data, dict):
-                    continue
-                    
-                # Kiểm tra nhanh các đặc trưng thống kê cơ bản
-                template_mean = np.mean(template_data)
-                template_std = np.std(template_data)
-                template_min = np.min(template_data)
-                template_max = np.max(template_data)
-                template_range = template_max - template_min
-                
-            # Bỏ qua các template có đặc trưng quá khác trên chiều chính
+        for template_id, template in self.templates.items():
+            template_values = np.array(template['values'])
+            
+            # Kiểm tra nhanh các đặc trưng thống kê cơ bản
+            template_mean = np.mean(template_values)
+            template_std = np.std(template_values)
+            template_min = np.min(template_values)
+            template_max = np.max(template_values)
+            template_range = template_max - template_min
+            
+            # Bỏ qua các template có đặc trưng quá khác
             if (abs(data_mean - template_mean) > 0.5 * data_std and 
                 abs(data_range - template_range) > 0.5 * data_range):
                 continue
@@ -967,31 +801,31 @@ class DataCompressor:
             # Cập nhật metrics của template (mark as checked, not used yet)
             self.update_template_metrics(template_id, used=False)
                 
-            # Kiểm tra tính tương đồng
-            is_similar, similarity_score, details = self.is_similar(data, template_data)
+            # Tính điểm tương đồng
+            similarity_score = self.calculate_similarity(data, template_values)
                 
             # Điều chỉnh điểm tương đồng nếu có xu hướng mạnh
             adjusted_similarity = similarity_score - similarity_boost if has_trend else similarity_score
                 
             # Nếu đủ tương đồng sau khi điều chỉnh, thêm vào danh sách tiềm năng
-            if is_similar and adjusted_similarity > 0.3:
-                cer = details['cer']
-                potential_matches.append((template_id, template_data, cer, similarity_score, details))
+            if adjusted_similarity > 0.3:
+                cer = self.calculate_cer(data, template_values)
+                potential_matches.append((template_id, cer, similarity_score))
         
         # Sắp xếp theo điểm tương đồng giảm dần
-        potential_matches.sort(key=lambda x: x[3], reverse=True)
+        potential_matches.sort(key=lambda x: x[2], reverse=True)
             
         # Lấy template tốt nhất
         if potential_matches:
             best_match = potential_matches[0]
-            best_template_id, best_template_data, best_cer, best_similarity, _ = best_match
+            best_template_id, best_cer, best_similarity = best_match
                 
             # Nếu có xu hướng mạnh và điểm tương đồng không quá cao, có thể quyết định tạo template mới
             if has_trend and trend_strength > 0.9 and best_similarity < 0.7:
                 logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, score: {best_similarity:.2f}) "
                           f"do xu hướng mạnh: {trend_type}")
                 return None, 0, False
-                
+
             # Nếu quyết định sử dụng template này, cập nhật metrics
             self.update_template_metrics(best_template_id, used=True)
             
@@ -1411,223 +1245,172 @@ class DataCompressor:
         
     def compress(self, data):
         """
-        Nén một đối tượng dữ liệu
+        Nén dữ liệu một chiều
         
         Args:
-            data: Đối tượng dữ liệu cần nén (mảng 1D hoặc list các dictionary)
-            
-        Returns:
-            dict: Kết quả nén, bao gồm templates, mã nén, và thống kê
+            data: List các điểm dữ liệu, mỗi điểm có dạng {value: float, timestamp: datetime}
         """
-        self.reset()  # Reset trạng thái
-        
-        # Trường hợp dữ liệu đa chiều
-        if self.multi_dimensional and isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-            # Phát hiện các chiều dữ liệu từ mẫu đầu tiên
-            self.dimensions = list(data[0].keys())
-            logger.info(f"Phát hiện dữ liệu đa chiều với các chiều: {self.dimensions}")
-            
+        try:
             n = len(data)
+            if n < self.config['min_values']:
+                logger.warning(f"Số lượng điểm dữ liệu ({n}) quá ít để nén")
+                return None
+
+            # Chuyển dữ liệu thành mảng numpy một chiều
+            values = np.array([point['value'] for point in data], dtype=float)
+            timestamps = [point['timestamp'] for point in data]
+
+            # Reset trạng thái
+            self.reset()
             
-            if n < self.config['min_block_size']:
-                logger.warning(f"Dữ liệu quá nhỏ để nén: {n} mẫu")
-                return {
-                    'templates': {},
-                    'encoded_stream': [],
-                    'compression_ratio': 1.0,
-                    'blocks_processed': 0,
-                    'hit_ratio': 0,
-                    'total_values': n,
-                    'avg_cer': 0.0,
-                    'avg_cost': 0.0,
-                    'continuous_hit_ratio': [],
-                    'hit_ratio_by_block': [],
-                    'dimensions': self.dimensions
-                }
-            
-            # Tạo mảng để theo dõi hit ratio theo từng block
-            hit_ratio_by_block = []
-            
-            # Xử lý dữ liệu theo từng block
-            i = 0
-            while i < n:
-                # Đưa kích thước block hiện tại vào lịch sử - cải thiện kiểm tra và ghi log
-                if self.current_block_size > 0:
-                    self.block_size_history.append(self.current_block_size)
-                else:
-                    # Đảm bảo không lưu giá trị 0 vào lịch sử và ghi log
-                    min_block_size = self.config['min_block_size']
-                    logger.warning(f"Phát hiện block_size bằng 0, thay thế bằng min_block_size: {min_block_size}")
-                    self.block_size_history.append(min_block_size)
+            # Xử lý từng block
+            current_idx = 0
+            while current_idx < n:
+                # Lấy block tiếp theo
+                end_idx = min(current_idx + self.current_block_size, n)
+                block = values[current_idx:end_idx]
                 
-                # Xử lý một block dữ liệu
-                block_size = min(self.current_block_size, n - i)  # Đảm bảo không vượt quá kích thước dữ liệu
-                end_idx = i + block_size
+                # Tìm template phù hợp nhất
+                template_id, similarity_score, is_match = self.find_matching_template(block)
                 
-                # Lấy dữ liệu cho block hiện tại
-                block_data = {}
-                for j in range(i, end_idx):
-                    for dim, value in data[j].items():
-                        if dim not in block_data:
-                            block_data[dim] = []
-                        block_data[dim].append(value)
-                
-                # Tìm template phù hợp
-                template_id, similarity_score, is_match = self.find_matching_template(block_data)
-                
-                # Nếu không tìm thấy template phù hợp, tạo template mới
-                if template_id is None:
-                    template_id = self.create_template(block_data)
-                else:
-                    # Nếu tìm thấy template phù hợp, tăng hit count
+                if template_id is not None:
+                    # Sử dụng template tìm thấy
                     self.template_hit_count += 1
                     self.window_hit_count += 1
-                
-                # Ghi nhớ template đã sử dụng
-                self.templates_used.add(template_id)
-                
-                # Tạo bản ghi encoded stream
-                encoded_block = {
+                    self.templates_used.add(template_id)
+                    self.update_template_metrics(template_id)
+                    
+                    # Tính CER cho template đã tìm thấy
+                    template_values = np.array(self.templates[template_id]['values'])
+                    cer = self.calculate_cer(block, template_values)
+                    self.cer_values.append(cer)
+                else:
+                    # Tạo template mới
+                    template_id = self.template_counter
+                    self.template_counter += 1
+                    self.templates[template_id] = {
+                        'id': template_id,
+                        'values': block.tolist(),
+                        'use_count': 0,
+                        'created_at': self.blocks_processed
+                    }
+                    similarity_score = 1.0
+                    cer = 0.0
+
+                # Thêm vào encoded stream
+                self.encoded_stream.append({
                     'template_id': template_id,
-                    'start_idx': i,
-                    'length': block_size
-                }
-                self.encoded_stream.append(encoded_block)
-                
-                # Cập nhật số blocks đã xử lý
+                    'start_idx': current_idx,
+                    'length': len(block),
+                    'similarity_score': similarity_score,
+                    'cer': cer
+                })
+
+                # Cập nhật các biến theo dõi
                 self.blocks_processed += 1
                 self.window_blocks += 1
                 
-                # Tính hit ratio trong cửa sổ hiện tại
+                # Tính hit ratio trong cửa sổ
                 if self.window_blocks >= self.window_size:
                     window_hit_ratio = self.window_hit_count / self.window_blocks
                     self.continuous_hit_ratio.append(window_hit_ratio)
-                    hit_ratio_by_block.append((self.blocks_processed, window_hit_ratio))
-                    
-                    # Reset cửa sổ
+                    # Lưu hit ratio theo block
+                    self.hit_ratio_by_block.append((self.blocks_processed, window_hit_ratio))
                     self.window_hit_count = 0
                     self.window_blocks = 0
-                
+
                 # Điều chỉnh kích thước block nếu cần
                 if self.config['adaptive_block_size'] and self.blocks_processed >= self.config['min_blocks_before_adjustment']:
                     self.adjust_block_size()
-                
+
                 # Di chuyển đến block tiếp theo
-                i = end_idx
-            
-            # Tính ước tính kích thước dữ liệu (lý thuyết)
-            # Kích thước gốc
-            original_size = n * 8 * len(self.dimensions)  # 8 bytes cho mỗi giá trị float trong mỗi chiều
+                current_idx = end_idx
 
-            # Kích thước templates
-            template_size = 0
-            for template_id, template in self.templates.items():
-                for dim, values in template.items():
-                    template_size += len(values) * 8  # 8 bytes cho mỗi float
-                template_size += 4  # 4 bytes cho ID
-
-            # Kích thước encoded stream
-            encoded_stream_size = len(self.encoded_stream) * (4 + 4 + 4)  # template_id, start_idx, length
-
-            # Tối ưu kích thước nén: Tính toán dựa trên số lượng template thực sự được sử dụng
-            used_template_size = 0
-            templates_used_set = set()
-            for block in self.encoded_stream:
-                templates_used_set.add(block['template_id'])
-
-            for template_id in templates_used_set:
-                if template_id in self.templates:
-                    template = self.templates[template_id]
-                    # Mỗi template chứa nhiều chiều dữ liệu
-                    for dim, values in template.items():
-                        used_template_size += len(values) * 8  # 8 bytes cho mỗi float
-                    used_template_size += 4  # 4 bytes cho ID
-
-            # Sử dụng kích thước template đã tối ưu
-            compressed_size = used_template_size + encoded_stream_size
-
-            # Tính ước tính tỷ lệ nén lý thuyết
-            estimated_compression_ratio = original_size / max(1, compressed_size)
-            
-            # Đánh dấu rằng kích thước và tỷ lệ nén hiện tại chỉ là ước tính
-            # Kích thước và tỷ lệ nén chính xác sẽ được tính từ database sau khi lưu
-            compression_ratio = estimated_compression_ratio
-            
-            # Ghi chú về ước tính kích thước
-            logger.info("Lưu ý: Kích thước và tỷ lệ nén được ước tính. Kích thước chính xác sẽ được tính từ database.")
-
+            # Tính các chỉ số hiệu suất
             hit_ratio = self.template_hit_count / max(1, self.blocks_processed)
-            
-            # Tính CER trung bình
             avg_cer = np.mean(self.cer_values) if self.cer_values else 0.0
-            
-            # Tính điểm tương đồng trung bình
             avg_similarity = np.mean(self.similarity_scores) if self.similarity_scores else 0.0
-            
-            # Tính cost
+
+            # Tính compression ratio
+            original_size = n * 8  # 8 bytes cho mỗi giá trị float
+            template_size = sum(len(template['values']) * 8 for template in self.templates.values())
+            encoded_size = len(self.encoded_stream) * (4 + 4 + 4)  # template_id, start_idx, length
+            compression_ratio = original_size / max(1, template_size + encoded_size)
+
+            # Tính cost và lưu vào history
             cost = self.calculate_cost(avg_cer, compression_ratio)
             self.cost_values.append(cost)
-            
-            logger.info(f"Nén dữ liệu đa chiều hoàn tất: {n} mẫu -> {len(self.templates)} templates, {self.blocks_processed} blocks")
-            logger.info(f"Templates đã sử dụng: {len(templates_used_set)}/{len(self.templates)} ({len(templates_used_set)/max(1, len(self.templates)):.2%})")
-            logger.info(f"Kích thước gốc (ước tính): {original_size/1024:.2f} KB, Kích thước nén (ước tính): {compressed_size/1024:.2f} KB")
-            logger.info(f"Tỷ lệ nén (ước tính): {compression_ratio:.2f}x, Hit ratio: {hit_ratio:.2f}, CER: {avg_cer:.4f}, Cost: {cost:.4f}")
-            
-            # Tạo các thống kê bổ sung cho mỗi chiều dữ liệu
-            dimension_stats = {}
-            for dim in self.dimensions:
-                dimension_stats[dim] = {
-                    'processed': True,
-                    'weight': self.config.get('dimension_weights', {}).get(dim, 1.0)
-                }
-            
-            # Tạo kết quả
+
+            # Tạo kết quả với đầy đủ thông tin
             result = {
                 'templates': self.templates,
                 'encoded_stream': self.encoded_stream,
-                'templates_used': len(self.templates_used),
-                'templates_total': len(self.templates),
                 'compression_ratio': compression_ratio,
                 'hit_ratio': hit_ratio,
                 'avg_cer': avg_cer,
                 'avg_similarity': avg_similarity,
                 'cost': cost,
-                'block_size_history': self.block_size_history,  # Thêm lịch sử kích thước block
-                'dimension_stats': dimension_stats,
-                'min_block_size': self.config['min_block_size'],
-                'max_block_size': self.config['max_block_size'],
+                'block_size_history': self.block_size_history,
                 'total_values': n,
-                # Thêm thông tin kích thước (ước tính)
-                'estimated_original_size': original_size,
-                'estimated_compressed_size': compressed_size,
-                'estimated_compression_ratio': estimated_compression_ratio
+                'templates_used': len(self.templates_used),
+                'templates_total': len(self.templates),
+                'continuous_hit_ratio': self.continuous_hit_ratio,
+                'hit_ratio_by_block': self.hit_ratio_by_block
             }
-            
-            # Chuẩn hóa block_size_history để đảm bảo nhất quán
-            # Nếu block_size_history chứa các dictionary, trích xuất trường 'new_size'
-            processed_block_sizes = []
-            for item in self.block_size_history:
-                if isinstance(item, dict) and 'new_size' in item:
-                    processed_block_sizes.append(item['new_size'])
-                else:
-                    # Đảm bảo không có giá trị 0 hoặc âm
-                    size = int(item) if isinstance(item, (int, float, str)) else 0
-                    if size <= 0:
-                        size = self.config['min_block_size']
-                    processed_block_sizes.append(size)
-            
-            # Cập nhật lại block_size_history trong kết quả
-            if processed_block_sizes:
-                result['block_size_history'] = processed_block_sizes
-                logger.info(f"Đã xử lý block_size_history: {len(processed_block_sizes)} giá trị, không có giá trị 0")
-            
+
+            # Log thông tin chi tiết
+            logger.info(f"Nén dữ liệu hoàn tất: {n} mẫu -> {len(self.templates)} templates, {self.blocks_processed} blocks")
+            logger.info(f"Hit ratio: {hit_ratio:.2f}, CER: {avg_cer:.4f}, Cost: {cost:.4f}")
+
             return result
+
+        except Exception as e:
+            logger.error(f"Lỗi trong quá trình nén: {str(e)}")
+            return None
+    
+    def calculate_similarity(self, block1: np.ndarray, block2: np.ndarray) -> float:
+        """
+        Tính độ tương đồng giữa hai block dữ liệu
         
-        # Nén dữ liệu một chiều (tương tự như trên, với một số điều chỉnh)
-        # (Giữ nguyên mã nguồn cho trường hợp này vì logic tương tự)
-        else:
-            # ... (giữ nguyên phần còn lại của phương thức)
-            # Phần còn lại không thay đổi, chỉ cần thêm các trường 'estimated_' tương tự như trên
-            # Lưu ý: database_size_* sẽ được cập nhật sau khi lưu vào database
-            pass
+        Args:
+            block1: Block dữ liệu thứ nhất
+            block2: Block dữ liệu thứ hai
         
+        Returns:
+            float: Điểm tương đồng từ 0 đến 1
+        """
+        try:
+            if len(block1) != len(block2):
+                return 0.0
+
+            # Tính các thành phần tương đồng
+            # 1. Tương quan Pearson
+            correlation = np.corrcoef(block1, block2)[0, 1]
+            if np.isnan(correlation):
+                correlation = 0.0
+            correlation = abs(correlation)  # Lấy giá trị tuyệt đối
+
+            # 2. KS test
+            _, ks_pvalue = stats.ks_2samp(block1, block2)
+            
+            # 3. Compression Error Rate (CER)
+            cer = self.calculate_cer(block1, block2)
+            cer_score = 1 - cer  # Chuyển CER thành điểm (cao hơn tốt hơn)
+
+            # Tính điểm tổng hợp theo trọng số
+            weights = self.config['similarity_weights']
+            similarity_score = (
+                weights['correlation'] * correlation +
+                weights['ks_test'] * ks_pvalue +
+                weights['cer'] * cer_score
+            )
+
+            # Chuẩn hóa về khoảng [0, 1]
+            similarity_score = min(1.0, max(0.0, similarity_score))
+
+            return similarity_score
+
+        except Exception as e:
+            logger.error(f"Lỗi khi tính độ tương đồng: {str(e)}")
+            return 0.0
+    

@@ -18,6 +18,7 @@ from typing import Dict, List, Any, Tuple
 from sqlalchemy import create_engine, text
 import logging
 from matplotlib.ticker import FuncFormatter
+import psycopg2
 
 # Cấu hình logging
 logging.basicConfig(
@@ -200,35 +201,25 @@ def get_original_data(engine, start_date: str = None, end_date: str = None, limi
 def analyze_compression_ratio(compression_data, output_dir):
     """
     Tạo biểu đồ phân tích tỷ lệ nén
-    
-    Args:
-        compression_data: Dữ liệu nén đã được truy xuất
-        output_dir: Thư mục đầu ra để lưu biểu đồ
     """
-    # Kiểm tra đường dẫn đầu ra
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        
-    # Lấy thông tin từ compression_data
-    device_id = compression_data.get('device_id')
-    compression_id = compression_data.get('id')
-    total_values = compression_data.get('metadata', {}).get('total_values', 0)
-    templates_count = len(compression_data.get('templates', {}))
-    blocks_processed = len(compression_data.get('encoded_stream', []))
-    compression_ratio = compression_data.get('metadata', {}).get('compression_ratio', 0)
-    
-    if not compression_id or not device_id:
-        logger.warning("Không có thông tin compression_id hoặc device_id, không thể phân tích tỷ lệ nén từ database")
-        return
-        
-    # Kết nối đến database để lấy kích thước thực tế
-    engine = get_database_connection()
-    if not engine:
-        logger.error("Không thể kết nối đến database")
-        return
-    
     try:
-        # Lấy kích thước dữ liệu nén từ bảng compressed_data_optimized
+        # Kiểm tra đường dẫn đầu ra
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # Lấy thông tin từ database
+        engine = get_database_connection()
+        device_id = compression_data.get('device_id')
+        compression_id = compression_data.get('id')
+        total_values = compression_data.get('total_values', 0)
+        templates_count = len(compression_data.get('templates', {}))
+        blocks_processed = len(compression_data.get('encoded_stream', []))
+
+        if not compression_id or not device_id:
+            logger.warning("Không có thông tin compression_id hoặc device_id")
+            return
+
+        # Lấy kích thước thực từ database
         query_compressed = """
         SELECT 
             pg_column_size(templates) as templates_size,
@@ -238,21 +229,20 @@ def analyze_compression_ratio(compression_data, output_dir):
         WHERE id = :compression_id
         """
         
-        # Lấy kích thước dữ liệu gốc từ bảng original_samples
+        # Cập nhật query để làm việc với cấu trúc mới của original_samples
         query_original = """
-        SELECT 
-            SUM(pg_column_size(original_data)) as original_size
+        SELECT SUM(pg_column_size(value))
         FROM original_samples
         WHERE device_id = :device_id
         """
         
         with engine.connect() as conn:
-            # Lấy kích thước dữ liệu nén
-            result_compressed = conn.execute(text(query_compressed), {"compression_id": compression_id})
+            result_compressed = conn.execute(text(query_compressed), 
+                                          {"compression_id": compression_id})
             row_compressed = result_compressed.fetchone()
             
-            # Lấy kích thước dữ liệu gốc
-            result_original = conn.execute(text(query_original), {"device_id": device_id})
+            result_original = conn.execute(text(query_original), 
+                                        {"device_id": device_id})
             row_original = result_original.fetchone()
             
             if not row_compressed or not row_original:
@@ -266,119 +256,140 @@ def analyze_compression_ratio(compression_data, output_dir):
             
             original_size = row_original[0] or 0
             
-            # Tính toán tỷ lệ nén thực tế từ database
-            real_compression_ratio = original_size / compressed_size if compressed_size > 0 else 1.0
-    except Exception as e:
-        logger.error(f"Lỗi khi truy vấn kích thước từ database: {str(e)}")
-        return
-    
-    # Tạo biểu đồ
-    plt.figure(figsize=(10, 6))
-    bars = plt.bar(['Original Data', 'Compressed Data'], [original_size, compressed_size], color=['#3498db', '#2ecc71'])
-    
-    # Thêm nhãn
-    plt.title('Compare the size of data', fontsize=14)
-    plt.ylabel('Size (bytes)', fontsize=12)
-    
-    # Thêm giá trị lên đầu thanh
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2., height + 5,
-                f'{int(height)}', ha='center', va='bottom', fontsize=11)
-    
-    # Thêm thông tin tỷ lệ nén
-    textstr = f"""
-    Tỷ lệ nén thực tế: {real_compression_ratio:.2f}x
-    Tỷ lệ nén báo cáo: {compression_ratio:.2f}x
-    Tổng số giá trị: {total_values}
-    Số templates: {templates_count}
-    Số block: {blocks_processed}
-    Kích thước dữ liệu gốc: {original_size/1024:.2f} KB
-    Kích thước dữ liệu nén: {compressed_size/1024:.2f} KB
-    """
-    
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
-            verticalalignment='top', bbox=props)
-    
-    # Lưu biểu đồ
-    output_file = os.path.join(output_dir, 'compression_ratio.png')
-    plt.savefig(output_file, bbox_inches='tight')
-    plt.close()
-    
-    logger.info(f"Đã tạo biểu đồ phân tích tỷ lệ nén: {output_file}")
-    return output_file
+            # Tính tỷ lệ nén thực tế
+            real_compression_ratio = original_size / max(1, compressed_size)
 
-def analyze_templates(compression_data: Dict[str, Any], output_prefix: str = None):
-    """
-    Phân tích và tạo biểu đồ về các template
-    
-    Args:
-        compression_data: Dict chứa dữ liệu nén
-        output_prefix: Tiền tố cho tên file biểu đồ
-    """
-    # Trích xuất thông tin template
-    compressed_data_json = compression_data.get("compressed_data", {})
-    if isinstance(compressed_data_json, str):
-        try:
-            compressed_data = json.loads(compressed_data_json)
-        except json.JSONDecodeError:
-            logger.error("Lỗi giải mã JSON từ trường compressed_data")
-            return
-    else:
-        compressed_data = compressed_data_json
-    
-    templates = compressed_data.get("templates", {})
-    
-    # Kiểm tra nếu không có templates
-    if not templates:
-        logger.warning("Không có templates để phân tích")
-        return
-    
-    # Chuyển đổi templates thành DataFrame để dễ phân tích
-    template_info = []
-    for tid, template in templates.items():
-        template_info.append({
-            "id": tid,
-            "use_count": template.get("use_count", 0),
-            "dimensions": len(template.get("values", [])[0]) if template.get("values") and template.get("values") else 0,
-            "values_count": len(template.get("values", []))
-        })
-    
-    template_df = pd.DataFrame(template_info)
-    
-    # Tạo biểu đồ phân tích template
-    fig, axs = plt.subplots(1, 2, figsize=(16, 6))
-    
-    # 1. Biểu đồ top templates được sử dụng nhiều nhất
-    top_n = min(10, len(template_df))
-    top_templates = template_df.nlargest(top_n, 'use_count')
-    
-    bars = axs[0].bar(top_templates['id'], top_templates['use_count'], color='orange')
-    axs[0].set_title(f"Top {top_n} templates được sử dụng nhiều nhất")
-    axs[0].set_xlabel("Template ID")
-    axs[0].set_ylabel("Số lần sử dụng")
-    
-    # Thêm số liệu lên biểu đồ
-    for bar in bars:
-        height = bar.get_height()
-        axs[0].text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                  f'{height:.0f}',
-                  ha='center', va='bottom', fontweight='bold')
-    
-    # 2. Biểu đồ phân bố số lần sử dụng template
-    axs[1].hist(template_df['use_count'], bins=10, color='skyblue', edgecolor='black')
-    axs[1].set_title("Phân bố số lần sử dụng template")
-    axs[1].set_xlabel("Số lần sử dụng")
-    axs[1].set_ylabel("Số lượng template")
-    
-    plt.tight_layout()
-    
-    # Lưu biểu đồ
-    if output_prefix:
-        plt.savefig(f"{output_prefix}_template_analysis.png", bbox_inches='tight', dpi=300)
-    
-    plt.close()
+        # Tạo biểu đồ so sánh kích thước
+        plt.figure(figsize=(10, 6))
+        bars = plt.bar(['Original Data', 'Compressed Data'], 
+                      [original_size, compressed_size],
+                      color=['#3498db', '#2ecc71'])
+        
+        # Thêm nhãn
+        plt.title('Compare Data Size', fontsize=14)
+        plt.ylabel('Size (bytes)', fontsize=12)
+        
+        # Thêm giá trị lên đầu thanh
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2., height + 5,
+                    f'{int(height)}', ha='center', va='bottom', fontsize=11)
+        
+        # Thêm thông tin tỷ lệ nén
+        textstr = f"""
+        Compression Ratio: {real_compression_ratio:.2f}x
+        Total Values: {total_values}
+        Templates: {templates_count}
+        Blocks: {blocks_processed}
+        Original Size: {original_size/1024:.2f} KB
+        Compressed Size: {compressed_size/1024:.2f} KB
+        """
+        
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes, 
+                fontsize=10, verticalalignment='top', bbox=props)
+        
+        # Lưu biểu đồ
+        output_file = os.path.join(output_dir, 'compression_ratio.png')
+        plt.savefig(output_file, bbox_inches='tight')
+        plt.close()
+        
+        logger.info(f"Đã tạo biểu đồ phân tích tỷ lệ nén: {output_file}")
+        return output_file
+        
+    except Exception as e:
+        logger.error(f"Lỗi khi phân tích tỷ lệ nén: {str(e)}")
+        return None
+
+def analyze_templates(compression_data, output_dir):
+    """Phân tích và tạo biểu đồ về templates"""
+    try:
+        templates = compression_data.get('templates', {})
+        if not templates:
+            logger.warning("Không có templates để phân tích")
+            return None
+
+        # Phân tích templates
+        template_stats = []
+        for tid, template in templates.items():
+            template_stats.append({
+                'id': tid,
+                'use_count': template.get('use_count', 0),
+                'length': len(template.get('values', []))
+            })
+
+        df = pd.DataFrame(template_stats)
+
+        # 1. Biểu đồ top templates được sử dụng nhiều nhất
+        plt.figure(figsize=(12, 5))
+        plt.subplot(1, 2, 1)
+        top_n = min(10, len(df))
+        top_templates = df.nlargest(top_n, 'use_count')
+        
+        bars = plt.bar(range(top_n), top_templates['use_count'], color='skyblue')
+        plt.title('Top Templates by Usage')
+        plt.xlabel('Template ID')
+        plt.ylabel('Usage Count')
+        
+        # Thêm labels
+        plt.xticks(range(top_n), top_templates['id'], rotation=45)
+        
+        # 2. Biểu đồ phân bố độ dài templates
+        plt.subplot(1, 2, 2)
+        plt.hist(df['length'], bins=20, color='lightgreen', edgecolor='black')
+        plt.title('Template Length Distribution')
+        plt.xlabel('Length')
+        plt.ylabel('Count')
+
+        plt.tight_layout()
+        output_file = os.path.join(output_dir, 'template_analysis.png')
+        plt.savefig(output_file, bbox_inches='tight')
+        plt.close()
+
+        return output_file
+
+    except Exception as e:
+        logger.error(f"Lỗi khi phân tích templates: {str(e)}")
+        return None
+
+def analyze_block_sizes(compression_data, output_dir):
+    """Phân tích và tạo biểu đồ về kích thước block"""
+    try:
+        block_sizes = compression_data.get('block_size_history', [])
+        if not block_sizes:
+            logger.warning("Không có dữ liệu về kích thước block")
+            return None
+
+        # Tạo biểu đồ
+        plt.figure(figsize=(10, 6))
+        plt.plot(block_sizes, marker='o', linestyle='-', markersize=2)
+        plt.title('Block Size Evolution')
+        plt.xlabel('Block Number')
+        plt.ylabel('Block Size')
+        plt.grid(True)
+
+        # Thêm thông tin thống kê
+        avg_size = np.mean(block_sizes)
+        std_size = np.std(block_sizes)
+        textstr = f"""
+        Average: {avg_size:.2f}
+        Std Dev: {std_size:.2f}
+        Min: {min(block_sizes)}
+        Max: {max(block_sizes)}
+        """
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        plt.text(0.02, 0.98, textstr, transform=plt.gca().transAxes,
+                fontsize=10, verticalalignment='top', bbox=props)
+
+        output_file = os.path.join(output_dir, 'block_size_analysis.png')
+        plt.savefig(output_file, bbox_inches='tight')
+        plt.close()
+
+        return output_file
+
+    except Exception as e:
+        logger.error(f"Lỗi khi phân tích kích thước block: {str(e)}")
+        return None
 
 def analyze_blocks(compression_data: Dict[str, Any], output_prefix: str = None):
     """
@@ -592,7 +603,11 @@ def analyze_memory_usage(compression_data: Dict[str, Any], output_prefix: str = 
         SELECT 
             pg_column_size(templates) as templates_size,
             pg_column_size(encoded_stream) as encoded_size,
-            pg_column_size(compression_metadata) as metadata_size
+            pg_column_size(compression_metadata) as metadata_size,
+            octet_length(device_id::text) as device_id_size,
+            octet_length(timestamp::text) as timestamp_size,
+            octet_length(compression_config::text) as config_size,
+            octet_length(compression_stats::text) as stats_size
         FROM compressed_data_optimized
         WHERE id = :compression_id
         """
@@ -618,7 +633,10 @@ def analyze_memory_usage(compression_data: Dict[str, Any], output_prefix: str = 
             templates_size = row_compressed[0] or 0
             encoded_size = row_compressed[1] or 0
             metadata_size = row_compressed[2] or 0
-            compressed_size = templates_size + encoded_size + metadata_size
+            device_id_size = row_compressed[3] or 0
+            timestamp_size = row_compressed[4] or 0
+            config_size = row_compressed[5] or 0
+            stats_size = row_compressed[6] or 0
             
             # Lấy kích thước dữ liệu gốc
             result_original = conn.execute(text(query_original), {"device_id": device_id})
@@ -630,22 +648,26 @@ def analyze_memory_usage(compression_data: Dict[str, Any], output_prefix: str = 
                 
             original_size = row_original[0] or 0
             
-            # Tính tỷ lệ nén thực tế từ database
-            compression_ratio = original_size / compressed_size if compressed_size > 0 else 1.0
+            # Tính tổng kích thước nén
+            compressed_total = (templates_size + encoded_size + metadata_size + 
+                              device_id_size + timestamp_size + config_size + stats_size)
             
             # Chuyển đổi sang KB và MB
             original_kb = original_size / 1024
-            compressed_kb = compressed_size / 1024
+            compressed_kb = compressed_total / 1024
             
             original_mb = original_kb / 1024
             compressed_mb = compressed_kb / 1024
+            
+            # Tính tỷ lệ nén
+            compression_ratio = original_size / max(1, compressed_total)  # Thêm dòng này
             
             # Tạo biểu đồ
             fig, axs = plt.subplots(1, 2, figsize=(16, 6))
             
             # 1. Biểu đồ so sánh kích thước bytes
             bars1 = axs[0].bar(["Original Data", "Compressed Data"], 
-                              [original_size, compressed_size], 
+                              [original_size, compressed_total], 
                               color=['blue', 'green'])
             
             axs[0].set_title("Compare data (Bytes)")
@@ -679,6 +701,10 @@ def analyze_memory_usage(compression_data: Dict[str, Any], output_prefix: str = 
             - Templates: {templates_size/1024:.2f} KB
             - Encoded Stream: {encoded_size/1024:.2f} KB
             - Metadata: {metadata_size/1024:.2f} KB
+            - Device ID: {device_id_size/1024:.2f} KB
+            - Timestamp: {timestamp_size/1024:.2f} KB
+            - Config: {config_size/1024:.2f} KB
+            - Stats: {stats_size/1024:.2f} KB
             - Tổng kích thước nén: {compressed_kb:.2f} KB
             - Tổng kích thước gốc: {original_kb:.2f} KB
             - Tỷ lệ nén thực tế: {compression_ratio:.2f}x
@@ -1288,136 +1314,105 @@ def create_block_size_chart(compression_result, output_dir):
         logger.error(traceback.format_exc())
         return None
 
-def create_size_comparison_chart(data, compression_result, output_dir='visualization', database_size_info=None):
+def create_size_comparison_chart(compression_id, device_id, output_dir):
     """
-    Tạo biểu đồ so sánh kích thước giữa dữ liệu gốc và dữ liệu nén dựa trên thông tin từ database
-    
-    Args:
-        data: Dữ liệu gốc (sử dụng cho tên file nếu không có device_id)
-        compression_result: Kết quả nén (dùng để lấy device_id và compression_id)
-        output_dir: Thư mục đầu ra
-        database_size_info: Thông tin kích thước từ database (nếu đã có)
-    
-    Returns:
-        str: Đường dẫn đến biểu đồ đã tạo hoặc None nếu không thể tạo biểu đồ
+    Create chart comparing original and compressed data sizes
     """
-    # Tạo thư mục đầu ra nếu chưa tồn tại
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Hàm định dạng bytes cho hiển thị
-    def format_bytes(bytes, pos):
-        if bytes < 1024:
-            return f"{bytes:.0f} B"
-        elif bytes < 1024**2:
-            return f"{bytes/1024:.1f} KB"
-        elif bytes < 1024**3:
-            return f"{bytes/1024**2:.1f} MB"
-        else:
-            return f"{bytes/1024**3:.1f} GB"
-    
-    # Nếu đã có thông tin kích thước từ database, sử dụng nó
-    if database_size_info:
-        original_size = database_size_info.get('original_size_bytes', 0)
-        compressed_size = database_size_info.get('compressed_size_bytes', 0)
-        compression_ratio = database_size_info.get('compression_ratio', 1.0)
-        logger.info(f"Sử dụng kích thước từ database: Original={original_size/1024:.2f}KB, Compressed={compressed_size/1024:.2f}KB, Ratio={compression_ratio:.2f}x")
-    else:
-        # Nếu không có thông tin từ database, lấy từ database
-        device_id = compression_result.get('device_id')
-        compression_id = compression_result.get('compression_id')
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv('DB_HOST', 'localhost'),
+            port=os.getenv('DB_PORT', '5433'),
+            database=os.getenv('DB_NAME', 'iot_db'),
+            user=os.getenv('DB_USER', 'postgres'),
+            password=os.getenv('DB_PASS', '1234')
+        )
+        cursor = conn.cursor()
+
+        # Get time range and sizes from compressed_data_optimized
+        cursor.execute("""
+            SELECT time_range,
+                   pg_column_size(templates) as templates_size,
+                   pg_column_size(compression_metadata) as metadata_size,
+                   pg_column_size(timestamp) as timestamp_size
+            FROM compressed_data_optimized 
+            WHERE id = %s
+        """, (compression_id,))
+        result = cursor.fetchone()
         
-        if not device_id or not compression_id:
-            logger.error("Không có device_id hoặc compression_id, không thể lấy kích thước từ database")
-            return None
-        
-        # Kết nối đến database
-        engine = get_database_connection()
-        if not engine:
-            logger.error("Không thể kết nối đến database")
-            return None
-        
-        # Lấy kích thước từ database
-        database_info = get_data_size_from_database(compression_id, device_id)
-        if not database_info:
-            logger.error("Không thể lấy thông tin kích thước từ database")
+        if not result:
+            logger.error(f"Could not find compressed data with ID {compression_id}")
             return None
             
-        original_size = database_info.get('original_size_bytes', 0)
-        compressed_size = database_info.get('compressed_size_bytes', 0)
-        compression_ratio = database_info.get('compression_ratio', 1.0)
-    
-    # Kiểm tra nếu không có dữ liệu hợp lệ
-    if original_size <= 0 or compressed_size <= 0:
-        logger.error(f"Dữ liệu kích thước không hợp lệ: Original={original_size}, Compressed={compressed_size}")
-        return None
-    
-    # Lấy thông tin thời gian
-    time_info = extract_time_info(compression_result)
-    
-    # Tạo biểu đồ
-    plt.figure(figsize=(10, 6))
-    
-    # Chuẩn bị màu sắc cầu vồng cho dữ liệu gốc
-    rainbow_colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3']  # Đỏ, Cam, Vàng, Lục, Lam, Chàm, Tím
-    
-    # Chia dữ liệu gốc thành 7 phần bằng nhau
-    original_parts = [original_size / 7] * 7
-    
-    # Tạo vị trí cho các cột
-    x = np.array([0, 1])  # Vị trí trục x cho hai cột
-    width = 0.6  # Độ rộng cột
-    
-    # Vẽ 7 phần của dữ liệu gốc với màu sắc cầu vồng
-    bottom = 0
-    for i, (part, color) in enumerate(zip(original_parts, rainbow_colors)):
-        plt.bar(x[0], part, width, bottom=bottom, color=color, edgecolor='white', linewidth=0.5)
-        bottom += part
-    
-    # Vẽ cột dữ liệu nén
-    bar_compressed = plt.bar(x[1], compressed_size, width, color='green')
-    
-    # Đặt nhãn cho trục x
-    plt.xticks(x, ["Original data", "Compressed data"])
-    
-    plt.title(f"Compare data {time_info}", fontsize=14)
-    plt.ylabel("Size")
-    plt.grid(axis='y', alpha=0.3)
-    
-    # Format y-axis with bytes formatter
-    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(format_bytes))
-    
-    # Add source of size information
-    size_info_text = f"(From database)"
-    plt.annotate(size_info_text, xy=(0.05, 0.95), xycoords='axes fraction',
-                ha='left', va='top', fontsize=9, 
-                bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
-    
-    # Thêm thông tin tỷ lệ nén và kích thước
-    # Chú thích cho dữ liệu gốc
-    plt.annotate(f"{format_bytes(original_size, 0)}",
-                xy=(x[0], original_size),
-                xytext=(0, 5),
-                textcoords="offset points",
-                ha='center', va='bottom',
-                fontweight='bold')
-    
-    # Chú thích cho dữ liệu nén (kèm tỷ lệ nén)
-    plt.annotate(f"{format_bytes(compressed_size, 0)}\n({compression_ratio:.2f}x)",
-                xy=(x[1], compressed_size),
-                xytext=(0, 5),
-                textcoords="offset points",
-                ha='center', va='bottom',
-                fontweight='bold')
+        time_range, templates_size, metadata_size, timestamp_size_compressed = result
 
-    
-    # Save the chart
-    chart_path = os.path.join(output_dir, 'size_comparison.png')
-    plt.tight_layout()
-    plt.savefig(chart_path, dpi=300)
-    plt.close()
-    
-    logger.info(f"Đã tạo biểu đồ so sánh kích thước tại: {chart_path}")
-    return chart_path
+        # Get original data sizes and time range
+        cursor.execute("""
+            SELECT 
+                COUNT(*) as row_count,
+                SUM(pg_column_size(value)) as value_size,
+                SUM(pg_column_size(timestamp)) as timestamp_size,
+                MIN(timestamp)::timestamp as start_time,
+                MAX(timestamp)::timestamp as end_time
+            FROM original_samples
+            WHERE device_id = %s
+            AND timestamp <@ %s
+        """, (device_id, time_range))
+        row_count, value_size, timestamp_size, start_time, end_time = cursor.fetchone()
+
+        # Calculate total sizes
+        original_size = value_size + timestamp_size
+        compressed_size = templates_size + metadata_size + timestamp_size_compressed
+
+        # Create detailed chart
+        plt.figure(figsize=(12, 6))
+        
+        # Draw original data bars
+        plt.bar(['Original Data'], [value_size/1024], label='Values', color='#2ecc71')
+        plt.bar(['Original Data'], [timestamp_size/1024], bottom=[value_size/1024], 
+                label='Timestamp', color='#3498db')
+
+        # Draw compressed data bars
+        plt.bar(['Compressed Data'], [templates_size/1024], label='Templates', color='#e74c3c')
+        plt.bar(['Compressed Data'], [metadata_size/1024], bottom=[templates_size/1024], 
+                label='Metadata', color='#f1c40f')
+        plt.bar(['Compressed Data'], [timestamp_size_compressed/1024], 
+                bottom=[(templates_size + metadata_size)/1024],
+                color='#3498db')
+
+        plt.title('Data Size Comparison (Detailed)')
+        plt.ylabel('Size (KB)')
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+
+        # Add detailed information
+        compression_ratio = original_size / max(1, compressed_size)
+        plt.text(0.98, 0.98, 
+                f'Total Original: {original_size/1024:.1f} KB\n'
+                f'Total Compressed: {compressed_size/1024:.1f} KB\n'
+                f'Compression Ratio: {compression_ratio:.2f}x\n'
+                f'Rows: {row_count}\n'
+                f'Data Time Range:\n'
+                f'Start: {start_time.strftime("%Y-%m-%d %H:%M:%S")}\n'
+                f'End: {end_time.strftime("%Y-%m-%d %H:%M:%S")}',
+                transform=plt.gca().transAxes,
+                ha='right', va='top',
+                bbox=dict(facecolor='white', alpha=0.8))
+
+        # Save chart
+        chart_path = os.path.join(output_dir, f'size_comparison_{compression_id}.png')
+        plt.savefig(chart_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        
+        logger.info(f"Created detailed size comparison chart: {chart_path}")
+        return chart_path
+
+    except Exception as e:
+        logger.error(f"Error creating size comparison chart: {str(e)}")
+        return None
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
 
 def get_data_size_from_database(compression_id=None, device_id=None):
     """
@@ -1544,7 +1539,9 @@ def get_data_size_from_database(compression_id=None, device_id=None):
         logger.error(traceback.format_exc())
         return None
 
-def create_visualizations(data, compression_result, output_dir='visualization', max_points=5000, sampling_method='adaptive', num_chunks=0, time_info=None, compression_id=None, device_id=None):
+def create_visualizations(data, compression_result, output_dir='visualization', 
+                        max_points=5000, sampling_method='adaptive', num_chunks=0, 
+                        time_info=None, compression_id=None, device_id=None):
     """
     Tạo biểu đồ trực quan hóa từ kết quả nén
     
@@ -1556,91 +1553,49 @@ def create_visualizations(data, compression_result, output_dir='visualization', 
         sampling_method: Phương pháp lấy mẫu dữ liệu cho biểu đồ
         num_chunks: Số chunks để chia dữ liệu khi lấy mẫu
         time_info: Thông tin về thời gian (min_time, max_time)
-        compression_id: ID của bản ghi nén trong database (để lấy kích thước thực tế)
-        device_id: ID của thiết bị (để lấy kích thước thực tế)
-        
-    Returns:
-        list: Danh sách các đường dẫn file biểu đồ đã tạo
+        compression_id: ID của bản ghi nén trong database
+        device_id: ID của thiết bị
     """
-    import os
-    import matplotlib.pyplot as plt
-    
-    # Khởi tạo danh sách tên file biểu đồ
-    chart_files = []
-    
-    # Tạo thư mục đầu ra nếu chưa tồn tại
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Ghi thêm thông tin về thời gian nếu có
-    if time_info and isinstance(time_info, dict) and 'min_time' in time_info and 'max_time' in time_info:
-        min_time = time_info['min_time']
-        max_time = time_info['max_time']
+    try:
+        # Khởi tạo danh sách tên file biểu đồ
+        chart_files = []
         
-        # Định dạng thời gian để hiển thị dễ đọc
-        if min_time and max_time:
-            min_time_str = min_time.strftime("%Y-%m-%d %H:%M:%S")
-            max_time_str = max_time.strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Thêm phạm vi thời gian vào kết quả nén để sử dụng trong biểu đồ
-            compression_result['time_range'] = {
-                'min': min_time_str,
-                'max': max_time_str
-            }
-            
-            logger.info(f"Phạm vi thời gian dữ liệu: {min_time_str} đến {max_time_str}")
-            
-    # Lấy kích thước từ database nếu có compression_id hoặc device_id
-    database_size_info = None
-    if compression_id or device_id:
-        logger.info(f"Đang truy vấn kích thước từ database (Compression ID: {compression_id}, Device ID: {device_id})")
-        database_size_info = get_data_size_from_database(compression_id, device_id)
-        
-        if not database_size_info:
-            logger.info(f"Sẽ sử dụng kích thước ước tính cho biểu đồ vì không thể lấy chính xác từ database")
-            # Thiết lập nguồn kích thước để hiển thị trong biểu đồ
-            compression_result['size_source'] = 'estimate'
-        else:
-            # Thiết lập nguồn kích thước là database nếu lấy thành công
-            compression_result['size_source'] = 'database'
-            logger.info(f"Đã lấy thông tin kích thước thành công từ database (ID: {database_size_info.get('compression_id')})")
-    else:
-        logger.info("Không có ID nén hoặc ID thiết bị, sẽ sử dụng kích thước ước tính cho biểu đồ")
-        compression_result['size_source'] = 'estimate'
-    
-    # 1. Tạo biểu đồ nhận diện template
-    try:
-        chart_file = create_pattern_recognition_chart(data, compression_result, output_dir)
-        if chart_file:
-            chart_files.append(chart_file)
-            logger.info(f"Đã tạo biểu đồ nhận diện template: {chart_file}")
+        # Tạo thư mục đầu ra nếu chưa tồn tại
+        os.makedirs(output_dir, exist_ok=True)
+
+        # 1. Tạo biểu đồ nhận diện template
+        try:
+            chart_file = create_pattern_recognition_chart(data, compression_result, output_dir)
+            if chart_file:
+                chart_files.append(chart_file)
+                logger.info(f"Đã tạo biểu đồ nhận diện template: {chart_file}")
+        except Exception as e:
+            logger.error(f"Lỗi khi tạo biểu đồ nhận diện template: {str(e)}")
+
+        # 2. Tạo biểu đồ điều chỉnh kích thước block
+        try:
+            chart_file = create_block_size_chart(compression_result, output_dir)
+            if chart_file:
+                chart_files.append(chart_file)
+                logger.info(f"Đã tạo biểu đồ điều chỉnh kích thước block: {chart_file}")
+        except Exception as e:
+            logger.error(f"Lỗi khi tạo biểu đồ điều chỉnh kích thước block: {str(e)}")
+
+        # 3. Tạo biểu đồ so sánh kích thước
+        if compression_id and device_id:
+            try:
+                chart_file = create_size_comparison_chart(compression_id, device_id, output_dir)
+                if chart_file:
+                    chart_files.append(chart_file)
+                    logger.info(f"Đã tạo biểu đồ so sánh kích thước: {chart_file}")
+            except Exception as e:
+                logger.error(f"Lỗi khi tạo biểu đồ so sánh kích thước: {str(e)}")
+
+        return chart_files
+
     except Exception as e:
-        logger.error(f"Lỗi khi tạo biểu đồ nhận diện template: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-    
-    # 2. Tạo biểu đồ điều chỉnh kích thước block
-    try:
-        chart_file = create_block_size_chart(compression_result, output_dir)
-        if chart_file:
-            chart_files.append(chart_file)
-            logger.info(f"Đã tạo biểu đồ điều chỉnh kích thước block: {chart_file}")
-    except Exception as e:
-        logger.error(f"Lỗi khi tạo biểu đồ điều chỉnh kích thước block: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-    
-    # 3. Tạo biểu đồ so sánh kích thước
-    try:
-        chart_file = create_size_comparison_chart(data, compression_result, output_dir, database_size_info)
-        if chart_file:
-            chart_files.append(chart_file)
-            logger.info(f"Đã tạo biểu đồ so sánh kích thước: {chart_file}")
-    except Exception as e:
-        logger.error(f"Lỗi khi tạo biểu đồ so sánh kích thước: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-    
-    return chart_files
+        logger.error(f"Lỗi khi tạo biểu đồ: {str(e)}")
+        return []
 
 def create_analysis_visualizations(compression_id: int):
     """
@@ -1982,5 +1937,7 @@ def main():
         logger.error(f"Lỗi: {str(e)}")
         sys.exit(1)
 
+if __name__ == "__main__":
+    main()
 if __name__ == "__main__":
     main()

@@ -16,6 +16,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import psycopg2
+from dotenv import load_dotenv
 
 # Import thuật toán nén từ module data_compression
 from data_compression import DataCompressor
@@ -62,8 +63,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Kết nối database từ biến môi trường
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5433/iot_db")
+# Load biến môi trường từ file .env
+load_dotenv()
+
+# Lấy thông tin kết nối từ biến môi trường
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_PORT = os.getenv('DB_PORT', '5432')
+DB_NAME = os.getenv('DB_NAME', 'iot_db')
+DB_USER = os.getenv('DB_USER', 'postgres')
+DB_PASS = os.getenv('DB_PASS', 'postgres')
+
+# Tạo DATABASE_URL
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 def setup_optimized_database():
     """
@@ -180,7 +191,7 @@ def fetch_original_data(engine, limit=1000, device_id=None):
     try:
         # Chuẩn bị truy vấn
         query = """
-        SELECT id, device_id, original_data, timestamp
+        SELECT id, device_id, value, timestamp
         FROM original_samples
         """
         
@@ -202,7 +213,7 @@ def fetch_original_data(engine, limit=1000, device_id=None):
                 record = {
                     'id': row[0],
                     'device_id': row[1],
-                    'original_data': row[2],
+                    'value': row[2],  # Thay original_data bằng value
                     'timestamp': row[3]
                 }
                 records.append(record)
@@ -219,88 +230,116 @@ def fetch_original_data(engine, limit=1000, device_id=None):
 def save_optimized_compression_result(engine, device_id, compression_result, timestamps=None):
     """
     Lưu kết quả nén vào bảng compressed_data_optimized
-    
-    Args:
-        engine: SQLAlchemy engine
-        device_id: ID của thiết bị
-        compression_result: Kết quả từ quá trình nén
-        timestamps: Danh sách timestamp của dữ liệu gốc (tùy chọn)
-        
-    Returns:
-        int: ID của bản ghi đã lưu
     """
+    conn = None
+    cursor = None
     try:
+        # Tạo kết nối trực tiếp với psycopg2
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
         # Chuẩn bị dữ liệu để lưu
         compression_metadata = {
-            'avg_cer': compression_result.get('avg_cer', 0),
+            'compression_ratio': compression_result.get('compression_ratio', 0),
             'hit_ratio': compression_result.get('hit_ratio', 0),
-            'num_blocks': len(compression_result.get('encoded_stream', [])),
-            'total_values': sum(block.get('length', 0) for block in compression_result.get('encoded_stream', [])),
-            'num_templates': len(compression_result.get('templates', {})),
-            'compression_time': datetime.now().isoformat(),
-            'compression_ratio': compression_result.get('compression_ratio', 0)
+            'avg_cer': compression_result.get('avg_cer', 0),
+            'total_values': compression_result.get('total_values', 0)
         }
-        
-        # Chuyển đổi thành JSON để lưu vào database
+
+        # Chuyển đổi sang JSON
+        compression_metadata_json = json.dumps(compression_metadata, cls=MyEncoder)
         templates_json = json.dumps(compression_result.get('templates', {}), cls=MyEncoder)
         encoded_stream_json = json.dumps(compression_result.get('encoded_stream', []), cls=MyEncoder)
-        compression_metadata_json = json.dumps(compression_metadata, cls=MyEncoder)
-        
-        # Tạo chuỗi time_range phù hợp cho PostgreSQL
+
+        # Xử lý time_range nếu có timestamps
         time_range_str = None
         if timestamps and len(timestamps) > 0:
-            min_time = min(timestamps).isoformat()
-            max_time = max(timestamps).isoformat()
-            # Tạo định dạng chuỗi phù hợp cho kiểu tsrange của PostgreSQL
-            time_range_str = f"[{min_time},{max_time}]"
-        
-        # Tạo kết nối trực tiếp đến database bằng psycopg2
-        conn_string = DATABASE_URL
-        conn = psycopg2.connect(conn_string)
-        cursor = conn.cursor()
-        
+            min_time = min(timestamps)
+            max_time = max(timestamps)
+            time_range_str = f"[{min_time.isoformat()}, {max_time.isoformat()}]"
+
+        # Lưu vào database
+        if time_range_str:
+            query = """
+            INSERT INTO compressed_data_optimized 
+            (device_id, compression_metadata, templates, encoded_stream, time_range)
+            VALUES (%s, %s::jsonb, %s::jsonb, %s::jsonb, %s::tsrange)
+            RETURNING id
+            """
+            cursor.execute(query, (
+                device_id, compression_metadata_json, templates_json, 
+                encoded_stream_json, time_range_str
+            ))
+        else:
+            query = """
+            INSERT INTO compressed_data_optimized 
+            (device_id, compression_metadata, templates, encoded_stream)
+            VALUES (%s, %s::jsonb, %s::jsonb, %s::jsonb)
+            RETURNING id
+            """
+            cursor.execute(query, (
+                device_id, compression_metadata_json, templates_json, 
+                encoded_stream_json
+            ))
+
+        # Lấy ID từ kết quả trả về
+        compression_id = cursor.fetchone()[0]
+        conn.commit()
+
+        # Tính tỷ lệ nén thực tế từ database
         try:
-            if time_range_str:
-                query = """
-                INSERT INTO compressed_data_optimized 
-                (device_id, compression_metadata, templates, encoded_stream, time_range)
-                VALUES 
-                (%s, %s::jsonb, %s::jsonb, %s::jsonb, %s::tsrange)
-                RETURNING id
-                """
-                cursor.execute(query, (
-                    device_id, 
-                    compression_metadata_json, 
-                    templates_json, 
-                    encoded_stream_json, 
-                    time_range_str
-                ))
-            else:
-                query = """
-                INSERT INTO compressed_data_optimized 
-                (device_id, compression_metadata, templates, encoded_stream)
-                VALUES 
-                (%s, %s::jsonb, %s::jsonb, %s::jsonb)
-                RETURNING id
-                """
-                cursor.execute(query, (
-                    device_id, 
-                    compression_metadata_json, 
-                    templates_json, 
-                    encoded_stream_json
-                ))
-            
-            # Lấy ID từ kết quả trả về
-            compression_id = cursor.fetchone()[0]
-            conn.commit()
-            logger.info(f"Đã lưu kết quả nén tối ưu với ID: {compression_id}")
-            return compression_id
-        finally:
-            cursor.close()
-            conn.close()
+            # Query để lấy kích thước dữ liệu nén
+            query_compressed = """
+            SELECT pg_column_size(templates) + pg_column_size(encoded_stream) + 
+                   pg_column_size(compression_metadata)
+            FROM compressed_data_optimized
+            WHERE id = %s
+            """
+            cursor.execute(query_compressed, (compression_id,))
+            compressed_size = cursor.fetchone()[0] or 0
+
+            # Query để lấy kích thước dữ liệu gốc (đã thay đổi theo cấu trúc mới)
+            query_original = """
+            SELECT SUM(pg_column_size(value))
+            FROM original_samples
+            WHERE device_id = %s
+            """
+            cursor.execute(query_original, (device_id,))
+            original_size = cursor.fetchone()[0] or 0
+
+            if compressed_size > 0:
+                real_ratio = original_size / compressed_size
+                # Cập nhật tỷ lệ nén thực tế vào metadata
+                cursor.execute("""
+                    UPDATE compressed_data_optimized 
+                    SET compression_metadata = jsonb_set(
+                        compression_metadata::jsonb,
+                        '{compression_ratio}',
+                        %s::text::jsonb
+                    )
+                    WHERE id = %s
+                """, (str(real_ratio), compression_id))
+                conn.commit()
+
+        except Exception as e:
+            logger.error(f"Lỗi khi tính tỷ lệ nén thực tế: {str(e)}")
+
+        return compression_id
+
     except Exception as e:
         logger.error(f"Lỗi khi lưu kết quả nén tối ưu: {str(e)}")
         raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def run_compression(device_id=None, limit=10000, save_result=False, output_file=None, visualize=False, output_dir=None, visualize_max_points=5000, visualize_sampling='adaptive', visualize_chunks=0):
     """
@@ -321,7 +360,7 @@ def run_compression(device_id=None, limit=10000, save_result=False, output_file=
         dict: Thông tin về quá trình nén
     """
     try:
-        # Thiết lập kết nối database (luôn sử dụng bảng tối ưu)
+        # Thiết lập kết nối database
         engine = setup_optimized_database()
         
         # Lấy dữ liệu từ bảng original_samples
@@ -338,199 +377,50 @@ def run_compression(device_id=None, limit=10000, save_result=False, output_file=
         current_device_id = device_id if device_id else 'default_device'
         
         # Chuẩn bị dữ liệu cho quá trình nén
-        # Phiên bản cập nhật cho dữ liệu đa chiều (4 chiều)
-        multi_data = []  
+        data_points = []
         timestamps = []
-        
-        # Các chiều dữ liệu cần thu thập
-        dimensions = ['power', 'humidity', 'pressure', 'temperature']
         
         # Thu thập dữ liệu từ các bản ghi
         for record in records:
-            original_data = record['original_data']
+            # Giờ value là một số thực đơn giản
+            value = record['value']
+            timestamp = record['timestamp']
             
-            # Chuyển đổi từ JSON sang dict nếu cần
-            if isinstance(original_data, str):
-                try:
-                    original_data = json.loads(original_data)
-                except:
-                    logger.warning(f"Không thể chuyển đổi dữ liệu từ JSON sang dict: {original_data}")
-                    continue  # Bỏ qua bản ghi này
-            
-            # Khởi tạo dictionary để lưu dữ liệu của bản ghi hiện tại
-            record_data = {}
-            
-            # Trường hợp 1: original_data đã là dictionary chứa các chiều
-            if isinstance(original_data, dict):
-                # Thu thập từng chiều dữ liệu
-                for dim in dimensions:
-                    if dim in original_data:
-                        value = original_data[dim]
-                        # Chuyển đổi giá trị NumPy thành Python standard type
-                        if isinstance(value, np.ndarray):
-                            value = value.tolist()
-                        elif isinstance(value, np.integer):
-                            value = int(value)
-                        elif isinstance(value, np.floating):
-                            value = float(value)
-                        elif isinstance(value, np.bool_):
-                            value = bool(value)
-                        
-                        record_data[dim] = value
-            
-            # Trường hợp 2: original_data là giá trị số (backward compatibility)
-            elif isinstance(original_data, (float, int, np.integer, np.floating)):
-                # Chuyển đổi giá trị NumPy thành Python standard type
-                value = original_data
-                if isinstance(value, np.integer):
-                    value = int(value)
-                elif isinstance(value, np.floating):
-                    value = float(value)
-                
-                # Trong trường hợp này, chỉ có power, các chiều khác là giá trị mặc định
-                record_data['power'] = value
-                
-                # Tạo giá trị mặc định cho các chiều khác (có thể điều chỉnh theo nhu cầu)
-                record_data['humidity'] = None
-                record_data['pressure'] = None
-                record_data['temperature'] = None
-            
-            # Nếu có ít nhất một chiều dữ liệu, thêm vào danh sách
-            if record_data:
-                multi_data.append(record_data)
-                
-                # Lưu timestamp nếu có
-                if 'timestamp' in record:
-                    timestamps.append(record['timestamp'])
+            data_points.append({
+                'value': value,
+                'timestamp': timestamp
+            })
+            timestamps.append(timestamp)
+
+        # Khởi tạo compressor và nén dữ liệu
+        compressor = DataCompressor()
+        compression_result = compressor.compress(data_points)
         
-        if not multi_data:
-            logger.warning("Không trích xuất được dữ liệu từ bản ghi")
-            return {
-                'success': False,
-                'message': 'Không trích xuất được dữ liệu',
-                'stats': {}
-            }
-        
-        # Thông tin về các chiều dữ liệu
-        dimensions_found = set()
-        for record in multi_data:
-            dimensions_found.update(record.keys())
-        
-        logger.info(f"Đã phát hiện {len(dimensions_found)} chiều dữ liệu: {dimensions_found}")
-        
-        # Tạo bộ nén dữ liệu với cấu hình tối ưu cho dữ liệu đa chiều
-        # Phát hiện các chiều dữ liệu có trong dữ liệu
-        dimensions_found = set()
-        for record in multi_data:
-            dimensions_found.update(record.keys())
-        
-        # Loại bỏ các trường không phải dữ liệu (nếu có)
-        non_data_fields = {'timestamp', 'time', 'id'}
-        dimensions_found = {dim for dim in dimensions_found if dim not in non_data_fields}
-        
-        logger.info(f"Đã phát hiện {len(dimensions_found)} chiều dữ liệu: {sorted(list(dimensions_found))}")
-        
-        # Kiểm tra tỷ lệ xuất hiện của mỗi chiều dữ liệu
-        dimension_stats = {}
-        for dim in dimensions_found:
-            count = sum(1 for item in multi_data if dim in item)
-            dimension_stats[dim] = {
-                "count": count,
-                "percentage": count / len(multi_data) * 100
-            }
-            logger.info(f"Chiều '{dim}': {count}/{len(multi_data)} mẫu ({dimension_stats[dim]['percentage']:.2f}%)")
-        
-        # Cấu hình cơ bản cho bộ nén
-        compression_config = {
-            'device_id': current_device_id,
-            'p_threshold': 0.1,  # Ngưỡng xác suất
-            'block_size': 10,    # Kích thước block ban đầu
-            'min_block_size': 10,  # Kích thước block tối thiểu
-            'max_block_size': 120,  # Kích thước block tối đa
-            'adaptive_block_size': True,  # Bật tính năng điều chỉnh kích thước block
-            'similarity_threshold': 0.7,  # Ngưỡng tương đồng
-            'max_acceptable_cer': 0.15,   # Ngưỡng CER tối đa chấp nhận được
-            'correlation_threshold': 0.6,   # Ngưỡng tương quan
-            # Cấu hình đặc biệt cho dữ liệu đa chiều
-            'multi_dimensional': len(dimensions_found) > 1,  # Bật chế độ đa chiều nếu có nhiều hơn 1 chiều
-            'dimension_weights': {dim: 1.0 for dim in dimensions_found}  # Trọng số mặc định bằng nhau
-        }
-        
-        # Chọn chiều dữ liệu chính dựa trên thứ tự ưu tiên
-        priority_dimensions = ['power', 'temperature', 'humidity', 'pressure']
-        selected_primary = None
-        
-        # Ưu tiên theo danh sách
-        for dim in priority_dimensions:
-            if dim in dimensions_found:
-                selected_primary = dim
-                logger.info(f"Tự động chọn '{dim}' làm chiều dữ liệu chính theo thứ tự ưu tiên")
-                break
-        
-        # Nếu không có chiều nào trong danh sách ưu tiên, chọn chiều có tỷ lệ xuất hiện cao nhất
-        if not selected_primary and dimensions_found:
-            # Sắp xếp theo tỷ lệ xuất hiện giảm dần
-            sorted_dims = sorted(dimension_stats.items(), key=lambda x: x[1]['percentage'], reverse=True)
-            selected_primary = sorted_dims[0][0]
-            logger.info(f"Không tìm thấy chiều dữ liệu trong danh sách ưu tiên, sử dụng '{selected_primary}' làm chiều dữ liệu chính (tỷ lệ xuất hiện cao nhất: {dimension_stats[selected_primary]['percentage']:.2f}%)")
-        
-        # Thiết lập chiều dữ liệu chính
-        if selected_primary:
-            compression_config['primary_dimension'] = selected_primary
-        else:
-            # Fallback nếu không tìm thấy chiều dữ liệu nào
-            compression_config['primary_dimension'] = 'value'
-            logger.warning("Không tìm thấy chiều dữ liệu nào, sử dụng 'value' làm chiều dữ liệu chính mặc định")
-        
-        # Log cấu hình nén
-        logger.info(f"Cấu hình nén: block_size={compression_config['block_size']}, min={compression_config['min_block_size']}, max={compression_config['max_block_size']}")
-        logger.info(f"Chế độ đa chiều: {compression_config['multi_dimensional']}, Chiều dữ liệu chính: {compression_config['primary_dimension']}")
-        
-        # Khởi tạo và nén dữ liệu
-        compressor = DataCompressor(compression_config)
-        logger.info(f"Đang nén dữ liệu đa chiều với {len(multi_data)} mẫu")
-        compression_result = compressor.compress(multi_data)
-        
-        # Thêm thông tin min_block_size và max_block_size từ cấu hình vào kết quả
-        compression_result['min_block_size'] = compression_config['min_block_size']
-        compression_result['max_block_size'] = compression_config['max_block_size']
-        
+        if not compression_result:
+            raise Exception("Không thể nén dữ liệu")
+
+        # Lưu kết quả nén vào database nếu cần
+        if not save_result:
+            # Đảm bảo device tồn tại
+            if ensure_device_exists(engine, current_device_id):
+                compression_id = save_optimized_compression_result(
+                    engine, current_device_id, compression_result, timestamps
+                )
+                logger.info(f"Đã lưu kết quả nén với ID: {compression_id}")
+            else:
+                logger.error(f"Không thể đảm bảo thiết bị '{current_device_id}' tồn tại trong bảng devices")
+
         # Tính các chỉ số thống kê
         stats = {
-            'num_records': len(multi_data),
+            'num_records': len(data_points),
             'num_templates': len(compression_result['templates']),
             'num_blocks': len(compression_result['encoded_stream']),
             'compression_ratio': compression_result['compression_ratio'],
             'hit_ratio': compression_result['hit_ratio'],
             'avg_cer': compression_result['avg_cer'],
             'avg_similarity': compression_result.get('avg_similarity', 0),
-            'dimensions': list(dimensions_found),
             'compression_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
-        
-        # Lưu kết quả nén vào database nếu cần
-        try:
-            # Thiết lập kết nối database
-            if engine:
-                # Đảm bảo thiết bị tồn tại trong bảng devices
-                if ensure_device_exists(engine, current_device_id):
-                    # Lưu kết quả nén vào bảng compressed_data_optimized
-                    logger.info("Đang lưu kết quả vào bảng compressed_data_optimized...")
-                    compression_id = save_optimized_compression_result(
-                        engine, 
-                        current_device_id, 
-                        compression_result,
-                        timestamps
-                    )
-                    logger.info(f"Đã lưu kết quả nén vào bảng compressed_data_optimized với ID: {compression_id}")
-                else:
-                    logger.error(f"Không thể đảm bảo thiết bị '{current_device_id}' tồn tại trong bảng devices")
-            else:
-                logger.error("Không thể kết nối đến database để lưu kết quả nén")
-        except Exception as e:
-            logger.error(f"Lỗi khi lưu kết quả nén vào database: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
         
         # Lưu kết quả vào file JSON nếu có tùy chọn save-result
         if save_result:
@@ -544,7 +434,7 @@ def run_compression(device_id=None, limit=10000, save_result=False, output_file=
             simplified_result = {
                 'device_id': device_id,
                 'stats': {
-                    'num_records': len(multi_data),
+                    'num_records': len(data_points),
                     'num_templates': len(compression_result['templates']),
                     'num_blocks': len(compression_result['encoded_stream']),
                     'compression_ratio': compression_result['compression_ratio'],
@@ -565,7 +455,7 @@ def run_compression(device_id=None, limit=10000, save_result=False, output_file=
         
         # Hiển thị thông tin
         print("\n===== KẾT QUẢ NÉN =====")
-        print(f"Tổng số điểm dữ liệu: {len(multi_data)}")
+        print(f"Tổng số điểm dữ liệu: {len(data_points)}")
         print(f"Số lượng template: {len(compression_result['templates'])}")
         print(f"Số lượng block: {len(compression_result['encoded_stream'])}")
         print(f"Tỷ lệ nén: {compression_result['compression_ratio']:.2f}x")
@@ -613,7 +503,7 @@ def run_compression(device_id=None, limit=10000, save_result=False, output_file=
                 
                 logger.info(f"Gọi module visualization_analyzer để tạo biểu đồ phân tích")
                 chart_files = create_visualizations(
-                    data=multi_data,
+                    data=data_points,
                     compression_result=compression_result, 
                     output_dir=output_dir,
                     max_points=visualize_max_points,
@@ -638,7 +528,7 @@ def run_compression(device_id=None, limit=10000, save_result=False, output_file=
             'success': True,
             'message': 'Nén dữ liệu thành công',
             'stats': stats,
-            'multi_data': multi_data,
+            'data_points': data_points,
             'compression_result': compression_result
         }
     except Exception as e:
