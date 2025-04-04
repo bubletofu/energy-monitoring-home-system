@@ -615,8 +615,9 @@ def analyze_memory_usage(compression_data: Dict[str, Any], output_prefix: str = 
         # Lấy kích thước dữ liệu gốc từ bảng original_samples
         query_original = """
         SELECT 
-            SUM(pg_column_size(original_data)) as original_size
-        FROM original_samples
+            COUNT(*) as row_count,
+            SUM(pg_column_size(value)) as original_size
+        FROM original_samples 
         WHERE device_id = :device_id
         """
         
@@ -1036,37 +1037,58 @@ def extract_time_info(compression_result):
     
     return time_info
 
-def create_pattern_recognition_chart(data, compression_result, output_dir):
-    """
-    Create pattern recognition chart showing how templates are identified in the data
-    
-    Args:
-        data: Original data
-        compression_result: Compression result dictionary
-        output_dir: Output directory for charts
-        
-    Returns:
-        str: Path to the created chart, or None if no data available
-    """
+def create_pattern_recognition_chart(data, compression_result, output_dir, compression_id=None):
     try:
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
         
-        # Extract information from compression_result
+        # Sử dụng compression_id từ tham số, không lấy từ compression_result
+        if not compression_id:
+            logger.error("No compression_id provided")
+            return None
+
+        # Kết nối database để lấy device_id và thời gian
+        conn = psycopg2.connect(
+            host=os.getenv('DB_HOST', 'localhost'),
+            port=os.getenv('DB_PORT', '5433'),
+            database=os.getenv('DB_NAME', 'iot_db'),
+            user=os.getenv('DB_USER', 'postgres'),
+            password=os.getenv('DB_PASSWORD', '1234')
+        )
+        cursor = conn.cursor()
+
+        # Lấy device_id từ bảng compressed_data_optimized
+        cursor.execute("""
+            SELECT device_id
+            FROM compressed_data_optimized 
+            WHERE id = %s
+        """, (compression_id,))
+        result = cursor.fetchone()
+        if not result:
+            logger.error(f"No data found for compression_id {compression_id}")
+            return None
+            
+        device_id = result[0]
+            
+        # Lấy thời gian từ bảng original_samples
+        cursor.execute("""
+            SELECT 
+                MIN(timestamp)::timestamp as start_time,
+                MAX(timestamp)::timestamp as end_time
+            FROM original_samples
+            WHERE device_id = %s
+        """, (device_id,))
+        result = cursor.fetchone()
+        if result:
+            start_time, end_time = result
+            time_info = f" (Data: {start_time.strftime('%Y-%m-%d %H:%M:%S')} - {end_time.strftime('%Y-%m-%d %H:%M:%S')})"
+        else:
+            time_info = ""
+
+        # Tiếp tục sử dụng compression_result để vẽ biểu đồ
         templates = compression_result.get('templates', {})
         encoded_stream = compression_result.get('encoded_stream', [])
         
-        # Get time range information
-        time_info = extract_time_info(compression_result)
-        
-        # Create file path
-        pattern_recognition_chart = os.path.join(output_dir, 'template_recognition.png')
-        
-        # Return early if no templates or encoded stream data available
-        if not templates or not encoded_stream:
-            logger.warning("No template or encoded stream data available for chart")
-            return None
-            
         # Prepare data for visualization
         primary_dim = None
         dimensions = {}
@@ -1158,9 +1180,7 @@ def create_pattern_recognition_chart(data, compression_result, output_dir):
                     template_seen[template_id] = template_color
         
         # Add titles and labels
-        title = 'Pattern Recognition and Data Segmentation'
-        if time_info:
-            title += time_info
+        title = f'Pattern Recognition and Data Segmentation - Device: {device_id}' + time_info
         plt.title(title, fontsize=14, fontweight='bold')
         plt.xlabel('Sample Index', fontsize=12)
         plt.ylabel('Data Value', fontsize=12)
@@ -1183,11 +1203,11 @@ def create_pattern_recognition_chart(data, compression_result, output_dir):
         
         # Adjust layout and save
         plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-        plt.savefig(pattern_recognition_chart, dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(output_dir, 'template_recognition.png'), dpi=300, bbox_inches='tight')
         plt.close()
         
-        logger.info(f"Created template recognition chart: {pattern_recognition_chart}")
-        return pattern_recognition_chart
+        logger.info(f"Created template recognition chart: {os.path.join(output_dir, 'template_recognition.png')}")
+        return os.path.join(output_dir, 'template_recognition.png')
         
     except Exception as e:
         logger.error(f"Error creating pattern recognition chart: {str(e)}")
@@ -1195,20 +1215,42 @@ def create_pattern_recognition_chart(data, compression_result, output_dir):
         logger.error(traceback.format_exc())
         return None
 
-def create_block_size_chart(compression_result, output_dir):
-    """
-    Create block size adjustment chart
-    
-    Args:
-        compression_result: Compression result
-        output_dir: Output directory for charts
-        
-    Returns:
-        str: Path to the created chart, or None if no block_sizes data available
-    """
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+def create_block_size_chart(compression_result, output_dir, compression_id=None):
     try:
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
+        
+        # Lấy device_id từ database nếu có compression_id
+        device_id = None
+        if compression_id:
+            conn = psycopg2.connect(
+                host=os.getenv('DB_HOST', 'localhost'),
+                port=os.getenv('DB_PORT', '5433'),
+                database=os.getenv('DB_NAME', 'iot_db'),
+                user=os.getenv('DB_USER', 'postgres'),
+                password=os.getenv('DB_PASSWORD', '1234')
+            )
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT device_id
+                FROM compressed_data_optimized 
+                WHERE id = %s
+            """, (compression_id,))
+            result = cursor.fetchone()
+            if result:
+                device_id = result[0]
+                
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()
         
         # Get block size information from compression_result
         # Check different keys that might contain block size information
@@ -1295,8 +1337,10 @@ def create_block_size_chart(compression_result, output_dir):
             plt.axhline(y=max_size, color='blue', linestyle='--', label=f'Max: {max_size}')
         
         # Add time information to title
-        title = f"Block Size Adjustment{time_info}"
-        plt.title(title)
+        title = 'Block Size Adjustment'
+        if device_id:  # Chỉ thêm device_id nếu đã lấy được
+            title += f' - Device: {device_id}'
+        plt.title(title, fontsize=14)
         plt.xlabel("Block Index")
         plt.ylabel("Block Size")
         plt.grid(True)
@@ -1315,25 +1359,20 @@ def create_block_size_chart(compression_result, output_dir):
         return None
 
 def create_size_comparison_chart(compression_id, device_id, output_dir):
-    """
-    Create chart comparing original and compressed data sizes
-    """
     try:
         conn = psycopg2.connect(
             host=os.getenv('DB_HOST', 'localhost'),
             port=os.getenv('DB_PORT', '5433'),
             database=os.getenv('DB_NAME', 'iot_db'),
             user=os.getenv('DB_USER', 'postgres'),
-            password=os.getenv('DB_PASS', '1234')
+            password=os.getenv('DB_PASSWORD', '1234')
         )
         cursor = conn.cursor()
 
-        # Get time range and sizes from compressed_data_optimized
+        # Lấy kích thước toàn bộ bản ghi nén
         cursor.execute("""
             SELECT time_range,
-                   pg_column_size(templates) as templates_size,
-                   pg_column_size(compression_metadata) as metadata_size,
-                   pg_column_size(timestamp) as timestamp_size
+                   pg_column_size(compressed_data_optimized.*) as total_compressed_size
             FROM compressed_data_optimized 
             WHERE id = %s
         """, (compression_id,))
@@ -1343,66 +1382,54 @@ def create_size_comparison_chart(compression_id, device_id, output_dir):
             logger.error(f"Could not find compressed data with ID {compression_id}")
             return None
             
-        time_range, templates_size, metadata_size, timestamp_size_compressed = result
+        time_range, compressed_size = result
 
-        # Get original data sizes and time range
+        # Lấy kích thước toàn bộ bản ghi gốc
         cursor.execute("""
             SELECT 
                 COUNT(*) as row_count,
-                SUM(pg_column_size(value)) as value_size,
-                SUM(pg_column_size(timestamp)) as timestamp_size,
-                MIN(timestamp)::timestamp as start_time,
-                MAX(timestamp)::timestamp as end_time
+                SUM(pg_column_size(value)) as original_size
             FROM original_samples
             WHERE device_id = %s
             AND timestamp <@ %s
         """, (device_id, time_range))
-        row_count, value_size, timestamp_size, start_time, end_time = cursor.fetchone()
-
-        # Calculate total sizes
-        original_size = value_size + timestamp_size
-        compressed_size = templates_size + metadata_size + timestamp_size_compressed
+        result = cursor.fetchone()
+        if not result:
+            logger.error(f"No original data found for device_id {device_id}")
+            return None
+            
+        row_count, original_size = result
 
         # Create detailed chart
         plt.figure(figsize=(12, 6))
         
-        # Draw original data bars
-        plt.bar(['Original Data'], [value_size/1024], label='Values', color='#2ecc71')
-        plt.bar(['Original Data'], [timestamp_size/1024], bottom=[value_size/1024], 
-                label='Timestamp', color='#3498db')
+        # Draw bars
+        plt.bar(['Original Data'], [original_size/1024], color='#2ecc71', label='Total Size')
+        plt.bar(['Compressed Data'], [compressed_size/1024], color='#e74c3c', label='Total Size')
 
-        # Draw compressed data bars
-        plt.bar(['Compressed Data'], [templates_size/1024], label='Templates', color='#e74c3c')
-        plt.bar(['Compressed Data'], [metadata_size/1024], bottom=[templates_size/1024], 
-                label='Metadata', color='#f1c40f')
-        plt.bar(['Compressed Data'], [timestamp_size_compressed/1024], 
-                bottom=[(templates_size + metadata_size)/1024],
-                color='#3498db')
-
-        plt.title('Data Size Comparison (Detailed)')
+        # Thêm device_id vào tiêu đề
+        plt.title(f'Data Size Comparison - Device: {device_id}')
         plt.ylabel('Size (KB)')
-        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.legend()
 
-        # Add detailed information
+        # Add information
         compression_ratio = original_size / max(1, compressed_size)
         plt.text(0.98, 0.98, 
+                f'Device ID: {device_id}\n'
                 f'Total Original: {original_size/1024:.1f} KB\n'
                 f'Total Compressed: {compressed_size/1024:.1f} KB\n'
                 f'Compression Ratio: {compression_ratio:.2f}x\n'
-                f'Rows: {row_count}\n'
-                f'Data Time Range:\n'
-                f'Start: {start_time.strftime("%Y-%m-%d %H:%M:%S")}\n'
-                f'End: {end_time.strftime("%Y-%m-%d %H:%M:%S")}',
+                f'Rows: {row_count}',
                 transform=plt.gca().transAxes,
                 ha='right', va='top',
                 bbox=dict(facecolor='white', alpha=0.8))
 
-        # Save chart
-        chart_path = os.path.join(output_dir, f'size_comparison_{compression_id}.png')
+        # Save chart with generic name
+        chart_path = os.path.join(output_dir, 'size_comparison.png')
         plt.savefig(chart_path, bbox_inches='tight', dpi=300)
         plt.close()
         
-        logger.info(f"Created detailed size comparison chart: {chart_path}")
+        logger.info(f"Created size comparison chart: {chart_path}")
         return chart_path
 
     except Exception as e:
@@ -1489,7 +1516,7 @@ def get_data_size_from_database(compression_id=None, device_id=None):
             query_original = """
             SELECT 
                 COUNT(*) as row_count,
-                SUM(pg_column_size(original_data)) as original_size
+                SUM(pg_column_size(value)) as original_size
             FROM original_samples 
             WHERE device_id = :device_id
             """
@@ -1542,20 +1569,6 @@ def get_data_size_from_database(compression_id=None, device_id=None):
 def create_visualizations(data, compression_result, output_dir='visualization', 
                         max_points=5000, sampling_method='adaptive', num_chunks=0, 
                         time_info=None, compression_id=None, device_id=None):
-    """
-    Tạo biểu đồ trực quan hóa từ kết quả nén
-    
-    Args:
-        data: Dữ liệu gốc
-        compression_result: Kết quả từ quá trình nén
-        output_dir: Thư mục đầu ra cho biểu đồ trực quan hóa
-        max_points: Số điểm tối đa để hiển thị trên biểu đồ
-        sampling_method: Phương pháp lấy mẫu dữ liệu cho biểu đồ
-        num_chunks: Số chunks để chia dữ liệu khi lấy mẫu
-        time_info: Thông tin về thời gian (min_time, max_time)
-        compression_id: ID của bản ghi nén trong database
-        device_id: ID của thiết bị
-    """
     try:
         # Khởi tạo danh sách tên file biểu đồ
         chart_files = []
@@ -1565,7 +1578,7 @@ def create_visualizations(data, compression_result, output_dir='visualization',
 
         # 1. Tạo biểu đồ nhận diện template
         try:
-            chart_file = create_pattern_recognition_chart(data, compression_result, output_dir)
+            chart_file = create_pattern_recognition_chart(data, compression_result, output_dir, compression_id)
             if chart_file:
                 chart_files.append(chart_file)
                 logger.info(f"Đã tạo biểu đồ nhận diện template: {chart_file}")
@@ -1574,7 +1587,7 @@ def create_visualizations(data, compression_result, output_dir='visualization',
 
         # 2. Tạo biểu đồ điều chỉnh kích thước block
         try:
-            chart_file = create_block_size_chart(compression_result, output_dir)
+            chart_file = create_block_size_chart(compression_result, output_dir, compression_id)
             if chart_file:
                 chart_files.append(chart_file)
                 logger.info(f"Đã tạo biểu đồ điều chỉnh kích thước block: {chart_file}")
@@ -1937,7 +1950,5 @@ def main():
         logger.error(f"Lỗi: {str(e)}")
         sys.exit(1)
 
-if __name__ == "__main__":
-    main()
 if __name__ == "__main__":
     main()
