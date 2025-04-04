@@ -357,78 +357,47 @@ def decompress_data(compression_record):
     Giải nén dữ liệu từ bản ghi nén
     
     Args:
-        compression_record: Bản ghi nén từ bảng compressed_data_optimized
+        compression_record: Dict chứa dữ liệu nén từ bảng compressed_data_optimized
         
     Returns:
-        dict: Kết quả giải nén
+        dict: Kết quả giải nén hoặc None nếu có lỗi
     """
     try:
-        if not compression_record:
-            logger.warning("Không có dữ liệu nén để giải nén")
-            return None
-            
-        templates = compression_record['templates']
-        encoded_stream = compression_record['encoded_stream']
-        device_id = compression_record['device_id']
-        metadata = compression_record['metadata']
-        time_range = compression_record.get('time_range', None)
-        
-        # Kết quả giải nén - chỉ lưu thông tin cần thiết
+        # Khởi tạo kết quả
         decompressed_results = {
-            'device_id': device_id,
-            'metadata': {
-                'compression_ratio': metadata.get('compression_ratio', 1.0),
-                'total_values': metadata.get('total_values', 0),
-                'num_templates': metadata.get('num_templates', len(templates))
-            },
+            'device_id': compression_record.get('device_id'),
+            'metadata': {},
             'decompressed_data': []
         }
+
+        # Lấy các thành phần cần thiết
+        templates = compression_record.get('templates', {})
+        encoded_stream = compression_record.get('encoded_stream', [])
+        time_range = compression_record.get('time_range')
         
-        # Lưu thông tin khoảng thời gian nếu có
-        first_timestamp = None
-        last_timestamp = None
-        
+        # Xử lý time_range
         if time_range:
-            # Chuyển đổi time_range thành chuỗi để có thể JSON serializable
-            if hasattr(time_range, 'lower') and hasattr(time_range, 'upper'):
-                # Đối với kiểu tsrange của PostgreSQL
-                try:
+            try:
+                if hasattr(time_range, 'lower') and hasattr(time_range, 'upper'):
                     lower = time_range.lower.isoformat() if time_range.lower else None
                     upper = time_range.upper.isoformat() if time_range.upper else None
                     decompressed_results['metadata']['time_range'] = f"[{lower},{upper}]"
-                    
-                    # Lưu thông tin thời gian để tính toán phân phối thời gian
                     first_timestamp = lower
                     last_timestamp = upper
-                except:
-                    # Fallback nếu không truy cập được thuộc tính
+                else:
                     decompressed_results['metadata']['time_range'] = str(time_range)
-            else:
-                # Nếu đã là chuỗi hoặc kiểu khác
-                decompressed_results['metadata']['time_range'] = str(time_range)
-                
-                # Cố gắng trích xuất thông tin thời gian từ chuỗi
-                try:
+                    # Trích xuất thời gian từ chuỗi
                     time_str = str(time_range)
                     if time_str.startswith('[') and time_str.endswith(']'):
                         time_parts = time_str[1:-1].split(',')
                         if len(time_parts) == 2:
                             first_timestamp = time_parts[0]
                             last_timestamp = time_parts[1]
-                except:
-                    pass
-        
-        # Thu thập tất cả các chiều dữ liệu từ templates
-        dimensions = set()
-        
-        # Kiểm tra templates để xác định các chiều dữ liệu
-        for template_id, template_data in templates.items():
-            if isinstance(template_data, dict):
-                dimensions.update(template_data.keys())
-                
-        decompressed_results['metadata']['dimensions'] = sorted(list(dimensions)) if dimensions else ['power']
-        
-        # Phân phối thời gian cho các block nếu có thông tin thời gian và không có start_time trong block
+            except Exception as e:
+                logger.warning(f"Không thể xử lý time_range: {str(e)}")
+                first_timestamp = last_timestamp = None
+
+        # Phân phối thời gian cho các block nếu cần
         time_distribution = None
         if first_timestamp and last_timestamp and len(encoded_stream) > 1:
             try:
@@ -438,75 +407,43 @@ def decompress_data(compression_record):
                     len(encoded_stream)
                 )
             except Exception as e:
-                logger.warning(f"Không thể phân phối thời gian cho các block: {str(e)}")
-        
+                logger.warning(f"Không thể phân phối thời gian: {str(e)}")
+
         # Duyệt qua các block trong encoded_stream
         for i, block in enumerate(encoded_stream):
-            template_id = str(block['template_id'])  # Chuyển sang string vì JSON key là string
+            template_id = str(block['template_id'])
             
             # Kiểm tra template tồn tại
             if template_id not in templates:
-                logger.warning(f"Không tìm thấy template cho ID: {template_id}, bỏ qua block")
+                logger.warning(f"Không tìm thấy template ID: {template_id}")
                 continue
                 
             # Lấy dữ liệu template
             template_data = templates[template_id]
-            
-            # Chuyển đổi template_data thành list nếu là ndarray
             if isinstance(template_data, np.ndarray):
                 template_data = template_data.tolist()
             
-            # Xử lý trường hợp template_data là dict có chứa mảng NumPy (đa chiều)
-            if isinstance(template_data, dict):
-                processed_template = {}
-                for dim, values in template_data.items():
-                    if isinstance(values, np.ndarray):
-                        processed_template[dim] = values.tolist()
-                    else:
-                        processed_template[dim] = values
-                template_data = processed_template
-            
-            # Thêm thông tin thời gian nếu có
-            start_time = block.get('start_time')
-            end_time = block.get('end_time')
-            timestamp = block.get('timestamp')
-            
-            # Sử dụng thời gian được phân phối nếu không có thông tin thời gian cụ thể
-            if not start_time and not end_time and not timestamp and time_distribution:
-                start_time = time_distribution[i]['start']
-                end_time = time_distribution[i]['end']
-            
-            # Tạo bản ghi giải nén với thông tin chiều dữ liệu
+            # Tạo block giải nén
             decompressed_block = {
                 'template_id': template_id,
                 'values': template_data
             }
             
-            # Thêm thông tin về chiều dữ liệu
-            if isinstance(template_data, dict):
-                decompressed_block['dimensions'] = sorted(list(template_data.keys()))
-            else:
-                decompressed_block['dimensions'] = ['power']
-            
-            # Thêm thông tin thời gian nếu có (ưu tiên từ cao đến thấp)
-            if start_time:
-                decompressed_block['start_time'] = start_time
-            if end_time:
-                decompressed_block['end_time'] = end_time
-            if timestamp and not start_time and not end_time:
-                decompressed_block['timestamp'] = timestamp
-                decompressed_block['start_time'] = timestamp  # Sử dụng timestamp làm start_time nếu không có
+            # Thêm thông tin thời gian
+            if time_distribution:
+                decompressed_block['start_time'] = time_distribution[i]['start']
+                decompressed_block['end_time'] = time_distribution[i]['end']
             
             decompressed_results['decompressed_data'].append(decompressed_block)
-        
-        # Sắp xếp kết quả theo thời gian bắt đầu nếu có
-        if any(block.get('start_time') for block in decompressed_results['decompressed_data']):
-            # Sắp xếp các block có start_time trước
+
+        # Sắp xếp kết quả theo thời gian nếu có
+        if any('start_time' in block for block in decompressed_results['decompressed_data']):
             decompressed_results['decompressed_data'].sort(
-                key=lambda x: x.get('start_time', '9999-12-31T23:59:59')  # Giá trị mặc định rất cao nếu không có start_time
+                key=lambda x: x.get('start_time', '9999-12-31T23:59:59')
             )
         
         return decompressed_results
+
     except Exception as e:
         logger.error(f"Lỗi khi giải nén dữ liệu: {str(e)}")
         import traceback
@@ -710,59 +647,6 @@ def main():
                     },
                     'decompressed_data': []
                 }
-                
-                # Kết hợp tất cả các dimensions từ các bản ghi
-                all_dimensions = set()
-                for result in all_results:
-                    if 'dimensions' in result['metadata']:
-                        all_dimensions.update(result['metadata']['dimensions'])
-                combined_results['metadata']['dimensions'] = sorted(list(all_dimensions))
-                
-                # Kết hợp thông tin thời gian
-                time_ranges = []
-                for result in all_results:
-                    if 'time_range' in result['metadata']:
-                        time_ranges.append(result['metadata']['time_range'])
-                
-                # Hiển thị các phạm vi thời gian của tất cả các bản ghi
-                if time_ranges:
-                    # Loại bỏ các phạm vi thời gian trùng lặp
-                    unique_time_ranges = list(set(time_ranges))
-                    if len(unique_time_ranges) > 1:
-                        combined_results['metadata']['time_ranges'] = unique_time_ranges
-                    
-                    # Nỗ lực tìm phạm vi thời gian tổng hợp nếu có thể
-                    try:
-                        from dateutil import parser
-                        
-                        # Thu thập tất cả các thời điểm thời gian
-                        all_timestamps = []
-                        for time_range in time_ranges:
-                            if isinstance(time_range, str) and time_range.startswith('[') and time_range.endswith(']'):
-                                parts = time_range[1:-1].split(',')
-                                if len(parts) == 2:
-                                    all_timestamps.extend(parts)
-                        
-                        # Nếu có đủ thông tin, tạo phạm vi thời gian tổng hợp
-                        if all_timestamps:
-                            valid_timestamps = []
-                            for ts in all_timestamps:
-                                try:
-                                    # Làm sạch chuỗi thời gian nếu cần
-                                    ts = ts.strip()
-                                    if ts.startswith('"') and ts.endswith('"'):
-                                        ts = ts[1:-1]
-                                    parser.parse(ts)  # Kiểm tra tính hợp lệ
-                                    valid_timestamps.append(ts)
-                                except:
-                                    pass
-                            
-                            if valid_timestamps:
-                                min_time = min(valid_timestamps)
-                                max_time = max(valid_timestamps)
-                                combined_results['metadata']['time_range'] = f"[{min_time},{max_time}]"
-                    except Exception as e:
-                        logger.warning(f"Không thể tính toán phạm vi thời gian tổng hợp: {str(e)}")
                 
                 # Kết hợp tất cả dữ liệu giải nén
                 for result in all_results:
