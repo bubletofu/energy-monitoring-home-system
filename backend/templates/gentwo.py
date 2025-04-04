@@ -74,7 +74,7 @@ def setup_database():
                 CREATE TABLE IF NOT EXISTS original_samples (
                     id SERIAL PRIMARY KEY,
                     device_id VARCHAR NOT NULL,
-                    original_data JSONB NOT NULL,
+                    value JSONB NOT NULL,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (device_id) REFERENCES devices(device_id)
                 )
@@ -444,155 +444,59 @@ def generate_template_data(num_days: int = 7, device_id: str = "template_test", 
     logger.info(f"Đã tạo xong {len(data_points)} điểm dữ liệu trong {num_days} ngày")
     return data_points
 
-def save_to_database(data_points: List[Dict[str, Any]], engine) -> int:
+def save_to_database(device_id: str, data: List[float], timestamps: List[datetime], batch_size=1000):
     """
-    Lưu dữ liệu vào database
+    Lưu dữ liệu vào database theo lô
     
     Args:
-        data_points: Danh sách các điểm dữ liệu
-        engine: SQLAlchemy engine
-        
-    Returns:
-        Số lượng bản ghi được lưu thành công
+        device_id: ID của thiết bị
+        data: List các giá trị dữ liệu
+        timestamps: List các timestamp tương ứng
+        batch_size: Kích thước mỗi lô
     """
     try:
-        # Kết nối đến database
+        # Kết nối database
+        engine = create_engine(DATABASE_URL)
+        
+        # Tính số lượng lô
+        num_batches = (len(data) + batch_size - 1) // batch_size
+        
         with engine.connect() as conn:
-            # Lấy tất cả các device_id riêng biệt từ dữ liệu
-            unique_device_ids = set(point['device_id'] for point in data_points)
-            
-            # Log thông tin về các device_id được tìm thấy
-            logger.info(f"Tìm thấy {len(unique_device_ids)} device_id khác nhau: {', '.join(unique_device_ids)}")
-            
-            # Kiểm tra và thêm thiết bị vào bảng devices nếu chưa tồn tại
-            for device_id in unique_device_ids:
-                # Kiểm tra xem device_id đã tồn tại trong bảng devices chưa
-                result = conn.execute(
-                    text("SELECT device_id FROM devices WHERE device_id = :device_id"),
-                    {"device_id": device_id}
-                ).fetchone()
+            # Xử lý từng lô
+            for i in range(num_batches):
+                start_idx = i * batch_size
+                end_idx = min((i + 1) * batch_size, len(data))
                 
-                # Nếu device_id chưa tồn tại, thêm vào bảng devices
-                if not result:
-                    device_name = f"Template Test Device {device_id}"
-                    device_description = f"Thiết bị giả lập với 2 mẫu template khác nhau"
-                    
-                    try:
-                        conn.execute(text("""
-                            INSERT INTO devices (device_id, name, description, created_at)
-                            VALUES (:device_id, :name, :description, :created_at)
-                        """), {
-                            "device_id": device_id,
-                            "name": device_name,
-                            "description": device_description,
-                            "created_at": datetime.now()
-                        })
-                        conn.commit()
-                        logger.info(f"Đã tạo thiết bị mới với device_id: {device_id}")
-                    except Exception as e:
-                        logger.error(f"Lỗi khi tạo thiết bị {device_id}: {str(e)}")
-                        conn.rollback()
-                        # Bỏ qua các bản ghi với device_id này
-                        data_points = [point for point in data_points if point['device_id'] != device_id]
-                        logger.warning(f"Đã loại bỏ {len(data_points)} bản ghi với device_id={device_id}")
-            
-            # Nếu không còn dữ liệu sau khi lọc, thoát sớm
-            if not data_points:
-                logger.warning("Không còn điểm dữ liệu nào để lưu sau khi lọc")
-                return 0
-            
-            # Đếm số lượng bản ghi được lưu thành công
-            success_count = 0
-            
-            # Tạo connection trực tiếp để thực hiện câu lệnh SQL thông thường
-            import psycopg2
-            import psycopg2.extras
-            
-            # Parse connection string từ engine
-            db_url = engine.url
-            database_params = {
-                'host': db_url.host if db_url.host else 'localhost',
-                'port': db_url.port if db_url.port else 5432,
-                'database': db_url.database,
-                'user': db_url.username,
-                'password': db_url.password
-            }
-            
-            # Kết nối trực tiếp qua psycopg2
-            pg_conn = psycopg2.connect(**database_params)
-            cursor = pg_conn.cursor()
-            
-            # Kiểm tra lại một lần nữa xem device_id có tồn tại trong bảng devices không
-            cursor.execute("SELECT device_id FROM devices")
-            existing_devices = {row[0] for row in cursor.fetchall()}
-            logger.info(f"Thiết bị hiện có trong database: {', '.join(existing_devices)}")
-            
-            # Lọc ra các điểm dữ liệu có device_id hợp lệ
-            valid_data_points = [point for point in data_points if point['device_id'] in existing_devices]
-            
-            if len(valid_data_points) < len(data_points):
-                logger.warning(f"Loại bỏ {len(data_points) - len(valid_data_points)} điểm dữ liệu có device_id không hợp lệ")
-                data_points = valid_data_points
-            
-            # Sử dụng kích thước lô (batch) để giảm thiểu ảnh hưởng của lỗi
-            batch_size = 100
-            num_batches = (len(data_points) + batch_size - 1) // batch_size
-            
-            logger.info(f"Chia dữ liệu thành {num_batches} lô, mỗi lô {batch_size} điểm")
-            
-            # Xử lý theo lô
-            for batch_idx in range(num_batches):
-                start_idx = batch_idx * batch_size
-                end_idx = min(start_idx + batch_size, len(data_points))
-                batch_points = data_points[start_idx:end_idx]
+                # Chuẩn bị dữ liệu cho lô hiện tại
+                batch_data = []
+                for j in range(start_idx, end_idx):
+                    batch_data.append({
+                        'device_id': device_id,
+                        'value': data[j],  # Thay original_data bằng value
+                        'timestamp': timestamps[j]
+                    })
                 
                 try:
-                    # Bắt đầu giao dịch mới cho mỗi lô
-                    batch_success = 0
+                    # Thực hiện insert
+                    conn.execute(
+                        text("""
+                            INSERT INTO original_samples (device_id, value, timestamp)  
+                            VALUES (:device_id, :value, :timestamp)
+                        """),
+                        batch_data
+                    )
+                    conn.commit()
                     
-                    # Chèn dữ liệu vào bảng original_samples
-                    for point in batch_points:
-                        try:
-                            # Chuyển đổi dict sang JSON string
-                            original_data_json = json.dumps(point['original_data'])
-                            
-                            # Thực hiện INSERT trực tiếp bằng psycopg2
-                            cursor.execute("""
-                                INSERT INTO original_samples (device_id, original_data, timestamp)
-                                VALUES (%s, %s::jsonb, %s)
-                            """, (
-                                point['device_id'],
-                                original_data_json,
-                                point['timestamp']
-                            ))
-                            batch_success += 1
-                        except Exception as e:
-                            # Nếu có lỗi với một điểm dữ liệu cụ thể, ghi nhật ký lỗi nhưng không làm gián đoạn lô
-                            logger.error(f"Lỗi khi lưu điểm dữ liệu ở lô {batch_idx+1}/{num_batches}: {str(e)}")
-                            # Rollback để hủy bỏ giao dịch đang lỗi và bắt đầu giao dịch mới
-                            pg_conn.rollback()
-                            # Bắt đầu giao dịch mới ngay lập tức
-                            continue
+                    logger.info(f"Đã lưu lô {i+1}/{num_batches}")
                     
-                    # Commit lô này nếu có ít nhất một thao tác thành công
-                    if batch_success > 0:
-                        pg_conn.commit()
-                        success_count += batch_success
-                        logger.info(f"Đã lưu thành công {batch_success}/{len(batch_points)} điểm dữ liệu trong lô {batch_idx+1}/{num_batches}")
                 except Exception as e:
-                    # Xử lý lỗi cho toàn bộ lô
-                    logger.error(f"Lỗi xử lý lô {batch_idx+1}/{num_batches}: {str(e)}")
-                    pg_conn.rollback()
-            
-            # Đóng kết nối
-            cursor.close()
-            pg_conn.close()
-            
-            logger.info(f"Đã lưu thành công {success_count}/{len(data_points)} điểm dữ liệu vào database")
-            return success_count
+                    logger.error(f"Lỗi khi lưu điểm dữ liệu ở lô {i+1}/{num_batches}: {str(e)}")
+                    conn.rollback()
+                    raise
+                    
     except Exception as e:
         logger.error(f"Lỗi khi lưu dữ liệu vào database: {str(e)}")
-        return 0
+        raise
 
 def main():
     """
@@ -658,7 +562,7 @@ def main():
             sys.exit(1)
             
         # Lưu dữ liệu
-        save_to_database(data_points, engine)
+        save_to_database(args.device_id, [point['original_data']['power'] for point in data_points], [point['timestamp'] for point in data_points])
     else:
         logger.info("Đã bỏ qua việc lưu dữ liệu vào database theo yêu cầu")
     
