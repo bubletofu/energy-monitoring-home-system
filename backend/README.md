@@ -10,8 +10,9 @@
 ### Sử dụng Docker (Khuyến nghị)
 
 1. Cài đặt Docker và Docker Compose
-2. Sao chép file `.env.example` thành `.env` và cập nhật thông tin kết nối
-3. Chạy hệ thống:
+2. cd backend
+3. Sao chép file `.env.example` thành `.env` và cập nhật thông tin kết nối
+4. Chạy hệ thống:
 ```
 docker-compose up -d
 ```
