@@ -25,6 +25,11 @@ MQTT_PASSWORD=${ADAFRUIT_IO_KEY}
 MQTT_TOPIC=${ADAFRUIT_IO_USERNAME}/feeds/#
 MQTT_SSL=true  # Thêm flag để xác định có sử dụng SSL hay không
 
+DB_HOST=localhost
+DB_PORT=5433
+DB_NAME=iot_db
+DB_USER=postgres
+DB_PASS=1234
 ```
 3. Chạy hệ thống:
    
