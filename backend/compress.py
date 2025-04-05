@@ -341,7 +341,7 @@ def save_optimized_compression_result(engine, device_id, compression_result, tim
         if conn:
             conn.close()
 
-def run_compression(device_id=None, limit=10000, save_result=False, output_file=None, visualize=False, output_dir=None, visualize_max_points=5000, visualize_sampling='adaptive', visualize_chunks=0):
+def run_compression(device_id=None, limit=200000, save_result=False, output_file=None, visualize=False, output_dir=None, visualize_max_points=5000, visualize_sampling='adaptive', visualize_chunks=0):
     """
     Nén dữ liệu từ bảng original_samples
     
@@ -548,7 +548,7 @@ def main():
     # Thiết lập tham số dòng lệnh
     parser = argparse.ArgumentParser(description='Nén dữ liệu từ database')
     parser.add_argument('--device-id', type=str, help='ID của thiết bị cần nén dữ liệu')
-    parser.add_argument('--limit', type=int, default=100000, help='Số lượng bản ghi tối đa cần nén (mặc định: 100000)')
+    parser.add_argument('--limit', type=int, default=200000, help='Số lượng bản ghi tối đa cần nén (mặc định: 200000)')
     parser.add_argument('--save-result', action='store_true', help='Lưu kết quả nén vào file JSON')
     parser.add_argument('--output-file', type=str, help='Đường dẫn file để lưu kết quả nén')
     

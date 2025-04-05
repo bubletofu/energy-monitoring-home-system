@@ -1329,7 +1329,7 @@ def create_block_size_chart(compression_result, output_dir, compression_id=None)
         if (min_size == 0 or max_size == 0) and len(processed_block_sizes) > 0:
             # Set default values if not found
             min_size = min_size or 10  # Default value
-            max_size = max_size or 120  # Default value
+            max_size = max_size or 100  # Default value
         
         if min_size > 0:
             plt.axhline(y=min_size, color='red', linestyle='--', label=f'Min: {min_size}')

@@ -28,7 +28,7 @@ class DataCompressor:
             'max_templates': 200,     # Số lượng template tối đa
             'min_values': 10,         # Số lượng giá trị tối thiểu để xem xét
             'min_block_size': 10,     # Kích thước block tối thiểu
-            'max_block_size': 120,    # Kích thước block tối đa
+            'max_block_size': 100,    # Kích thước block tối đa
             'adaptive_block_size': True, # Tự động điều chỉnh kích thước block
             'min_blocks_before_adjustment': 5, # Số block tối thiểu trước khi điều chỉnh
             'confidence_level': 0.95, # Mức độ tin cậy
@@ -91,6 +91,16 @@ class DataCompressor:
         self.last_merge_check = 0          # Block cuối cùng kiểm tra gộp template
         self.merged_templates = {}         # Dict lưu thông tin template đã gộp
         self.template_importance = {}      # Dict lưu tầm quan trọng của các template
+        
+        # Các biến mới để theo dõi sự ổn định của kích thước block
+        self.stable_block_size = None      # Kích thước block được xác định là ổn định
+        self.stable_periods = 0            # Số chu kỳ mà block size giữ ổn định
+        self.stability_threshold = 5       # Ngưỡng số chu kỳ để coi là ổn định
+        self.stability_score = 0           # Điểm ổn định hiện tại (0-100)
+        self.in_stabilization_phase = False # Đang trong giai đoạn ổn định
+        self.stability_hit_ratios = []     # Lịch sử hit ratio khi đã ổn định
+        self.stability_window_size = 10    # Kích thước cửa sổ để theo dõi hit ratio ổn định
+        self.max_stability_score = 100     # Điểm ổn định tối đa
 
         logger.info("Đã reset Data Compressor")
         
@@ -701,7 +711,7 @@ class DataCompressor:
     def is_similar(self, data1, data2):
         """
         Kiểm tra tính tương đồng giữa hai mảng dữ liệu một chiều
-        
+
         Args:
             data1, data2: Hai mảng numpy một chiều cần so sánh
             
@@ -723,12 +733,60 @@ class DataCompressor:
         _, ks_pvalue = stats.ks_2samp(data1, data2)
         cer = self.calculate_cer(data1, data2)
         
+        # CẢI TIẾN: Phát hiện đặc điểm dạng chuỗi thời gian
+        # Kiểm tra thay đổi đột biến
+        has_sudden_change = False
+        time_pattern_diff = 0.0
+
+        # 1. Kiểm tra biến động đột ngột (spike detection)
+        if len(data1) > 4 and len(data2) > 4:
+            # Tính sự thay đổi giữa các điểm liên tiếp
+            diff1 = np.abs(np.diff(data1))
+            diff2 = np.abs(np.diff(data2))
+            
+            # Phát hiện sự thay đổi đột ngột (spike)
+            # So sánh phân vị 95th của các thay đổi
+            if len(diff1) > 0 and len(diff2) > 0:
+                spike_threshold1 = np.percentile(diff1, 95)
+                spike_threshold2 = np.percentile(diff2, 95)
+                
+                # Nếu một trong hai dữ liệu có spike gấp đôi spike của dữ liệu kia
+                if spike_threshold1 > 2 * spike_threshold2 or spike_threshold2 > 2 * spike_threshold1:
+                    has_sudden_change = True
+                    time_pattern_diff += 0.3  # Tăng điểm khác biệt
+        
+        # 2. Kiểm tra chu kỳ mùa vụ (seasonality)
+        has_different_seasonality = False
+        if len(data1) >= 8 and len(data2) >= 8:
+            # Phân tích tự tương quan (autocorrelation) - dấu hiệu của tính chu kỳ
+            try:
+                acf1 = np.correlate(data1 - np.mean(data1), data1 - np.mean(data1), mode='full')
+                acf1 = acf1[len(acf1)//2:] / acf1[len(acf1)//2]  # Chuẩn hóa
+                
+                acf2 = np.correlate(data2 - np.mean(data2), data2 - np.mean(data2), mode='full')
+                acf2 = acf2[len(acf2)//2:] / acf2[len(acf2)//2]  # Chuẩn hóa
+                
+                # So sánh hình dạng của hàm tự tương quan (chỉ lấy khoảng nửa đầu)
+                min_len = min(len(acf1), len(acf2))
+                half_len = min_len // 2
+                if half_len > 2:
+                    acf_diff = np.mean(np.abs(acf1[:half_len] - acf2[:half_len]))
+                    # Nếu hàm tự tương quan khác biệt lớn, dấu hiệu của chu kỳ khác nhau
+                    if acf_diff > 0.4:
+                        has_different_seasonality = True
+                        time_pattern_diff += 0.3  # Tăng điểm khác biệt
+            except Exception:
+                pass
+        
         # Thông tin chi tiết
         details = {
             'ks_pvalue': ks_pvalue,
             'correlation': correlation,
             'cer': cer,
-            'similarity_score': similarity_score
+            'similarity_score': similarity_score,
+            'has_sudden_change': has_sudden_change,
+            'has_different_seasonality': has_different_seasonality,
+            'time_pattern_diff': time_pattern_diff
         }
         
         # Cải tiến: Sử dụng ngưỡng động để xác định tính tương đồng
@@ -738,10 +796,19 @@ class DataCompressor:
         if correlation > 0.8:
             similarity_threshold = 0.45
         
+        # CẢI TIẾN: Áp dụng kiến thức về đặc tính chuỗi thời gian
+        max_acceptable_cer = self.config['max_acceptable_cer']
+        if has_sudden_change or has_different_seasonality:
+            # Tăng ngưỡng tương đồng nếu phát hiện thấy khác biệt trong mô hình thời gian
+            similarity_threshold += time_pattern_diff
+            # Giảm ngưỡng CER chấp nhận được để nghiêm ngặt hơn
+            max_acceptable_cer = self.config['max_acceptable_cer'] * 0.7
+            logger.debug(f"Phát hiện các mẫu thời gian khác biệt: sudden_change={has_sudden_change}, diff_season={has_different_seasonality}")
+        
         # Xác định dữ liệu có tương tự nhau không
         is_similar = (
             similarity_score > similarity_threshold and
-            cer < self.config['max_acceptable_cer']
+            cer < max_acceptable_cer
         )
         
         if is_similar:
@@ -774,14 +841,41 @@ class DataCompressor:
         # Phát hiện xu hướng trong dữ liệu gần đây
         has_trend, trend_type, trend_strength = self.detect_trend(data)
         
+        # CẢI TIẾN: Phát hiện dữ liệu khác biệt lớn (outliers)
+        # Tính mức dao động và sự biến đổi trong dữ liệu
+        fluctuation_level = np.std(np.diff(data)) if len(data) > 1 else 0
+        normalized_fluctuation = fluctuation_level / data_std if data_std > 0 else 0
+        
+        # Kiểm tra mức độ biến đổi đột ngột, sử dụng z-score để tìm điểm dữ liệu bất thường
+        has_high_fluctuation = False
+        outlier_percentage = 0
+        if len(data) > 3:
+            # Tính z-score cho dữ liệu
+            z_scores = np.abs((data - data_mean) / data_std) if data_std > 0 else np.zeros_like(data)
+            # Đếm số điểm dữ liệu có z-score > 3 (outliers tiêu chuẩn)
+            outlier_count = np.sum(z_scores > 3)
+            outlier_percentage = outlier_count / len(data)
+            has_high_fluctuation = outlier_percentage > 0.1  # Nếu > 10% điểm dữ liệu là outliers
+            
+            if has_high_fluctuation:
+                logger.debug(f"Phát hiện dữ liệu có biến đổi mạnh: {outlier_percentage:.2f} điểm outliers, normalized_fluctuation={normalized_fluctuation:.3f}")
+        
         potential_matches = []
         
-        # Khi phát hiện xu hướng mạnh, điều chỉnh cách chọn template
+        # Điều chỉnh chiến lược khi phát hiện xu hướng hoặc biến đổi mạnh
+        similarity_boost = 0.0
+        cer_threshold_adjustment = 0.0
+        
         if has_trend and trend_strength > 0.85:
             logger.debug(f"Đã phát hiện xu hướng mạnh: {trend_type}, độ mạnh: {trend_strength:.2f}")
             similarity_boost = 0.15  # Với xu hướng mạnh, cần tăng điểm tương đồng lên 15%
-        else:
-            similarity_boost = 0.0
+        
+        # CẢI TIẾN: Điều chỉnh cho dữ liệu biến đổi đột ngột
+        if has_high_fluctuation:
+            # Khi có biến đổi mạnh, cần thêm điều kiện nghiêm ngặt hơn cho CER
+            cer_threshold_adjustment = -0.05  # Giảm ngưỡng CER tối đa chấp nhận được
+            # Đồng thời yêu cầu điểm tương đồng cao hơn
+            similarity_boost = max(0.2, similarity_boost)  # Yêu cầu tương đồng cao hơn 20%
         
         for template_id, template in self.templates.items():
             template_values = np.array(template['values'])
@@ -793,23 +887,40 @@ class DataCompressor:
             template_max = np.max(template_values)
             template_range = template_max - template_min
             
+            # CẢI TIẾN: Kiểm tra chi tiết hơn các đặc tính thống kê
             # Bỏ qua các template có đặc trưng quá khác
-            if (abs(data_mean - template_mean) > 0.5 * data_std and 
-                abs(data_range - template_range) > 0.5 * data_range):
+            if (abs(data_mean - template_mean) > 0.4 * data_std and 
+                abs(data_range - template_range) > 0.4 * data_range):
+                continue
+            
+            # Khi có biến đổi mạnh, thêm kiểm tra về độ lệch chuẩn
+            if has_high_fluctuation and abs(data_std - template_std) > 0.5 * template_std:
+                logger.debug(f"Bỏ qua template {template_id} do khác biệt lớn về độ lệch chuẩn: {data_std:.3f} vs {template_std:.3f}")
                 continue
                 
             # Cập nhật metrics của template (mark as checked, not used yet)
             self.update_template_metrics(template_id, used=False)
+            
+            # Tính CER trước để kiểm tra nhanh
+            cer = self.calculate_cer(data, template_values)
+            
+            # CẢI TIẾN: Áp dụng ngưỡng CER động dựa trên phát hiện biến đổi
+            adjusted_max_cer = self.config['max_acceptable_cer'] + cer_threshold_adjustment
+            
+            # Nếu CER quá cao, bỏ qua template này ngay
+            if cer > adjusted_max_cer:
+                continue
                 
-            # Tính điểm tương đồng
+            # Tính điểm tương đồng nếu CER chấp nhận được
             similarity_score = self.calculate_similarity(data, template_values)
                 
-            # Điều chỉnh điểm tương đồng nếu có xu hướng mạnh
-            adjusted_similarity = similarity_score - similarity_boost if has_trend else similarity_score
+            # Điều chỉnh điểm tương đồng nếu có xu hướng mạnh hoặc biến đổi cao
+            adjusted_similarity = similarity_score
+            if similarity_boost > 0:
+                adjusted_similarity = similarity_score - similarity_boost
                 
-            # Nếu đủ tương đồng sau khi điều chỉnh, thêm vào danh sách tiềm năng
+            # Thêm vào danh sách tiềm năng nếu đủ tương đồng sau khi điều chỉnh
             if adjusted_similarity > 0.3:
-                cer = self.calculate_cer(data, template_values)
                 potential_matches.append((template_id, cer, similarity_score))
         
         # Sắp xếp theo điểm tương đồng giảm dần
@@ -819,11 +930,25 @@ class DataCompressor:
         if potential_matches:
             best_match = potential_matches[0]
             best_template_id, best_cer, best_similarity = best_match
+            
+            # CẢI TIẾN: Kiểm tra thêm với dữ liệu biến đổi mạnh
+            if has_high_fluctuation:
+                # Nếu có biến đổi mạnh và CER vẫn tương đối cao, xem xét bỏ qua template
+                adjusted_max_cer = self.config['max_acceptable_cer'] * 0.7  # Giảm ngưỡng CER xuống 70%
+                if best_cer > adjusted_max_cer:
+                    logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, CER: {best_cer:.4f}) do CER cao trong dữ liệu biến đổi mạnh (ngưỡng: {adjusted_max_cer:.4f})")
+                    return None, 0, False
                 
+                # Nếu dữ liệu có độ biến đổi cao nhưng điểm tương đồng không đủ cao
+                if best_similarity < 0.7:
+                    logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, score: {best_similarity:.2f}) do điểm tương đồng không đủ cao cho dữ liệu biến đổi mạnh")
+                    return None, 0, False
+                
+                logger.debug(f"Chấp nhận template {best_template_id} cho dữ liệu biến đổi mạnh (CER: {best_cer:.4f}, Tương đồng: {best_similarity:.2f})")
+
             # Nếu có xu hướng mạnh và điểm tương đồng không quá cao, có thể quyết định tạo template mới
-            if has_trend and trend_strength > 0.9 and best_similarity < 0.7:
-                logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, score: {best_similarity:.2f}) "
-                          f"do xu hướng mạnh: {trend_type}")
+            elif has_trend and trend_strength > 0.9 and best_similarity < 0.7:
+                logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, score: {best_similarity:.2f}) do xu hướng mạnh: {trend_type}")
                 return None, 0, False
 
             # Nếu quyết định sử dụng template này, cập nhật metrics
@@ -979,7 +1104,65 @@ class DataCompressor:
                 self.continuous_hit_ratio.append(current_hit_ratio)
         else:
             current_hit_ratio = 0.0
+        
+        # Lấy hit ratio cửa sổ gần nhất
+        recent_hit_ratio = self.continuous_hit_ratio[-1] if self.continuous_hit_ratio else current_hit_ratio
+        
+        # Lấy điểm tương đồng trung bình gần đây nếu có
+        recent_similarity = np.mean(self.similarity_scores[-5:]) if len(self.similarity_scores) >= 5 else 1.0
+        
+        # ĐÁNH GIÁ ỔN ĐỊNH: Theo dõi sự ổn định của kích thước block
+        # Thêm hit ratio hiện tại vào mảng theo dõi ổn định nếu đang trong giai đoạn ổn định
+        if self.in_stabilization_phase:
+            self.stability_hit_ratios.append(recent_hit_ratio)
+            # Giới hạn kích thước cửa sổ ổn định
+            if len(self.stability_hit_ratios) > self.stability_window_size:
+                self.stability_hit_ratios = self.stability_hit_ratios[-self.stability_window_size:]
+        
+        # Kiểm tra xem kích thước block hiện tại có ổn định hay không
+        if self.stable_block_size == self.current_block_size:
+            self.stable_periods += 1
             
+            # Tăng điểm ổn định dần dần nếu performance tốt
+            hit_ratio_good = recent_hit_ratio >= 0.55
+            similarity_good = recent_similarity >= 0.6
+            if hit_ratio_good and similarity_good:
+                # Tăng điểm ổn định, nhưng chậm dần khi điểm cao
+                increase_amount = max(1, int((self.max_stability_score - self.stability_score) * 0.1))
+                self.stability_score = min(self.max_stability_score, self.stability_score + increase_amount)
+            elif hit_ratio_good or similarity_good:
+                # Tăng chậm hơn nếu chỉ một trong hai chỉ số tốt
+                self.stability_score = min(self.max_stability_score, self.stability_score + 1)
+            else:
+                # Giảm điểm ổn định nếu hiệu suất không tốt
+                self.stability_score = max(0, self.stability_score - 2)
+        else:
+            # Đặt lại giai đoạn ổn định nếu kích thước block thay đổi
+            self.stable_block_size = self.current_block_size
+            self.stable_periods = 1
+            
+            # Khởi tạo điểm ổn định ban đầu
+            self.stability_score = 20  # Điểm ổn định khởi đầu thấp
+            
+            # Reset giai đoạn ổn định
+            self.in_stabilization_phase = False
+            self.stability_hit_ratios = []
+        
+        # Xác định xem đã đạt ngưỡng ổn định chưa
+        if self.stable_periods >= self.stability_threshold and self.stability_score >= 50:
+            self.in_stabilization_phase = True
+            
+            # Kiểm tra xem hiệu suất hiện tại có tốt không để duy trì ổn định
+            if not self.stability_hit_ratios or np.mean(self.stability_hit_ratios) >= 0.5:
+                # Hiệu suất ổn định và tốt, giữ nguyên kích thước block
+                logger.debug(f"Ổn định kích thước block tại {self.current_block_size} (score: {self.stability_score})")
+                
+                # Với điểm ổn định cao, bỏ qua chu kỳ điều chỉnh thông thường
+                if self.stability_score > 80:
+                    # Tăng khoảng cách giữa các lần điều chỉnh
+                    if self.blocks_processed - self.last_adjustment_block < self.min_adjustment_interval * 2:
+                        return self.current_block_size
+        
         # Chỉ điều chỉnh nếu đã xử lý đủ số block tối thiểu
         if not self.config['adaptive_block_size'] or self.blocks_processed < self.config['min_blocks_before_adjustment']:
             return self.current_block_size
@@ -1013,9 +1196,6 @@ class DataCompressor:
         if len(self.similarity_scores) >= 5:
             recent_5_similarity = self.similarity_scores[-5:]
             similarity_trend = recent_5_similarity[-1] - recent_5_similarity[0]
-        
-        # Lấy hit ratio cửa sổ gần nhất
-        recent_hit_ratio = self.continuous_hit_ratio[-1] if self.continuous_hit_ratio else current_hit_ratio
         
         # Số lượng thông tin có hiệu lực đã thu thập được
         r = self.blocks_processed
@@ -1072,7 +1252,7 @@ class DataCompressor:
                                     if nnew > nbest:
                                         nnew = nbest + max_change
                                     else:
-                                        nnew = nbest - max_change
+                                        nnew = max(nbest - max_change, int(nbest * 0.85))  # Giới hạn giảm xuống tối đa 15%
                 except Exception as e:
                     # Ghi log lỗi để debug
                     logger.warning(f"Lỗi khi tạo mô hình đa thức: {str(e)}")
@@ -1089,6 +1269,16 @@ class DataCompressor:
                 hr_weight = 0.4     # Giảm trọng số cho hit ratio
                 sim_weight = 0.5    # Tăng trọng số cho độ tương đồng
                 trend_weight = 0.1  # Trọng số cho xu hướng dữ liệu
+                
+                # Điều chỉnh trọng số khi đang trong giai đoạn ổn định
+                stability_reduction = 0.0
+                if self.in_stabilization_phase:
+                    # Tính hệ số giảm dựa trên điểm ổn định
+                    stability_reduction = min(0.8, self.stability_score / 100)
+                    
+                    # Giảm các trọng số khi ổn định
+                    hr_weight *= (1.0 - stability_reduction * 0.5)
+                    sim_weight *= (1.0 - stability_reduction * 0.3)
                 
                 # Tính điểm cho việc tăng kích thước
                 increase_score = 0
@@ -1127,42 +1317,179 @@ class DataCompressor:
                 if has_trend and trend_strength > 0.5:
                     decrease_score += trend_weight
                 
+                # Áp dụng hệ số giảm cho các điểm khi ổn định
+                adjustment_damper = 1.0
+                if self.in_stabilization_phase:
+                    adjustment_damper = 1.0 - stability_reduction
+                    
+                    # Kiểm tra nếu hiệu suất suy giảm đáng kể
+                    if len(self.stability_hit_ratios) >= 3:
+                        current_stable_hr = np.mean(self.stability_hit_ratios[-3:])
+                        if current_stable_hr < 0.4 and recent_similarity < 0.5:
+                            # Hiệu suất kém, thoát khỏi giai đoạn ổn định
+                            logger.info(f"Thoát khỏi giai đoạn ổn định do hiệu suất kém (HR: {current_stable_hr:.2f}, Sim: {recent_similarity:.2f})")
+                            self.in_stabilization_phase = False
+                            self.stability_score = max(0, self.stability_score - 30)
+                            adjustment_damper = 1.0  # Bỏ qua hệ số giảm
+                
                 # Quyết định điều chỉnh dựa trên điểm số
                 if increase_score > decrease_score + 0.2:  # Ưu tiên tăng từ từ
-                    # Tăng nhanh hơn với hệ số cao hơn
-                    adjustment_factor = min(0.35, (increase_score - decrease_score) * 0.7)  # Tăng từ 0.25 lên 0.35 và hệ số từ 0.5 lên 0.7
-                    nnew = int(nbest * (1 + adjustment_factor))
-                    adjustment_reason = "faster_increase_by_weighted_score"
+                    # Tăng chậm hơn với hệ số thấp hơn
+                    adjustment_factor = min(0.15, (increase_score - decrease_score) * 0.5)
+                    # Áp dụng hệ số giảm khi ổn định
+                    adjustment_factor *= adjustment_damper
+                    
+                    # CẢI TIẾN: Giới hạn tăng dần theo kích thước hiện tại
+                    if nbest > 100:
+                        # Giảm mức tăng đối với các khối lớn
+                        adjustment_factor = min(adjustment_factor, 0.08)
+                    elif nbest > 50:
+                        # Giảm mức tăng đối với các khối trung bình
+                        adjustment_factor = min(adjustment_factor, 0.12)
+                    
+                    # CẢI TIẾN: Giới hạn mức tăng tuyệt đối trong một lần
+                    max_absolute_increase = 10  # Tăng tối đa 10 đơn vị trong một lần
+                    
+                    # Tính toán kích thước mới và áp dụng giới hạn
+                    raw_new_size = int(nbest * (1 + adjustment_factor))
+                    capped_new_size = min(raw_new_size, nbest + max_absolute_increase)
+                    
+                    # Thêm log chi tiết cho việc tăng kích thước
+                    if raw_new_size != capped_new_size:
+                        logger.debug(f"Giới hạn tăng kích thước: {raw_new_size} -> {capped_new_size} (giới hạn tăng tối đa: {max_absolute_increase})")
+                    
+                    nnew = capped_new_size
+                    adjustment_reason = f"gradual_increase_by_weighted_score{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
                 elif decrease_score > increase_score + 0.1:  # Ưu tiên giảm nhanh
-                    # Giảm nhanh hơn với hệ số cao hơn
-                    adjustment_factor = min(0.3, (decrease_score - increase_score) * 0.6)
-                    nnew = int(nbest * (1 - adjustment_factor))
-                    adjustment_reason = "fast_decrease_by_weighted_score"
+                    # Tính độ giảm dựa trên mức điểm và cả giá trị hiện tại của kích thước block
+                    # Mức giảm được điều chỉnh để giảm dần theo các bước, tránh giảm đột ngột
+                    
+                    # Giảm mức độ điều chỉnh tối đa khi kích thước block lớn
+                    if nbest > 50:
+                        # Giảm nhiều hơn khi kích thước lớn nhưng giảm dần dần
+                        adjustment_factor = min(0.2, (decrease_score - increase_score) * 0.4)
+                        # Áp dụng hệ số giảm khi ổn định
+                        adjustment_factor *= adjustment_damper
+                        
+                        nnew = int(nbest * (1 - adjustment_factor))
+                        adjustment_reason = f"gradual_decrease_from_large_size{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
+                    elif nbest > 30:
+                        # Giảm ít hơn ở kích thước trung bình
+                        adjustment_factor = min(0.15, (decrease_score - increase_score) * 0.3)
+                        # Áp dụng hệ số giảm khi ổn định
+                        adjustment_factor *= adjustment_damper
+                        
+                        nnew = int(nbest * (1 - adjustment_factor))
+                        adjustment_reason = f"moderate_decrease_from_medium_size{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
+                    else:
+                        # Giảm rất ít ở kích thước nhỏ
+                        adjustment_factor = min(0.1, (decrease_score - increase_score) * 0.2)
+                        # Áp dụng hệ số giảm khi ổn định
+                        adjustment_factor *= adjustment_damper
+                        
+                        nnew = int(nbest * (1 - adjustment_factor))
+                        adjustment_reason = f"gentle_decrease_from_small_size{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
                 else:
                     # Điểm số gần nhau -> điều chỉnh dựa trên xu hướng với mức tăng cao hơn
                     if hit_ratio_trend > 0.05 or similarity_trend > 0:  # Giảm ngưỡng phát hiện xu hướng tốt
-                        nnew = int(nbest * 1.25)  # Tăng từ 15% lên 25% khi có xu hướng tích cực
-                        adjustment_reason = "stronger_increase_by_trend"
+                        # CẢI TIẾN: Giảm mức tăng khi có xu hướng tích cực
+                        adjustment_factor = 0.15  # Giảm từ 25% xuống 15%
+                        # Áp dụng hệ số giảm khi ổn định
+                        adjustment_factor *= adjustment_damper
+                        
+                        # CẢI TIẾN: Giới hạn mức tăng tuyệt đối
+                        max_absolute_increase = 8  # Tăng tối đa 8 đơn vị trong một lần
+                        
+                        # Tính toán kích thước mới và áp dụng giới hạn
+                        raw_new_size = int(nbest * (1 + adjustment_factor))
+                        capped_new_size = min(raw_new_size, nbest + max_absolute_increase)
+                        
+                        # Thêm log chi tiết cho việc tăng kích thước
+                        if raw_new_size != capped_new_size:
+                            logger.debug(f"Giới hạn tăng kích thước dựa trên xu hướng: {raw_new_size} -> {capped_new_size} (giới hạn tăng tối đa: {max_absolute_increase})")
+                        
+                        nnew = capped_new_size
+                        adjustment_reason = f"moderate_increase_by_trend{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
                     elif hit_ratio_trend < -0.1 or similarity_trend < -0.05:
-                        nnew = int(nbest * 0.85)  # Giảm 15% khi hit ratio hoặc độ tương đồng giảm
-                        adjustment_reason = "moderate_decrease_by_trend"
+                        # Điều chỉnh giảm theo kích thước hiện tại, giảm dần dần
+                        if nbest > 50:
+                            adjustment_factor = 0.1  # Giảm 10% khi kích thước lớn
+                            # Áp dụng hệ số giảm khi ổn định
+                            adjustment_factor *= adjustment_damper
+                            
+                            nnew = int(nbest * (1 - adjustment_factor))
+                            adjustment_reason = f"adaptive_decrease_by_trend_large{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
+                        elif nbest > 30:
+                            adjustment_factor = 0.07  # Giảm 7% ở kích thước trung bình
+                            # Áp dụng hệ số giảm khi ổn định
+                            adjustment_factor *= adjustment_damper
+                            
+                            nnew = int(nbest * (1 - adjustment_factor))
+                            adjustment_reason = f"adaptive_decrease_by_trend_medium{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
+                        else:
+                            adjustment_factor = 0.05  # Giảm 5% ở kích thước nhỏ
+                            # Áp dụng hệ số giảm khi ổn định
+                            adjustment_factor *= adjustment_damper
+                            
+                            nnew = int(nbest * (1 - adjustment_factor))
+                            adjustment_reason = f"adaptive_decrease_by_trend_small{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
                     else:
                         # Nếu các chỉ số ổn định và tương đối tốt, vẫn tăng nhẹ
                         if recent_hit_ratio > 0.5 and recent_similarity > 0.55:  # Giảm ngưỡng tương đồng
-                            nnew = int(nbest * 1.1)  # Tăng từ 5% lên 10% khi chỉ số tốt và ổn định
-                            adjustment_reason = "moderate_increase_for_stable_good_metrics"
+                            # CẢI TIẾN: Giảm mức tăng cho tình huống ổn định
+                            adjustment_factor = 0.05  # Giảm từ 10% xuống 5%
+                            # Áp dụng hệ số giảm khi ổn định
+                            adjustment_factor *= adjustment_damper
+                            
+                            # CẢI TIẾN: Giới hạn mức tăng tuyệt đối
+                            max_absolute_increase = 5  # Tăng tối đa 5 đơn vị trong một lần cho tình huống ổn định
+                            
+                            # Tính toán kích thước mới và áp dụng giới hạn
+                            raw_new_size = int(nbest * (1 + adjustment_factor))
+                            capped_new_size = min(raw_new_size, nbest + max_absolute_increase)
+                            
+                            # Thêm log chi tiết cho việc tăng kích thước
+                            if raw_new_size != capped_new_size:
+                                logger.debug(f"Giới hạn tăng nhẹ kích thước ổn định: {raw_new_size} -> {capped_new_size} (giới hạn: {max_absolute_increase})")
+                            
+                            nnew = capped_new_size
+                            adjustment_reason = f"gentle_increase_for_stable_good_metrics{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
                         else:
                             nnew = nbest  # Giữ nguyên
-                            adjustment_reason = "stable_performance"
+                            adjustment_reason = f"stable_performance{'' if adjustment_damper == 1.0 else f'_with_stability_{int(stability_reduction*100)}'}"
         
         # Cửa sổ từ chối cập nhật (wn) - ngưỡng tối thiểu để thay đổi
         wn = max(1, int(nbest * 0.03))  # Giảm từ 5% xuống 3%, với giá trị tối thiểu là 1
+        
+        # Điều chỉnh cửa sổ từ chối khi ổn định (yêu cầu thay đổi lớn hơn khi đã ổn định)
+        if self.in_stabilization_phase:
+            stability_factor = self.stability_score / self.max_stability_score
+            # Tăng ngưỡng thay đổi tối thiểu khi ổn định (từ 3% đến 8%)
+            wn = max(1, int(nbest * (0.03 + 0.05 * stability_factor)))
+            logger.debug(f"Tăng ngưỡng thay đổi block size từ 3% lên {(0.03 + 0.05 * stability_factor)*100:.1f}% do ổn định (score: {self.stability_score})")
         
         # Các điều kiện đặc biệt khác - giảm ngưỡng để dễ kích hoạt hơn
         special_condition = (recent_hit_ratio < 0.35 or 
                              recent_similarity < 0.45 or 
                              (recent_hit_ratio > 0.8 and recent_similarity > 0.7) or
                              (self.blocks_processed < 10))  # Thêm điều kiện đặc biệt cho giai đoạn rất sớm
+        
+        # Khi đã ổn định, đặt lại định nghĩa của điều kiện đặc biệt để hạn chế điều chỉnh không cần thiết
+        if self.in_stabilization_phase and self.stability_score > 50:
+            # Điều chỉnh các điều kiện đặc biệt tùy theo mức độ ổn định
+            # Chỉ kích hoạt khi hiệu suất thực sự rất tệ hoặc rất tốt
+            stability_factor = self.stability_score / self.max_stability_score
+            hr_low_threshold = 0.35 - (0.15 * stability_factor)  # Giảm từ 0.35 xuống tối thiểu 0.2
+            hr_high_threshold = 0.8 + (0.1 * stability_factor)   # Tăng từ 0.8 lên tối đa 0.9
+            sim_low_threshold = 0.45 - (0.2 * stability_factor)  # Giảm từ 0.45 xuống tối thiểu 0.25
+            sim_high_threshold = 0.7 + (0.15 * stability_factor) # Tăng từ 0.7 lên tối đa 0.85
+            
+            # Áp dụng ngưỡng mới cho điều kiện đặc biệt
+            special_condition = (recent_hit_ratio < hr_low_threshold or 
+                                recent_similarity < sim_low_threshold or 
+                                (recent_hit_ratio > hr_high_threshold and recent_similarity > sim_high_threshold))
+            
+            logger.debug(f"Áp dụng điều kiện đặc biệt ổn định với ngưỡng: HR={hr_low_threshold:.2f}/{hr_high_threshold:.2f}, Sim={sim_low_threshold:.2f}/{sim_high_threshold:.2f}")
         
         # Đảm bảo nnew đã được khởi tạo và khác None
         if nnew is None:
@@ -1171,29 +1498,88 @@ class DataCompressor:
         
         # Chỉ cập nhật nếu sự thay đổi đủ lớn hoặc có lý do đặc biệt
         if abs(nnew - nbest) > wn or special_condition:
+            # Giới hạn tốc độ giảm kích thước block
+            if nnew < nbest:
+                # Kiểm tra lịch sử để đảm bảo giảm từ từ
+                if len(self.block_size_history) >= 2:
+                    # Lấy kích thước block từ 2 lần điều chỉnh gần nhất
+                    prev_size = self.block_size_history[-1]['old_size']
+                    prev_prev_size = self.block_size_history[-2]['old_size']
+                    
+                    # Nếu đã giảm trong lần điều chỉnh trước, giới hạn mức giảm trong lần này
+                    if prev_size < prev_prev_size:
+                        # Tính tỷ lệ giảm trong lần điều chỉnh trước
+                        prev_decrease_ratio = prev_size / prev_prev_size
+                        
+                        # Giảm dần mức độ giảm theo thời gian và mức độ ổn định
+                        min_decrease_ratio = 0.85  # Giảm tối đa 15% mặc định
+                        if self.in_stabilization_phase:
+                            # Tăng giới hạn giảm khi ổn định (giảm ít hơn)
+                            stability_factor = self.stability_score / self.max_stability_score
+                            min_decrease_ratio = 0.85 + (0.1 * stability_factor)  # Từ 0.85 đến 0.95
+                        
+                        # Lấy giá trị lớn hơn giữa tỷ lệ giảm trước đó và ngưỡng tối thiểu
+                        current_min_ratio = max(prev_decrease_ratio, min_decrease_ratio)
+                        
+                        # Đảm bảo kích thước mới không giảm quá mức so với kích thước hiện tại
+                        min_allowed_size = int(nbest * current_min_ratio)
+                        if nnew < min_allowed_size:
+                            logger.debug(f"Giới hạn giảm block size: từ {nnew} lên {min_allowed_size} (tỷ lệ: {current_min_ratio:.2f})")
+                            nnew = min_allowed_size
+                            adjustment_reason += "_with_decrease_limit"
+            
             # Giới hạn trong phạm vi cho phép
             new_block_size = max(self.config['min_block_size'], 
                               min(self.config['max_block_size'], nnew))
             
-            # Xử lý trường hợp đặc biệt: nếu đang ở kích thước lớn nhất và hit ratio giảm -> giảm ngay
+            # Xử lý trường hợp đặc biệt: nếu đang ở kích thước lớn nhất và hit ratio giảm -> giảm từ từ
             if nbest == self.config['max_block_size'] and (hit_ratio_trend < 0 or similarity_trend < 0):
-                new_block_size = int(nbest * 0.8)  # Giảm 20% (giảm mạnh hơn)
-                adjustment_reason = "significant_reduce_from_max_due_to_declining_metrics"
+                # Giảm từ từ từ kích thước lớn nhất, nhưng điều chỉnh tỷ lệ giảm dựa trên mức độ ổn định
+                decrease_ratio = 0.1  # Giảm 10% mặc định
+                
+                if self.in_stabilization_phase:
+                    # Giảm ít hơn khi ổn định
+                    stability_factor = self.stability_score / self.max_stability_score
+                    decrease_ratio = 0.1 * (1.0 - stability_factor * 0.5)  # Giảm từ 10% xuống tối thiểu 5%
+                
+                new_block_size = int(nbest * (1.0 - decrease_ratio))
+                adjustment_reason = f"gradual_reduce_from_max_due_to_declining_metrics{'' if not self.in_stabilization_phase else f'_with_stability_{int(self.stability_score)}'}"
             
             # Nếu đang ở kích thước nhỏ nhất và chỉ số hiệu suất tốt -> tăng mạnh hơn
             if nbest == self.config['min_block_size']:
                 # Tăng nhanh hơn nếu các chỉ số tốt
                 if recent_hit_ratio > 0.5 or recent_similarity > 0.6:
-                    new_block_size = int(nbest * 2.0)  # Tăng từ 50% lên 100% khi đang ở mức tối thiểu và các chỉ số tốt
-                    adjustment_reason = "aggressive_increase_from_min_due_to_good_metrics"
+                    increase_ratio = 1.0  # Tăng 100% mặc định
+                    
+                    if self.in_stabilization_phase:
+                        # Giảm mức tăng khi đã ổn định
+                        stability_factor = self.stability_score / self.max_stability_score
+                        increase_ratio = 1.0 * (1.0 - stability_factor * 0.3)  # Giảm từ 100% xuống tối thiểu 70%
+                    
+                    new_block_size = int(nbest * (1.0 + increase_ratio))
+                    adjustment_reason = f"aggressive_increase_from_min_due_to_good_metrics{'' if not self.in_stabilization_phase else f'_with_stability_{int(self.stability_score)}'}"
                 # Vẫn tăng nhẹ nếu xu hướng tích cực
                 elif hit_ratio_trend > 0 and similarity_trend > 0:
-                    new_block_size = int(nbest * 1.5)  # Tăng từ 20% lên 50% (tăng nhanh hơn ban đầu)
-                    adjustment_reason = "stronger_increase_from_min_due_to_improving_trends"
+                    increase_ratio = 0.5  # Tăng 50% mặc định
+                    
+                    if self.in_stabilization_phase:
+                        # Giảm mức tăng khi đã ổn định
+                        stability_factor = self.stability_score / self.max_stability_score
+                        increase_ratio = 0.5 * (1.0 - stability_factor * 0.4)  # Giảm từ 50% xuống tối thiểu 30%
+                    
+                    new_block_size = int(nbest * (1.0 + increase_ratio))
+                    adjustment_reason = f"stronger_increase_from_min_due_to_improving_trends{'' if not self.in_stabilization_phase else f'_with_stability_{int(self.stability_score)}'}"
                 # Thêm điều kiện tăng mặc định từ mức tối thiểu
                 else:
-                    new_block_size = int(nbest * 1.3)  # Luôn tăng ít nhất 30% khi ở mức tối thiểu
-                    adjustment_reason = "default_increase_from_min_size"
+                    increase_ratio = 0.3  # Tăng 30% mặc định
+                    
+                    if self.in_stabilization_phase:
+                        # Giảm mức tăng khi đã ổn định
+                        stability_factor = self.stability_score / self.max_stability_score
+                        increase_ratio = 0.3 * (1.0 - stability_factor * 0.5)  # Giảm từ 30% xuống tối thiểu 15%
+                    
+                    new_block_size = int(nbest * (1.0 + increase_ratio))
+                    adjustment_reason = f"default_increase_from_min_size{'' if not self.in_stabilization_phase else f'_with_stability_{int(self.stability_score)}'}"
             
             # Thêm điều kiện đặc biệt cho giai đoạn đầu: ưu tiên tăng kích thước nhanh hơn nếu hiệu suất tốt
             if self.blocks_processed <= self.config['min_blocks_before_adjustment'] * 3:  # Mở rộng giai đoạn đầu
@@ -1206,6 +1592,41 @@ class DataCompressor:
                 elif recent_hit_ratio > 0.3 and new_block_size < int(nbest * 1.2):
                     new_block_size = int(nbest * 1.2)  # Tăng mặc định 20% ở giai đoạn đầu
                     adjustment_reason = "early_stage_default_increase"
+            
+            # Kiểm tra thêm điều kiện giảm đột ngột
+            # Nếu điều chỉnh mới giảm quá nhiều so với kích thước hiện tại, giới hạn mức giảm
+            if new_block_size < nbest:
+                # Tính tỷ lệ giảm đề xuất
+                proposed_decrease_ratio = new_block_size / nbest
+                
+                # Điều chỉnh giới hạn giảm dựa trên mức độ ổn định
+                large_block_limit = 0.7  # Giảm tối đa 30% mặc định cho block lớn
+                medium_block_limit = 0.8  # Giảm tối đa 20% mặc định cho block trung bình
+                small_block_limit = 0.9  # Giảm tối đa 10% mặc định cho block nhỏ
+                
+                if self.in_stabilization_phase:
+                    # Tăng giới hạn (giảm ít hơn) khi ổn định
+                    stability_factor = self.stability_score / self.max_stability_score
+                    large_block_limit += 0.1 * stability_factor  # Từ 0.7 đến 0.8
+                    medium_block_limit += 0.1 * stability_factor  # Từ 0.8 đến 0.9
+                    small_block_limit += 0.05 * stability_factor  # Từ 0.9 đến 0.95
+                
+                # Áp dụng giới hạn tùy theo kích thước block
+                if nbest > 50 and proposed_decrease_ratio < large_block_limit:
+                    new_block_size = int(nbest * large_block_limit)
+                    adjustment_reason += f"_with_large_block_decrease_limit_{int(large_block_limit*100)}"
+                # Nếu kích thước block hiện tại lớn hơn 30, tỷ lệ giảm không được nhỏ hơn giới hạn
+                elif nbest > 30 and proposed_decrease_ratio < medium_block_limit:
+                    new_block_size = int(nbest * medium_block_limit)
+                    adjustment_reason += f"_with_medium_block_decrease_limit_{int(medium_block_limit*100)}"
+                # Nếu không, tỷ lệ giảm không được nhỏ hơn giới hạn block nhỏ
+                elif proposed_decrease_ratio < small_block_limit:
+                    new_block_size = int(nbest * small_block_limit)
+                    adjustment_reason += f"_with_small_block_decrease_limit_{int(small_block_limit*100)}"
+        
+            # Thêm thông tin về ổn định vào lý do điều chỉnh
+            if self.in_stabilization_phase:
+                adjustment_reason += f"_stability_score_{self.stability_score}"
         
         # Lưu lịch sử thay đổi với thông tin chi tiết hơn
         self.block_size_history.append({
@@ -1240,6 +1661,71 @@ class DataCompressor:
             # Nếu không có điều chỉnh, vẫn lưu thông tin vào previous_adjustments để tích lũy dữ liệu cho đa thức
             if r % 20 == 0:  # Chỉ lưu định kỳ để không làm tràn bộ nhớ
                 self.previous_adjustments.append((nbest, current_hit_ratio))
+        
+        # Lưu lịch sử và thông báo
+        if new_block_size != self.current_block_size:
+            # CẢI TIẾN: Thêm kiểm tra lịch sử tăng block size
+            if new_block_size > self.current_block_size:
+                # Đếm số lần tăng liên tiếp trong lịch sử gần đây (3 lần điều chỉnh gần nhất)
+                consecutive_increases = 0
+                increase_ratio_sum = 0
+                
+                for i in range(min(3, len(self.block_size_history))):
+                    history_entry = self.block_size_history[-1-i]
+                    if history_entry['new_size'] > history_entry['old_size']:
+                        consecutive_increases += 1
+                        increase_ratio = history_entry['new_size'] / history_entry['old_size']
+                        increase_ratio_sum += increase_ratio - 1.0  # Chỉ tính phần tăng (ví dụ: 1.2 -> 0.2)
+                
+                # Nếu đã tăng liên tiếp và tổng mức tăng lớn, hạn chế tăng thêm
+                if consecutive_increases >= 2 and increase_ratio_sum > 0.3:  # Đã tăng > 30% trong 3 lần gần nhất
+                    # Giảm mức tăng dựa trên số lần tăng liên tiếp
+                    damping_factor = 0.5 - (consecutive_increases * 0.1)  # 0.5, 0.4, 0.3, ...
+                    damping_factor = max(0.1, damping_factor)  # Tối thiểu vẫn tăng 10% so với mức hiện tại
+                    
+                    # Tính lại block size với mức tăng được điều chỉnh
+                    max_increase = int(self.current_block_size * damping_factor)
+                    capped_size = min(new_block_size, self.current_block_size + max_increase)
+                    
+                    if capped_size < new_block_size:
+                        logger.info(f"Hạn chế tăng kích thước block do đã tăng {consecutive_increases} lần liên tiếp " + 
+                                  f"(từ {new_block_size} xuống {capped_size}, giới hạn tăng: {damping_factor*100:.1f}%)")
+                        new_block_size = capped_size
+                        adjustment_reason += "_with_consecutive_increase_limit"
+            
+            # CẢI TIẾN: Thêm kiểm tra cho trường hợp tăng vọt
+            relative_change = abs(new_block_size - self.current_block_size) / self.current_block_size
+            if relative_change > 0.5:  # Nếu thay đổi >50%
+                # Giới hạn thay đổi tối đa là 50%
+                max_change = int(self.current_block_size * 0.5)
+                if new_block_size > self.current_block_size:
+                    capped_size = self.current_block_size + max_change
+                else:
+                    capped_size = self.current_block_size - max_change
+                
+                logger.warning(f"Thay đổi block size quá lớn ({relative_change*100:.1f}%), " + 
+                             f"hạn chế từ {new_block_size} thành {capped_size} (giới hạn thay đổi: 50%)")
+                new_block_size = capped_size
+                adjustment_reason += "_with_extreme_change_limit"
+                
+            # Ghi nhận sự thay đổi vào lịch sử
+            self.block_size_history.append({
+                'block': self.blocks_processed,
+                'old_size': self.current_block_size,
+                'new_size': new_block_size,
+                'reason': adjustment_reason
+            })
+            
+            logger.info(f"Điều chỉnh kích thước block: {self.current_block_size} -> {new_block_size} " +
+                       f"(lý do: {adjustment_reason})")
+                       
+            # Cập nhật thời điểm điều chỉnh cuối cùng và kích thước hiện tại
+            self.last_adjustment_block = self.blocks_processed
+            self.current_block_size = new_block_size
+            
+            # Lưu trữ thông số cho mô hình đa thức
+            current_hitrate = self.continuous_hit_ratio[-1] if self.continuous_hit_ratio else 0
+            self.previous_adjustments.append((new_block_size, current_hitrate, recent_similarity))
         
         return self.current_block_size
         
