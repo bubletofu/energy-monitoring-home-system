@@ -68,6 +68,8 @@ python setup_database.py
 uvicorn main:app --reload
 ```
 
+Ở đây cung cấp các tính năng cơ bản như login, claim device, remove device, đẩy feed lên adafruit, lấy danh sách feed từ adafruit, theo dõi thiết bị online/offline. 
+
 
 ## Lấy dữ liệu từ Adafruit theo ngày cụ thể
 
