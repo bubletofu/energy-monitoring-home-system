@@ -8,7 +8,10 @@
 
 ## Cài đặt và Sử dụng
 
-1. Cài đặt Docker và Docker Compose (Khuyến nghị & tuỳ chọn) 
+1. Cài đặt Docker và Docker Compose (Khuyến nghị & tuỳ chọn)
+``` bash
+brew install --cask docker
+```
 2. Tạo file `.env` 
 ``` bash
 DATABASE_URL=postgresql://postgres:1234@localhost:5433/iot_db
