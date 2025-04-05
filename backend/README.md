@@ -80,7 +80,7 @@ Chọn một ngày để lấy dữ liệu từ Adafruit và lưu vào database.
 ### Lệnh cơ bản:
 
 ```
-python fetch_adafruit_data_manual.py
+python fetch.py
 ```
 
 Mặc định sẽ lấy dữ liệu của ngày hiện tại.
