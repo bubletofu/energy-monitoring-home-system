@@ -63,7 +63,7 @@ Mình dùng port 5433
 python setup_database.py
 ```
 
-6. Khởi chạy ứng dụng 
+6. Khởi chạy ứng dụng (dành cho front end)
 ```
 uvicorn main:app --reload
 ```
