@@ -47,11 +47,6 @@ source docker_env/bin/activate  # Trên macOS/Linux
 docker_env\Scripts\activate # Trên Window
 ```
 
-#### Cài đặt các gói với phiên bản tương thích
-```
-pip install docker-compose==1.29.2
-```
-
 ### Thủ công
 
 4. Cài đặt các thư viện
