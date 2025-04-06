@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Query, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime, date, timezone
@@ -9,6 +9,11 @@ import logging
 from database import engine, get_db, init_db
 import os
 from sqlalchemy import text
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import jwt
+from config import settings
+from fastapi.security import OAuth2PasswordBearer
 
 # Hàm trợ giúp để làm việc với timezone
 def get_current_utc_time():
@@ -160,7 +165,11 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/login/", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: Session = Depends(get_db)
+):
     try:
         logger.info(f"Login attempt for username: {form_data.username}")
         
@@ -190,7 +199,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             
         # Tạo access token
         logger.info("Creating access token...")
-        access_token_expires = timedelta(minutes=30)
+        access_token_expires = timedelta(days=auth.ACCESS_TOKEN_EXPIRE_DAYS)
         access_token = auth.create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
         )
@@ -224,6 +233,9 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
                 logger.error(f"Lỗi khi chuyển sang theo dõi thiết bị của người dùng {user.username}: {str(e)}")
                 # Không raise exception ở đây vì đăng nhập vẫn thành công dù không chuyển được chế độ theo dõi
         
+        # Thiết lập cookie trong response
+        auth.set_auth_cookie(response, access_token)
+        
         return {"access_token": access_token, "token_type": "bearer"}
         
     except HTTPException as http_ex:
@@ -236,6 +248,53 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             status_code=500,
             detail=f"Login error: {str(e)}"
         )
+
+@app.post("/logout/")
+def logout(response: Response):
+    """
+    Đăng xuất người dùng hiện tại bằng cách xóa cookie.
+    """
+    auth.clear_auth_cookie(response)
+    return {"message": "Đăng xuất thành công"}
+
+@app.get("/check-auth/")
+async def check_auth(request: Request, db: Session = Depends(get_db)):
+    """
+    Kiểm tra xem người dùng đã đăng nhập hay chưa không yêu cầu xác thực.
+    """
+    # Lấy token từ cookie nếu có
+    token = request.cookies.get(auth.COOKIE_NAME)
+    if not token:
+        # Không có cookie, người dùng chưa đăng nhập
+        return {
+            "is_authenticated": False,
+            "user": None
+        }
+    
+    try:
+        # Giải mã token và lấy thông tin người dùng
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            return {"is_authenticated": False, "user": None}
+        
+        # Tìm người dùng trong database
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if not user:
+            return {"is_authenticated": False, "user": None}
+        
+        # Trả về thông tin người dùng
+        return {
+            "is_authenticated": True,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error checking authentication: {str(e)}")
+        return {"is_authenticated": False, "user": None}
 
 @app.get("/auth/me/", response_model=Dict)
 def get_current_user_info(current_user: models.User = Depends(auth.get_current_user)):
