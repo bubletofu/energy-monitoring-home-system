@@ -116,12 +116,73 @@ class DataCompressor:
         if template_id not in self.template_usage:
             self.template_usage[template_id] = 0
             self.template_creation_time[template_id] = self.blocks_processed
+            
+            # CẢI TIẾN: Thêm lưu vết lịch sử sử dụng
+            if not hasattr(self, 'template_usage_history'):
+                self.template_usage_history = {}
+            self.template_usage_history[template_id] = []
+            
+            # CẢI TIẾN: Thêm theo dõi thành công của template
+            if not hasattr(self, 'template_success_rate'):
+                self.template_success_rate = {}
+            self.template_success_rate[template_id] = {'hits': 0, 'checks': 0}
+            
+            # CẢI TIẾN: Theo dõi điểm sử dụng theo thời gian
+            if not hasattr(self, 'template_quality_scores'):
+                self.template_quality_scores = {}
+            self.template_quality_scores[template_id] = 1.0  # Khởi tạo điểm chất lượng ban đầu
         
         # Cập nhật số lần sử dụng và thời gian sử dụng gần nhất
         if used:
             self.template_usage[template_id] += 1
+            
+            # CẢI TIẾN: Cập nhật lịch sử sử dụng
+            if hasattr(self, 'template_usage_history'):
+                # Lưu block sử dụng và cập nhật hit ratio tại thời điểm đó
+                current_hit_ratio = self.template_hit_count / max(1, self.blocks_processed)
+                self.template_usage_history[template_id].append({
+                    'block': self.blocks_processed,
+                    'hit_ratio': current_hit_ratio
+                })
+                
+                # Giới hạn kích thước lịch sử
+                max_history = 10
+                if len(self.template_usage_history[template_id]) > max_history:
+                    self.template_usage_history[template_id] = self.template_usage_history[template_id][-max_history:]
+            
+            # CẢI TIẾN: Cập nhật tỷ lệ thành công
+            if hasattr(self, 'template_success_rate'):
+                self.template_success_rate[template_id]['hits'] += 1
+                self.template_success_rate[template_id]['checks'] += 1
+                
+                # Tăng điểm chất lượng khi template được sử dụng thành công
+                if hasattr(self, 'template_quality_scores'):
+                    # Tính tỷ lệ thành công
+                    success_rate = self.template_success_rate[template_id]['hits'] / max(1, self.template_success_rate[template_id]['checks'])
+                    
+                    # Tăng điểm chất lượng nhưng giới hạn ở mức 5.0
+                    quality_bonus = min(0.1, 0.05 * success_rate)  # Tối đa +0.1 mỗi lần sử dụng
+                    self.template_quality_scores[template_id] = min(5.0, self.template_quality_scores[template_id] + quality_bonus)
+        else:
+            # CẢI TIẾN: Cập nhật số lần kiểm tra
+            if hasattr(self, 'template_success_rate'):
+                self.template_success_rate[template_id]['checks'] += 1
+                
         self.template_last_used[template_id] = self.blocks_processed
         
+        # CẢI TIẾN: Giảm điểm chất lượng của template ít được sử dụng
+        if hasattr(self, 'template_quality_scores') and self.blocks_processed % 10 == 0:
+            # Cập nhật điểm tất cả template mỗi 10 block
+            for tid in list(self.template_quality_scores.keys()):
+                if tid in self.templates:  # Đảm bảo template vẫn tồn tại
+                    # Xác định thời gian không sử dụng
+                    unused_time = self.blocks_processed - self.template_last_used.get(tid, 0)
+                    
+                    if unused_time > 20:  # Giảm điểm nếu >20 block không sử dụng
+                        # Giảm điểm nhanh hơn khi thời gian không sử dụng càng lâu
+                        decay_rate = min(0.2, 0.02 * (unused_time / 10))  # Tối đa -0.2 mỗi lần cập nhật
+                        self.template_quality_scores[tid] = max(0.1, self.template_quality_scores[tid] - decay_rate)
+    
     def detect_trend(self, data):
         """
         Phát hiện xu hướng trong dữ liệu gần đây
@@ -176,8 +237,9 @@ class DataCompressor:
             self.merge_similar_templates()
             self.last_merge_check = self.blocks_processed
         
+        # CẢI TIẾN: Điều chỉnh ngưỡng dọn dẹp
         # Không làm gì nếu số template chưa vượt ngưỡng cao hơn
-        if len(self.templates) <= self.config['max_templates'] * 0.9:
+        if len(self.templates) <= self.config['max_templates'] * 0.85:  # Giảm từ 0.9 xuống 0.85
             return 0
         
         templates_to_remove = []
@@ -185,6 +247,9 @@ class DataCompressor:
         
         # Tính toán tầm quan trọng của mỗi template
         self.calculate_template_importance()
+        
+        # CẢI TIẾN: Đánh giá template dựa trên nhiều yếu tố hơn
+        template_scores = []
         
         # Đánh giá từng template
         for template_id in list(self.templates.keys()):
@@ -197,52 +262,159 @@ class DataCompressor:
             # Tính số lần sử dụng
             usage_count = self.template_usage.get(template_id, 0)
             
-            # Điều kiện loại bỏ - được cải thiện:
-            # 1. Template lâu không được sử dụng và tuổi cao 
+            # Lấy điểm quan trọng
+            importance = self.template_importance.get(template_id, 0)
+            
+            # CẢI TIẾN: Sử dụng điểm chất lượng nếu có
+            quality_score = 1.0  # Giá trị mặc định
+            if hasattr(self, 'template_quality_scores'):
+                quality_score = self.template_quality_scores.get(template_id, 1.0)
+            
+            # CẢI TIẾN: Tính tỷ lệ thành công
+            success_rate = 0.5  # Giá trị mặc định
+            if hasattr(self, 'template_success_rate'):
+                if template_id in self.template_success_rate:
+                    hits = self.template_success_rate[template_id]['hits']
+                    checks = self.template_success_rate[template_id]['checks']
+                    if checks > 0:
+                        success_rate = hits / checks
+            
+            # CẢI TIẾN: Tính điểm bảo vệ cho template
+            protection_score = (
+                0.3 * importance +                                # Quan trọng từ các tiêu chí cũ
+                0.25 * quality_score / 5.0 +                      # Điểm chất lượng (0-5 -> 0-1)
+                0.2 * min(1.0, usage_count / 10) +                # Số lần sử dụng (tối đa 10)
+                0.15 * success_rate +                             # Tỷ lệ thành công (0-1)
+                0.1 * max(0, 1 - unused_time / max(1, self.config['template_expiration']))  # Thời gian sử dụng gần đây
+            )
+            
+            # Có thể bị loại bỏ nếu:
+            removal_candidate = False
+            
+            # CẢI TIẾN: Điều kiện loại bỏ thông minh hơn
+            # 1. Template lâu không sử dụng và tuổi cao
+            if (unused_time > self.config['template_expiration'] * 0.9 and  # Giảm từ 1.0 xuống 0.9
+                template_age > self.config['max_template_age'] * 0.8):
+                removal_candidate = True
+                
             # 2. Template có rất ít lần sử dụng và đã tồn tại rất lâu
-            # 3. Template đã quá cũ (vượt quá tuổi tối đa)
-            if ((unused_time > self.config['template_expiration'] and template_age > self.config['max_template_age'] * 0.8) or
-                (usage_count <= self.config['template_usage_threshold'] and template_age > self.config['max_template_age'] * 0.9) or
-                (template_age > self.config['max_template_age'] and usage_count < 3)):
-                templates_to_remove.append(template_id)
+            elif (usage_count <= self.config['template_usage_threshold'] and 
+                  template_age > self.config['max_template_age'] * 0.9):
+                removal_candidate = True
+                
+            # 3. Template đã quá cũ (vượt quá tuổi tối đa) và ít sử dụng
+            elif (template_age > self.config['max_template_age'] and usage_count < 4):  # Tăng từ 3 lên 4
+                removal_candidate = True
+                
+            # 4. CẢI TIẾN: Template có tỷ lệ thành công thấp nếu kiểm tra nhiều lần
+            elif (hasattr(self, 'template_success_rate') and 
+                  self.template_success_rate[template_id]['checks'] > 15 and 
+                  success_rate < 0.2):
+                removal_candidate = True
+                
+            # 5. CẢI TIẾN: Template có điểm chất lượng thấp và ít dùng
+            elif (hasattr(self, 'template_quality_scores') and 
+                  quality_score < 0.5 and 
+                  usage_count < 3 and 
+                  template_age > 30):
+                removal_candidate = True
+            
+            # Nếu là ứng viên loại bỏ, thêm vào danh sách với điểm bảo vệ
+            if removal_candidate:
+                template_scores.append((template_id, protection_score))
         
-        # Xóa ít template hơn mỗi lần, chỉ 5% số lượng template hiện có
+        # Sắp xếp tăng dần theo điểm bảo vệ (điểm thấp hơn sẽ bị loại bỏ trước)
+        template_scores.sort(key=lambda x: x[1])
+        
+        # CẢI TIẾN: Chỉ chọn templates có điểm thấp nhất trong số ứng viên loại bỏ
+        templates_to_remove = [tid for tid, _ in template_scores]
+        
+        # CẢI TIẾN: Xóa ít template hơn mỗi lần
+        # Chỉ xóa 5% số lượng template hiện có hoặc tối đa 3 template
+        max_templates_to_remove = self.config.get('max_templates_to_remove_percent', 0.05)
         num_to_remove = min(len(templates_to_remove), 
-                        max(1, int(len(self.templates) * self.config.get('max_templates_to_remove', 0.05))))
+                         max(1, min(3, int(len(self.templates) * max_templates_to_remove))))
         
-        # Ưu tiên xóa các template ít quan trọng nhất
-        if templates_to_remove:
-            templates_to_remove.sort(key=lambda tid: self.template_importance.get(tid, 0))
+        # CẢI TIẾN: Bảo vệ template có điểm bảo vệ cao
+        final_remove_list = []
+        for tid, score in template_scores[:num_to_remove]:
+            # Bảo vệ template có điểm cao hơn 0.7
+            if score > 0.7:
+                logger.debug(f"Bảo vệ template {tid} mặc dù là ứng viên loại bỏ (điểm bảo vệ: {score:.3f})")
+                continue
+            final_remove_list.append(tid)
+        
+        # Nếu cuối cùng không có template nào bị xóa, chọn một template điểm thấp nhất
+        if not final_remove_list and template_scores:
+            final_remove_list = [template_scores[0][0]]
             
-            # Lưu lại thông tin các template quan trọng sắp bị xóa để có thể tái tạo sau này
-            for template_id in templates_to_remove[:num_to_remove]:
-                if self.template_importance.get(template_id, 0) > 0.3:  # Chỉ lưu template đủ quan trọng
-                    self.merged_templates[template_id] = {
-                        'data': self.templates[template_id],
-                        'usage': self.template_usage.get(template_id, 0),
-                        'last_used': self.template_last_used.get(template_id, 0),
-                        'creation_time': self.template_creation_time.get(template_id, 0),
-                        'importance': self.template_importance.get(template_id, 0)
+        # Lưu lại thông tin các template sắp bị xóa
+        for template_id in final_remove_list:
+            # CẢI TIẾN: Lưu thông tin chi tiết hơn về template bị xóa
+            template_to_remove = self.templates[template_id]
+            
+            # Chuyển đổi template sang định dạng thống nhất nếu cần
+            if not isinstance(template_to_remove, dict) or 'values' not in template_to_remove:
+                if isinstance(template_to_remove, np.ndarray):
+                    # Nếu là mảng numpy, chuyển thành dictionary
+                    template_data = {
+                        'id': template_id,
+                        'values': template_to_remove.tolist() if hasattr(template_to_remove, 'tolist') else template_to_remove,
+                        'created_at': self.template_creation_time.get(template_id, 0)
                     }
+                else:
+                    # Đối với các loại dữ liệu khác
+                    template_data = {
+                        'id': template_id,
+                        'values': template_to_remove,
+                        'created_at': self.template_creation_time.get(template_id, 0)
+                    }
+            else:
+                template_data = template_to_remove
+                
+            # Lưu thông tin chi tiết về template
+            self.merged_templates[template_id] = {
+                'data': template_data,
+                'usage': self.template_usage.get(template_id, 0),
+                'last_used': self.template_last_used.get(template_id, 0),
+                'creation_time': self.template_creation_time.get(template_id, 0),
+                'importance': self.template_importance.get(template_id, 0),
+                'removed_at': current_block
+            }
             
-            # Loại bỏ template
-            for template_id in templates_to_remove[:num_to_remove]:
-                logger.info(f"Loại bỏ template ID {template_id} (sử dụng: {self.template_usage.get(template_id, 0)}, "
-                          f"tuổi: {current_block - self.template_creation_time.get(template_id, 0)} blocks, "
-                          f"quan trọng: {self.template_importance.get(template_id, 0):.2f})")
-                if template_id in self.templates:
-                    del self.templates[template_id]
-                    # Cập nhật các chỉ số liên quan
-                    if template_id in self.template_usage:
-                        del self.template_usage[template_id]
-                    if template_id in self.template_last_used:
-                        del self.template_last_used[template_id]
-                    if template_id in self.template_creation_time:
-                        del self.template_creation_time[template_id]
-                    if template_id in self.template_importance:
-                        del self.template_importance[template_id]
+            # CẢI TIẾN: Lưu thêm thông tin về chất lượng và tỷ lệ thành công
+            if hasattr(self, 'template_quality_scores'):
+                self.merged_templates[template_id]['quality_score'] = self.template_quality_scores.get(template_id, 1.0)
+                
+            if hasattr(self, 'template_success_rate'):
+                if template_id in self.template_success_rate:
+                    self.merged_templates[template_id]['success_rate'] = self.template_success_rate[template_id]
+            
+            # Ghi log chi tiết về template bị xóa
+            logger.info(f"Loại bỏ template ID {template_id} (sử dụng: {self.template_usage.get(template_id, 0)}, "
+                      f"tuổi: {current_block - self.template_creation_time.get(template_id, 0)} blocks, "
+                      f"quan trọng: {self.template_importance.get(template_id, 0):.2f}, "
+                      f"điểm bảo vệ: {next((score for tid, score in template_scores if tid == template_id), 0):.3f})")
+            
+            # Xóa template
+            if template_id in self.templates:
+                del self.templates[template_id]
+                
+                # Cập nhật các chỉ số liên quan
+                for attr in ['template_usage', 'template_last_used', 'template_creation_time', 'template_importance']:
+                    if hasattr(self, attr):
+                        attr_dict = getattr(self, attr)
+                        if template_id in attr_dict:
+                            del attr_dict[template_id]
+                
+                # CẢI TIẾN: Cập nhật các thuộc tính bổ sung
+                for attr in ['template_quality_scores', 'template_success_rate', 'template_usage_history']:
+                    if hasattr(self, attr):
+                        attr_dict = getattr(self, attr)
+                        if template_id in attr_dict:
+                            del attr_dict[template_id]
         
-        return len(templates_to_remove[:num_to_remove])
+        return len(final_remove_list)
         
     def calculate_template_importance(self):
         """
@@ -860,44 +1032,78 @@ class DataCompressor:
             if has_high_fluctuation:
                 logger.debug(f"Phát hiện dữ liệu có biến đổi mạnh: {outlier_percentage:.2f} điểm outliers, normalized_fluctuation={normalized_fluctuation:.3f}")
         
+        # CẢI TIẾN: Tạo danh sách ứng viên gộp với các template đã từng có kết quả khớp tốt trước đây
+        # Bao gồm cả những template từng hoạt động tốt trong quá khứ
         potential_matches = []
+        high_potential_templates = []
         
+        # CẢI TIẾN: Tối ưu hóa tìm kiếm template bằng cách ưu tiên các template có lịch sử hoạt động tốt
+        # Lấy ra các template được sử dụng gần đây và thường xuyên nhất (top 20%)
+        frequently_used_templates = []
+        if self.template_usage:
+            sorted_templates = sorted(self.template_usage.items(), key=lambda x: x[1], reverse=True)
+            top_n = max(3, int(len(sorted_templates) * 0.2))  # Lấy top 20% template thường dùng hoặc ít nhất 3 template
+            frequently_used_templates = [tid for tid, _ in sorted_templates[:top_n]]
+            
         # Điều chỉnh chiến lược khi phát hiện xu hướng hoặc biến đổi mạnh
         similarity_boost = 0.0
         cer_threshold_adjustment = 0.0
         
-        if has_trend and trend_strength > 0.85:
+        if has_trend and trend_strength > 0.8:  # CẢI TIẾN: Giảm ngưỡng phát hiện xu hướng xuống 0.8 (từ 0.85)
             logger.debug(f"Đã phát hiện xu hướng mạnh: {trend_type}, độ mạnh: {trend_strength:.2f}")
-            similarity_boost = 0.15  # Với xu hướng mạnh, cần tăng điểm tương đồng lên 15%
+            similarity_boost = 0.1  # Giảm xuống 0.1 (từ 0.15) để tăng khả năng khớp mẫu
         
-        # CẢI TIẾN: Điều chỉnh cho dữ liệu biến đổi đột ngột
+        # CẢI TIẾN: Điều chỉnh cho dữ liệu biến đổi đột ngột - giảm mức độ nghiêm ngặt
         if has_high_fluctuation:
-            # Khi có biến đổi mạnh, cần thêm điều kiện nghiêm ngặt hơn cho CER
-            cer_threshold_adjustment = -0.05  # Giảm ngưỡng CER tối đa chấp nhận được
-            # Đồng thời yêu cầu điểm tương đồng cao hơn
-            similarity_boost = max(0.2, similarity_boost)  # Yêu cầu tương đồng cao hơn 20%
-        
+            # Khi có biến đổi mạnh, cần điều chỉnh ngưỡng CER
+            cer_threshold_adjustment = -0.03  # Giảm xuống -0.03 (từ -0.05) để dễ dàng khớp mẫu hơn
+            # Yêu cầu điểm tương đồng đủ cao
+            similarity_boost = max(0.15, similarity_boost)  # Giảm xuống 0.15 (từ 0.2)
+            
+        # CẢI TIẾN: Thêm cơ chế kiểm tra nhanh với các template thường dùng
+        for template_id in frequently_used_templates:
+            if template_id not in self.templates:
+                continue
+                
+            template_values = np.array(self.templates[template_id]['values'])
+            
+            # Tính CER trước để kiểm tra nhanh
+            cer = self.calculate_cer(data, template_values)
+            
+            # Tạo một ngưỡng CER mở rộng cho template thường dùng
+            extended_max_cer = self.config['max_acceptable_cer'] * 1.2
+            
+            # Nếu CER chấp nhận được, thêm vào danh sách tiềm năng
+            if cer < extended_max_cer:
+                high_potential_templates.append(template_id)
+                
+        # Kiểm tra tất cả các template
         for template_id, template in self.templates.items():
             template_values = np.array(template['values'])
             
-            # Kiểm tra nhanh các đặc trưng thống kê cơ bản
+            # CẢI TIẾN: Kiểm tra chi tiết hơn các đặc tính thống kê
             template_mean = np.mean(template_values)
             template_std = np.std(template_values)
             template_min = np.min(template_values)
             template_max = np.max(template_values)
             template_range = template_max - template_min
             
-            # CẢI TIẾN: Kiểm tra chi tiết hơn các đặc tính thống kê
-            # Bỏ qua các template có đặc trưng quá khác
-            if (abs(data_mean - template_mean) > 0.4 * data_std and 
-                abs(data_range - template_range) > 0.4 * data_range):
-                continue
-            
-            # Khi có biến đổi mạnh, thêm kiểm tra về độ lệch chuẩn
-            if has_high_fluctuation and abs(data_std - template_std) > 0.5 * template_std:
-                logger.debug(f"Bỏ qua template {template_id} do khác biệt lớn về độ lệch chuẩn: {data_std:.3f} vs {template_std:.3f}")
-                continue
+            # CẢI TIẾN: Ưu tiên các template thường xuyên sử dụng bằng cách bỏ qua kiểm tra đặc trưng 
+            if template_id in high_potential_templates:
+                # Với các template tiềm năng cao, bỏ qua bước lọc sơ bộ
+                pass
+            else:
+                # CẢI TIẾN: Nới lỏng tiêu chuẩn lọc bước đầu để tăng khả năng tái sử dụng template
+                # Bỏ qua các template có đặc trưng quá khác biệt
+                if (abs(data_mean - template_mean) > 0.5 * data_std and  # Tăng từ 0.4 lên 0.5
+                    abs(data_range - template_range) > 0.5 * data_range):  # Tăng từ 0.4 lên 0.5
+                    continue
                 
+                # Khi có biến đổi mạnh, bổ sung kiểm tra độ lệch chuẩn - nhưng nới lỏng tiêu chí
+                if has_high_fluctuation and abs(data_std - template_std) > 0.6 * template_std:  # Tăng từ 0.5 lên 0.6
+                    logger.debug(f"Bỏ qua template {template_id} do khác biệt lớn về độ lệch chuẩn: {data_std:.3f} vs {template_std:.3f}")
+                    continue
+            
             # Cập nhật metrics của template (mark as checked, not used yet)
             self.update_template_metrics(template_id, used=False)
             
@@ -905,8 +1111,16 @@ class DataCompressor:
             cer = self.calculate_cer(data, template_values)
             
             # CẢI TIẾN: Áp dụng ngưỡng CER động dựa trên phát hiện biến đổi
+            # Tăng khả năng sử dụng lại template bằng cách nới lỏng ngưỡng CER
             adjusted_max_cer = self.config['max_acceptable_cer'] + cer_threshold_adjustment
             
+            # CẢI TIẾN: Điều chỉnh ngưỡng CER dựa trên số lần sử dụng template
+            usage_count = self.template_usage.get(template_id, 0)
+            if usage_count > 3:
+                # Template đã được sử dụng nhiều lần, cho phép độ linh hoạt cao hơn
+                usage_bonus = min(0.03, 0.01 * (usage_count / 2))  # Tối đa +0.03 cho template dùng nhiều
+                adjusted_max_cer += usage_bonus
+                
             # Nếu CER quá cao, bỏ qua template này ngay
             if cer > adjusted_max_cer:
                 continue
@@ -914,42 +1128,104 @@ class DataCompressor:
             # Tính điểm tương đồng nếu CER chấp nhận được
             similarity_score = self.calculate_similarity(data, template_values)
                 
-            # Điều chỉnh điểm tương đồng nếu có xu hướng mạnh hoặc biến đổi cao
+            # CẢI TIẾN: Điều chỉnh điểm tương đồng thông minh hơn
             adjusted_similarity = similarity_score
+            
+            # Áp dụng mức giảm điểm khi có xu hướng mạnh hoặc biến đổi cao
             if similarity_boost > 0:
                 adjusted_similarity = similarity_score - similarity_boost
+            
+            # CẢI TIẾN: Tăng điểm cho template được dùng thường xuyên và gần đây
+            if template_id in frequently_used_templates:
+                template_age = self.blocks_processed - self.template_creation_time.get(template_id, 0)
+                recency_bonus = min(0.05, 0.2 / max(1, template_age/50))  # Tăng điểm cho template gần đây, tối đa 0.05
+                adjusted_similarity += recency_bonus
                 
-            # Thêm vào danh sách tiềm năng nếu đủ tương đồng sau khi điều chỉnh
-            if adjusted_similarity > 0.3:
-                potential_matches.append((template_id, cer, similarity_score))
+            # CẢI TIẾN: Giảm ngưỡng tương đồng tối thiểu để cân nhắc template
+            if adjusted_similarity > 0.25:  # Giảm từ 0.3 xuống 0.25
+                # Thêm nhiều thông tin hơn vào potential_matches để đánh giá phù hợp hơn
+                potential_matches.append((template_id, cer, similarity_score, adjusted_similarity, usage_count))
         
-        # Sắp xếp theo điểm tương đồng giảm dần
-        potential_matches.sort(key=lambda x: x[2], reverse=True)
+        # CẢI TIẾN: Thử khôi phục và đánh giá một số template đã gộp/loại bỏ trước đây
+        # nếu không tìm thấy template phù hợp từ danh sách hiện tại
+        if not potential_matches and self.merged_templates:
+            # Chỉ thử với tối đa 5 template gần đây nhất
+            merged_ids = sorted(self.merged_templates.keys(), 
+                              key=lambda x: self.merged_templates[x].get('last_used', 0) 
+                              if isinstance(self.merged_templates[x], dict) else 0, 
+                              reverse=True)[:5]
             
-        # Lấy template tốt nhất
+            for merged_id in merged_ids:
+                merged_info = self.merged_templates[merged_id]
+                if isinstance(merged_info, dict) and 'data' in merged_info:
+                    try:
+                        template_data = merged_info['data']
+                        if 'values' in template_data:
+                            template_values = np.array(template_data['values'])
+                            cer = self.calculate_cer(data, template_values)
+                            # Ngưỡng CER cao hơn một chút cho template đã gộp
+                            if cer < self.config['max_acceptable_cer'] * 1.2:
+                                similarity_score = self.calculate_similarity(data, template_values)
+                                if similarity_score > 0.5:  # Yêu cầu điểm cao hơn cho template đã loại bỏ
+                                    logger.info(f"Tìm thấy template đã loại bỏ phù hợp: {merged_id}, " +
+                                              f"CER: {cer:.4f}, Tương đồng: {similarity_score:.2f}")
+                                    # Khôi phục template này vào danh sách chính với ID mới
+                                    new_id = self.template_counter + 1
+                                    self.template_counter += 1
+                                    self.templates[new_id] = template_data.copy()
+                                    self.templates[new_id]['id'] = new_id
+                                    self.template_usage[new_id] = merged_info.get('usage', 1)
+                                    self.template_last_used[new_id] = self.blocks_processed
+                                    self.template_creation_time[new_id] = self.blocks_processed - 5  # Giả định tạo gần đây
+                                    # Thêm vào danh sách ứng viên
+                                    potential_matches.append((new_id, cer, similarity_score, similarity_score, 1))
+                                    logger.info(f"Đã khôi phục template {merged_id} thành template mới: {new_id}")
+                    except Exception as e:
+                        logger.warning(f"Lỗi khi kiểm tra template đã gộp {merged_id}: {str(e)}")
+        
+        # CẢI TIẾN: Sắp xếp thông minh hơn dựa trên nhiều tiêu chí
         if potential_matches:
-            best_match = potential_matches[0]
-            best_template_id, best_cer, best_similarity = best_match
+            # Sắp xếp theo điểm tổng hợp: điểm tương đồng điều chỉnh * 0.7 + (1-CER) * 0.3 + bonus từ số lần sử dụng
+            potential_matches.sort(
+                key=lambda x: (
+                    x[3] * 0.7 +  # adjusted_similarity 
+                    (1-x[1]) * 0.3 +  # 1-CER
+                    min(0.05, 0.01 * min(5, x[4]))  # usage bonus, tối đa 0.05
+                ), 
+                reverse=True
+            )
             
-            # CẢI TIẾN: Kiểm tra thêm với dữ liệu biến đổi mạnh
+            # Lấy template tốt nhất
+            best_match = potential_matches[0]
+            best_template_id, best_cer, best_similarity = best_match[0], best_match[1], best_match[2]
+            
+            # CẢI TIẾN: Điều chỉnh các tiêu chí loại bỏ template tốt nhất
+            # Nâng cao khả năng tái sử dụng template bằng cách giảm mức độ nghiêm ngặt
+            
+            # Kiểm tra với dữ liệu biến đổi mạnh
             if has_high_fluctuation:
                 # Nếu có biến đổi mạnh và CER vẫn tương đối cao, xem xét bỏ qua template
-                adjusted_max_cer = self.config['max_acceptable_cer'] * 0.7  # Giảm ngưỡng CER xuống 70%
+                adjusted_max_cer = self.config['max_acceptable_cer'] * 0.75  # Tăng từ 0.7 lên 0.75
                 if best_cer > adjusted_max_cer:
-                    logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, CER: {best_cer:.4f}) do CER cao trong dữ liệu biến đổi mạnh (ngưỡng: {adjusted_max_cer:.4f})")
+                    logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, CER: {best_cer:.4f}) " + 
+                               f"do CER cao trong dữ liệu biến đổi mạnh (ngưỡng: {adjusted_max_cer:.4f})")
                     return None, 0, False
                 
-                # Nếu dữ liệu có độ biến đổi cao nhưng điểm tương đồng không đủ cao
-                if best_similarity < 0.7:
-                    logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, score: {best_similarity:.2f}) do điểm tương đồng không đủ cao cho dữ liệu biến đổi mạnh")
+                # Đối với dữ liệu biến đổi mạnh, giảm ngưỡng điểm tương đồng
+                if best_similarity < 0.65:  # Giảm từ 0.7 xuống 0.65
+                    logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, score: {best_similarity:.2f}) " +
+                               f"do điểm tương đồng không đủ cao cho dữ liệu biến đổi mạnh")
                     return None, 0, False
                 
-                logger.debug(f"Chấp nhận template {best_template_id} cho dữ liệu biến đổi mạnh (CER: {best_cer:.4f}, Tương đồng: {best_similarity:.2f})")
+                logger.debug(f"Chấp nhận template {best_template_id} cho dữ liệu biến đổi mạnh " + 
+                           f"(CER: {best_cer:.4f}, Tương đồng: {best_similarity:.2f})")
 
-            # Nếu có xu hướng mạnh và điểm tương đồng không quá cao, có thể quyết định tạo template mới
-            elif has_trend and trend_strength > 0.9 and best_similarity < 0.7:
-                logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, score: {best_similarity:.2f}) do xu hướng mạnh: {trend_type}")
-                return None, 0, False
+            # Xử lý khi có xu hướng mạnh 
+            elif has_trend and trend_strength > 0.92:  # Tăng từ 0.9 lên 0.92 để ít loại bỏ hơn
+                if best_similarity < 0.65:  # Giảm từ 0.7 xuống 0.65
+                    logger.debug(f"Bỏ qua template tốt nhất (ID: {best_template_id}, score: {best_similarity:.2f}) " + 
+                               f"do xu hướng quá mạnh: {trend_type}")
+                    return None, 0, False
 
             # Nếu quyết định sử dụng template này, cập nhật metrics
             self.update_template_metrics(best_template_id, used=True)
@@ -976,19 +1252,56 @@ class DataCompressor:
         Returns:
             int: ID của template mới tạo
         """
-        # Kiểm tra xem có thể tái sử dụng template đã gộp không
-        if self.merged_templates and len(self.templates) > self.config['max_templates'] * 0.8:
+        # CẢI TIẾN: Kiểm tra kỹ lưỡng hơn khả năng tái sử dụng template đã gộp/loại bỏ
+        if self.merged_templates and len(self.templates) > self.config['max_templates'] * 0.7:  # Giảm ngưỡng từ 0.8 xuống 0.7
             best_match_id = None
             best_similarity = 0
             
-            # Kiểm tra với các template đã gộp
+            # CẢI TIẾN: Tăng số lượng template được kiểm tra
+            # Lấy danh sách các template đã gộp được sử dụng nhiều nhất
+            merged_candidates = []
             for template_id, template_info in self.merged_templates.items():
+                if isinstance(template_info, dict) and 'data' in template_info:
+                    usage = template_info.get('usage', 0)
+                    last_used = template_info.get('last_used', 0)
+                    recency_score = max(0, 1 - ((self.blocks_processed - last_used) / max(1, self.blocks_processed)))
+                    importance = template_info.get('importance', 0)
+                    
+                    # Tính điểm ưu tiên dựa trên tần suất sử dụng và độ gần đây
+                    priority_score = (0.5 * usage / max(1, self.blocks_processed) + 
+                                     0.3 * recency_score + 
+                                     0.2 * importance)
+                    
+                    merged_candidates.append((template_id, priority_score))
+            
+            # Sắp xếp theo điểm ưu tiên và lấy ra top 10 template tiềm năng
+            merged_candidates.sort(key=lambda x: x[1], reverse=True)
+            top_candidates = [tid for tid, _ in merged_candidates[:10]]  # Tăng số lượng template kiểm tra
+            
+            # CẢI TIẾN: Giảm ngưỡng tương đồng để dễ dàng tái sử dụng template hơn
+            min_similarity_threshold = 0.85  # Giảm từ 0.9 xuống 0.85
+            
+            # Kiểm tra với các template đã gộp ưu tiên
+            for template_id in top_candidates:
+                template_info = self.merged_templates[template_id]
                 if 'data' in template_info:
                     try:
-                        similarity = self.calculate_similarity_score(data, template_info['data'])
-                        if similarity > 0.9 and similarity > best_similarity:
+                        template_data = template_info['data']
+                        if isinstance(template_data, dict) and 'values' in template_data:
+                            template_values = template_data['values']
+                        else:
+                            template_values = template_data
+                            
+                        similarity = self.calculate_similarity_score(data, template_values)
+                        
+                        if similarity > min_similarity_threshold and similarity > best_similarity:
                             best_similarity = similarity
                             best_match_id = template_id
+                            
+                            # CẢI TIẾN: Nếu tìm thấy template rất phù hợp (>95%), dừng tìm kiếm ngay
+                            if similarity > 0.95:
+                                logger.debug(f"Tìm thấy template đã gộp rất phù hợp: {template_id}, similarity: {similarity:.3f}")
+                                break
                     except Exception as e:
                         logger.warning(f"Lỗi khi tính toán tương đồng với template đã gộp {template_id}: {str(e)}")
             
@@ -1002,28 +1315,50 @@ class DataCompressor:
                 
                 # Lưu template (hỗ trợ cả array và dictionary)
                 if isinstance(template_info['data'], dict):
-                    # Tạo bản sao sâu của dictionary
-                    template_data = {}
-                    for dim, values in template_info['data'].items():
-                        template_data[dim] = values.copy() if hasattr(values, 'copy') else values
-                    self.templates[template_id] = template_data
+                    if 'values' in template_info['data']:
+                        # Template dạng đơn giản với trường values
+                        self.templates[template_id] = {
+                            'id': template_id,
+                            'values': template_info['data']['values'].copy() if hasattr(template_info['data']['values'], 'copy') else template_info['data']['values'],
+                            'use_count': 0,
+                            'created_at': self.blocks_processed
+                        }
+                    else:
+                        # Tạo bản sao sâu của dictionary
+                        template_data = {}
+                        for dim, values in template_info['data'].items():
+                            template_data[dim] = values.copy() if hasattr(values, 'copy') else values
+                        self.templates[template_id] = template_data
                 else:
-                    # Array
-                    self.templates[template_id] = template_info['data'].copy()
+                    # Array (numpy array hoặc list)
+                    self.templates[template_id] = {
+                        'id': template_id,
+                        'values': template_info['data'].copy() if hasattr(template_info['data'], 'copy') else template_info['data'],
+                        'use_count': 0,
+                        'created_at': self.blocks_processed
+                    }
                 
-                # Khôi phục một phần thống kê sử dụng
-                self.template_usage[template_id] = 1  # Bắt đầu với 1 lần sử dụng
+                # CẢI TIẾN: Khôi phục một phần thống kê sử dụng với điểm ban đầu cao hơn
+                # để tăng khả năng giữ lại template này lâu hơn
+                initial_usage = max(1, template_info.get('usage', 0) // 2)  # Chia đôi số lần sử dụng trước đây, tối thiểu là 1
+                self.template_usage[template_id] = initial_usage
                 self.template_creation_time[template_id] = self.blocks_processed
                 self.template_last_used[template_id] = self.blocks_processed
                 
-                # Xóa template đã gộp khỏi danh sách
-                del self.merged_templates[best_match_id]
+                # CẢI TIẾN: Cập nhật trạng thái quan trọng
+                importance = template_info.get('importance', 0.5)
+                self.template_importance[template_id] = importance
+                
+                # Xóa template đã gộp khỏi danh sách nếu đã tái sử dụng thành công
+                if best_similarity > 0.9:  # Chỉ xóa khi khớp rất tốt
+                    del self.merged_templates[best_match_id]
                 
                 logger.info(f"Đã khôi phục template {best_match_id} (tương đồng: {best_similarity:.2f}) với ID mới: {template_id}")
                 return template_id
         
-        # Trước khi tạo template mới, kiểm tra và loại bỏ template cũ nếu cần
-        if len(self.templates) >= self.config['max_templates'] * 0.95:
+        # CẢI TIẾN: Chủ động dọn dẹp khi số lượng template đạt ngưỡng thấp hơn
+        # để có không gian cho template mới và tránh tình trạng phải xóa template hữu ích
+        if len(self.templates) >= self.config['max_templates'] * 0.9:  # Giảm từ 0.95 xuống 0.9
             self.clean_expired_templates()
         
         # Tạo ID mới cho template
@@ -1038,41 +1373,81 @@ class DataCompressor:
                 template_data[dim] = values.copy() if hasattr(values, 'copy') else values
             self.templates[template_id] = template_data
         else:
-            # Array - giữ nguyên code cũ
-            self.templates[template_id] = data.copy()
+            # Array - chuẩn hóa định dạng template
+            self.templates[template_id] = {
+                'id': template_id,
+                'values': data.copy() if hasattr(data, 'copy') else data,
+                'use_count': 0,
+                'created_at': self.blocks_processed
+            }
         
         # Cập nhật metrics cho template mới
         self.update_template_metrics(template_id, used=True)
         
-        # Kiểm tra nếu đã đạt số lượng template tối đa
+        # CẢI TIẾN: Kiểm tra nếu đã đạt số lượng template tối đa
+        # và thực hiện loại bỏ thông minh hơn dựa trên nhiều tiêu chí
         if len(self.templates) > self.config['max_templates']:
             # Tính toán tầm quan trọng của template
             self.calculate_template_importance()
             
-            # Loại bỏ template ít quan trọng nhất
-            least_important_id = min(self.template_importance.items(), key=lambda x: x[1])[0]
+            # CẢI TIẾN: Xác định template ít quan trọng nhất dựa trên nhiều tiêu chí
+            # Tạo một danh sách các template với điểm đánh giá tổng hợp
+            template_scores = []
+            current_block = self.blocks_processed
             
-            # Lưu thông tin template bị xóa
-            self.merged_templates[least_important_id] = {
-                'data': self.templates[least_important_id],
-                'usage': self.template_usage.get(least_important_id, 0),
-                'last_used': self.template_last_used.get(least_important_id, 0),
-                'creation_time': self.template_creation_time.get(least_important_id, 0),
-                'importance': self.template_importance.get(least_important_id, 0)
-            }
+            for tid in self.templates:
+                # Bỏ qua template vừa tạo
+                if tid == template_id:
+                    continue
+                    
+                # Tính các thành phần điểm
+                importance = self.template_importance.get(tid, 0)
+                usage = self.template_usage.get(tid, 0)
+                age = current_block - self.template_creation_time.get(tid, 0)
+                unused_time = current_block - self.template_last_used.get(tid, 0)
+                
+                # Tính điểm bảo vệ cho template
+                # Template càng quan trọng, càng được dùng nhiều, càng mới thì càng ít bị xóa
+                protection_score = (
+                    0.4 * importance +
+                    0.3 * min(1.0, usage / 10) +  # chuẩn hóa số lần sử dụng
+                    0.2 * max(0, 1.0 - age / max(1, self.config['max_template_age'])) +  # template càng mới càng tốt
+                    0.1 * max(0, 1.0 - unused_time / max(1, self.config['template_expiration']))  # template càng được dùng gần đây càng tốt
+                )
+                
+                template_scores.append((tid, protection_score))
             
-            del self.templates[least_important_id]
-            # Cập nhật các chỉ số liên quan
-            if least_important_id in self.template_usage:
-                del self.template_usage[least_important_id]
-            if least_important_id in self.template_last_used:
-                del self.template_last_used[least_important_id]
-            if least_important_id in self.template_creation_time:
-                del self.template_creation_time[least_important_id]
-            if least_important_id in self.template_importance:
-                del self.template_importance[least_important_id]
+            # Sắp xếp theo điểm bảo vệ tăng dần (template có điểm thấp nhất sẽ bị xóa)
+            template_scores.sort(key=lambda x: x[1])
             
-            logger.info(f"Đã loại bỏ template ID {least_important_id} do đạt giới hạn số lượng")
+            if template_scores:
+                least_important_id = template_scores[0][0]
+                
+                # CẢI TIẾN: Lưu thông tin chi tiết hơn về template bị xóa để có thể tái tạo chính xác hơn
+                template_to_remove = self.templates[least_important_id]
+                self.merged_templates[least_important_id] = {
+                    'data': template_to_remove,
+                    'usage': self.template_usage.get(least_important_id, 0),
+                    'last_used': self.template_last_used.get(least_important_id, 0),
+                    'creation_time': self.template_creation_time.get(least_important_id, 0),
+                    'importance': self.template_importance.get(least_important_id, 0),
+                    'removed_at': self.blocks_processed
+                }
+                
+                # Xóa template khỏi danh sách chính
+                del self.templates[least_important_id]
+                
+                # Cập nhật các chỉ số liên quan
+                if least_important_id in self.template_usage:
+                    del self.template_usage[least_important_id]
+                if least_important_id in self.template_last_used:
+                    del self.template_last_used[least_important_id]
+                if least_important_id in self.template_creation_time:
+                    del self.template_creation_time[least_important_id]
+                if least_important_id in self.template_importance:
+                    del self.template_importance[least_important_id]
+                
+                logger.info(f"Đã loại bỏ template ID {least_important_id} do đạt giới hạn số lượng (điểm bảo vệ: {template_scores[0][1]:.3f})")
         
         return template_id
         
