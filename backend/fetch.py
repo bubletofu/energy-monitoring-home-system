@@ -174,12 +174,31 @@ class AdafruitIOManualFetcher:
             Danh sách dữ liệu từ feed
         """
         try:
-            # Tạo thời gian bắt đầu và kết thúc cho ngày đã chọn (UTC)
-            start_time = datetime.datetime.combine(date, datetime.time.min).replace(tzinfo=datetime.timezone.utc)
-            end_time = datetime.datetime.combine(date, datetime.time.max).replace(tzinfo=datetime.timezone.utc)
+            # Tạo thời gian bắt đầu và kết thúc cho ngày đã chọn theo múi giờ địa phương
+            # Chuyển đổi ngày (date) thành datetime với thời gian 00:00:00 địa phương
+            local_start_time = datetime.datetime.combine(date, datetime.time.min)
+            local_end_time = datetime.datetime.combine(date, datetime.time.max)
+            
+            # In thời gian địa phương để kiểm tra
+            logger.info(f"Thời gian địa phương - Bắt đầu: {local_start_time}, Kết thúc: {local_end_time}")
+            
+            # Cần chuyển đổi sang UTC cho Adafruit API
+            # Tìm múi giờ hiện tại của hệ thống
+            local_timezone = datetime.datetime.now().astimezone().tzinfo
+            
+            # Thêm thông tin múi giờ vào thời gian địa phương
+            local_start_time = local_start_time.replace(tzinfo=local_timezone)
+            local_end_time = local_end_time.replace(tzinfo=local_timezone)
+            
+            # Chuyển đổi sang UTC
+            start_time = local_start_time.astimezone(datetime.timezone.utc)
+            end_time = local_end_time.astimezone(datetime.timezone.utc)
             
             start_time_str = start_time.isoformat()
             end_time_str = end_time.isoformat()
+            
+            logger.info(f"Thời gian UTC - Bắt đầu: {start_time}, Kết thúc: {end_time}")
+            logger.info(f"Lấy dữ liệu feed {feed_key} từ {start_time_str} đến {end_time_str}")
             
             url = f"{self.base_url}/feeds/{feed_key}/data"
             params = {
@@ -188,7 +207,6 @@ class AdafruitIOManualFetcher:
                 "end_time": end_time_str
             }
                 
-            logger.info(f"Lấy dữ liệu feed {feed_key} từ {start_time_str} đến {end_time_str}")
             response = requests.get(url, headers=self.headers, params=params)
             
             if response.status_code == 200:
@@ -372,7 +390,10 @@ def main():
             logger.error(f"Định dạng ngày không hợp lệ: {args.date}. Vui lòng sử dụng định dạng YYYY-MM-DD.")
             sys.exit(1)
     else:
-        target_date = datetime.datetime.now().date()
+        # Sử dụng thời gian địa phương của máy thay vì UTC
+        local_now = datetime.datetime.now()
+        logger.info(f"Thời gian hiện tại của máy: {local_now}")
+        target_date = local_now.date()
     
     logger.info(f"Đang lấy dữ liệu cho ngày: {target_date}")
     if args.force_reload:
