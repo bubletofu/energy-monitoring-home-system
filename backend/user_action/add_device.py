@@ -49,14 +49,13 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5
 # Tạo Base cho models
 Base = declarative_base()
 
-def add_device_for_user(device_id, user_id, name=None):
+def add_device_for_user(device_id, user_id):
     """
     Thêm thiết bị cho người dùng
     
     Args:
         device_id: ID của thiết bị
         user_id: ID của người dùng
-        name: Tên hiển thị của thiết bị (tùy chọn)
         
     Returns:
         dict: Kết quả thêm thiết bị
@@ -70,7 +69,7 @@ def add_device_for_user(device_id, user_id, name=None):
         try:
             # Kiểm tra thiết bị đã tồn tại chưa
             device_check = session.execute(
-                text("SELECT id, device_id, name, user_id FROM devices WHERE device_id = :device_id"),
+                text("SELECT id, device_id, user_id FROM devices WHERE device_id = :device_id"),
                 {"device_id": device_id}
             ).fetchone()
             
@@ -84,8 +83,7 @@ def add_device_for_user(device_id, user_id, name=None):
             
             # Thiết bị đã tồn tại
             device_id_from_db = device_check[1]
-            device_name = device_check[2] or f"Device {device_id}"
-            current_user_id = device_check[3]
+            current_user_id = device_check[2]
             
             # Kiểm tra nếu thiết bị đã có người dùng khác với user_id=1
             if current_user_id is not None and current_user_id != 1 and current_user_id != user_id:
@@ -100,11 +98,9 @@ def add_device_for_user(device_id, user_id, name=None):
             # Cập nhật thiết bị cho người dùng mới nếu chưa có chủ hoặc thuộc về user_id=1
             if current_user_id is None or current_user_id == 1:
                 # Cập nhật thiết bị
-                device_name = name or device_name  # Sử dụng tên mới nếu có, nếu không giữ nguyên tên cũ
-                
                 session.execute(
-                    text("UPDATE devices SET user_id = :user_id, name = :name WHERE device_id = :device_id"),
-                    {"user_id": user_id, "name": device_name, "device_id": device_id}
+                    text("UPDATE devices SET user_id = :user_id WHERE device_id = :device_id"),
+                    {"user_id": user_id, "device_id": device_id}
                 )
                 
                 session.commit()
@@ -114,34 +110,15 @@ def add_device_for_user(device_id, user_id, name=None):
                     "success": True,
                     "message": f"Đã cập nhật thiết bị {device_id} cho tài khoản của bạn",
                     "device_id": device_id,
-                    "name": device_name,
                     "user_id": user_id
                 }
             
             # Nếu thiết bị đã thuộc về người dùng này rồi
             if current_user_id == user_id:
-                # Cập nhật tên nếu có thay đổi
-                if name and name != device_name:
-                    session.execute(
-                        text("UPDATE devices SET name = :name WHERE device_id = :device_id"),
-                        {"name": name, "device_id": device_id}
-                    )
-                    session.commit()
-                    logger.info(f"Đã cập nhật tên thiết bị {device_id} thành {name}")
-                    
-                    return {
-                        "success": True,
-                        "message": f"Đã cập nhật tên thiết bị {device_id} thành {name}",
-                        "device_id": device_id,
-                        "name": name,
-                        "user_id": user_id
-                    }
-                
                 return {
                     "success": True,
                     "message": f"Thiết bị {device_id} đã thuộc về tài khoản của bạn",
                     "device_id": device_id,
-                    "name": device_name,
                     "user_id": user_id
                 }
             
@@ -168,13 +145,12 @@ def main():
     
     args = parser.parse_args()
     
-    result = add_device_for_user(args.device_id, args.user_id, args.name)
+    result = add_device_for_user(args.device_id, args.user_id)
     
     if result["success"]:
         print("="*80)
         print(f"ĐÃ THÊM THIẾT BỊ THÀNH CÔNG: {args.device_id}")
         print("="*80)
-        print(f"- Tên: {result.get('name', 'Không có tên')}")
         print(f"- ID người dùng: {result.get('user_id')}")
     else:
         print("="*80)
