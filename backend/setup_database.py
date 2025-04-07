@@ -14,6 +14,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from pathlib import Path
 import time
 import json
+from dotenv import load_dotenv
 
 # Cấu hình logging
 logging.basicConfig(
@@ -285,6 +286,31 @@ def run_migrations(migrations_dir=None):
         logger.error(f"Lỗi khi chạy migrations: {str(e)}")
         return False
 
+def setup_database():
+    """Thiết lập database"""
+    # Load biến môi trường
+    load_dotenv()
+    
+    # Cấu hình Database
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    engine = create_engine(DATABASE_URL)
+    
+    try:
+        # Đọc file SQL
+        with open('init-db/01_init.sql', 'r') as file:
+            sql_commands = file.read()
+        
+        # Thực thi các lệnh SQL
+        with engine.connect() as connection:
+            connection.execute(text(sql_commands))
+            connection.commit()
+        
+        logger.info("Đã thiết lập database thành công!")
+        
+    except Exception as e:
+        logger.error(f"Lỗi khi thiết lập database: {str(e)}")
+        raise
+
 def main():
     """
     Hàm chính để thiết lập cơ sở dữ liệu.
@@ -362,4 +388,4 @@ python setup_database.py --sample-data --migrations
         return 1
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    setup_database() 

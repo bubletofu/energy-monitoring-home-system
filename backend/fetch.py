@@ -1,52 +1,42 @@
 #!/usr/bin/env python3
 """
-Script để lấy dữ liệu thủ công từ Adafruit IO cho một ngày cụ thể và lưu vào database PostgreSQL
-
-Cách sử dụng:
-    python fetch.py --date 2023-11-20 --limit 100
-    python fetch.py --date 2023-11-20 --force-reload
-    
-    Tham số:
-    --date: Ngày cần lấy dữ liệu (định dạng YYYY-MM-DD, mặc định: hôm nay)
-    --limit: Số lượng bản ghi cần lấy cho mỗi feed (mặc định: 50)
-    --force-reload: Bỏ qua kiểm tra trùng lặp, tải lại tất cả dữ liệu
+Script để lấy dữ liệu từ Adafruit IO và lưu vào database PostgreSQL
 """
 
-import argparse
-import datetime
-import json
-import logging
 import os
 import sys
-from logging.handlers import RotatingFileHandler
+import logging
 import requests
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, inspect
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from typing import List, Dict, Any, Optional
+import argparse
+from datetime import datetime, timedelta
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, text
+from sqlalchemy.orm import declarative_base, sessionmaker
 from dotenv import load_dotenv
 
-# Load biến môi trường từ file .env
-load_dotenv()
-
 # Cấu hình logging
-log_file = 'fetch_adafruit_manual.log'
-log_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=3)
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(sys.stdout),
-        log_handler
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)
 
-# Cấu hình Database
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5433/iot_db")
+# Load biến môi trường
+load_dotenv()
 
-# Tạo models
+# Cấu hình Adafruit IO
+ADAFRUIT_IO_USERNAME = os.getenv("ADAFRUIT_IO_USERNAME")
+ADAFRUIT_IO_KEY = os.getenv("ADAFRUIT_IO_KEY")
+BASE_URL = f"https://io.adafruit.com/api/v2/{ADAFRUIT_IO_USERNAME}"
+
+# Cấu hình Database
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Tạo model
 Base = declarative_base()
 
 class SensorData(Base):
@@ -56,363 +46,198 @@ class SensorData(Base):
     device_id = Column(String, index=True)
     feed_id = Column(String, index=True)
     value = Column(Float)
-    raw_data = Column(String, nullable=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
-class AdafruitIOManualFetcher:
-    def __init__(self, username: str = None, key: str = None, force_reload: bool = False):
-        """
-        Khởi tạo client để lấy dữ liệu từ Adafruit IO
-        
-        Args:
-            username: Adafruit IO username
-            key: Adafruit IO key
-            force_reload: Bỏ qua kiểm tra trùng lặp nếu True
-        """
-        self.username = username or os.getenv("ADAFRUIT_IO_USERNAME")
-        self.key = key or os.getenv("ADAFRUIT_IO_KEY")
-        self.force_reload = force_reload
-        
-        if not self.username or not self.key:
-            error_msg = "Thiếu thông tin đăng nhập Adafruit IO. Vui lòng cung cấp qua tham số hoặc biến môi trường."
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-            
-        self.base_url = f"https://io.adafruit.com/api/v2/{self.username}"
-        self.headers = {
-            "X-AIO-Key": self.key,
-            "Content-Type": "application/json"
-        }
-        
-        # Kết nối database
-        try:
-            self.engine = create_engine(DATABASE_URL)
-            Base.metadata.create_all(self.engine)
-            self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-            logger.info(f"Đã kết nối thành công đến database: {DATABASE_URL}")
-        except Exception as e:
-            logger.error(f"Lỗi kết nối database: {str(e)}")
-            raise
-    
-    def _ensure_device_exists(self, device_id: str = "default") -> bool:
-        """
-        Đảm bảo thiết bị tồn tại trong database
-        """
-        try:
-            db = self.SessionLocal()
-            
-            # Kiểm tra xem bảng devices có tồn tại không bằng cách sử dụng inspect
-            inspector = inspect(self.engine)
-            has_devices_table = inspector.has_table("devices")
-            
-            if not has_devices_table:
-                # Nếu không có bảng devices, tạo bản ghi trực tiếp trong SensorData
-                logger.warning("Bảng devices không tồn tại, lưu trực tiếp vào SensorData")
-                db.close()
-                return True
-                
-            # Nếu có bảng devices, kiểm tra và tạo thiết bị nếu cần
-            from sqlalchemy import text
-            result = db.execute(text(f"SELECT id FROM devices WHERE device_id = :device_id"), 
-                               {"device_id": device_id}).fetchone()
-            
-            if not result:
-                # Tạo thiết bị mới
-                db.execute(text("""
-                    INSERT INTO devices (device_id, name, description, created_at) 
-                    VALUES (:device_id, :name, :description, NOW())
-                """), {
-                    "device_id": device_id,
-                    "name": f"Feed {device_id}",
-                    "description": f"Thiết bị dữ liệu từ Adafruit IO feed: {device_id}"
-                })
-                db.commit()
-                logger.info(f"Đã tạo thiết bị với ID: {device_id}")
-            else:
-                logger.info(f"Thiết bị {device_id} đã tồn tại trong bảng devices")
-            
-            db.close()
-            return True
-        except Exception as e:
-            logger.error(f"Lỗi khi kiểm tra thiết bị: {str(e)}")
-            if 'db' in locals():
-                db.close()
-            return False
-    
-    def get_feeds(self) -> List[Dict[str, Any]]:
-        """
-        Lấy danh sách tất cả feeds từ Adafruit IO
-        
-        Returns:
-            Danh sách các feed
-        """
-        try:
-            url = f"{self.base_url}/feeds"
-            response = requests.get(url, headers=self.headers)
-            
-            if response.status_code == 200:
-                feeds = response.json()
-                logger.info(f"Đã lấy được {len(feeds)} feeds từ Adafruit IO")
-                return feeds
-            else:
-                logger.error(f"Lỗi khi lấy feeds: {response.status_code} - {response.text}")
-                return []
-        except Exception as e:
-            logger.error(f"Lỗi khi lấy feeds: {str(e)}")
-            return []
-    
-    def get_feed_data_for_date(self, feed_key: str, date: datetime.date, limit: int = 50) -> List[Dict[str, Any]]:
-        """
-        Lấy dữ liệu từ một feed cho một ngày cụ thể
-        
-        Args:
-            feed_key: Feed key/ID
-            date: Ngày cần lấy dữ liệu
-            limit: Số lượng bản ghi tối đa cần lấy
-            
-        Returns:
-            Danh sách dữ liệu từ feed
-        """
-        try:
-            # Tạo thời gian bắt đầu và kết thúc cho ngày đã chọn theo múi giờ địa phương
-            # Chuyển đổi ngày (date) thành datetime với thời gian 00:00:00 địa phương
-            local_start_time = datetime.datetime.combine(date, datetime.time.min)
-            local_end_time = datetime.datetime.combine(date, datetime.time.max)
-            
-            # In thời gian địa phương để kiểm tra
-            logger.info(f"Thời gian địa phương - Bắt đầu: {local_start_time}, Kết thúc: {local_end_time}")
-            
-            # Cần chuyển đổi sang UTC cho Adafruit API
-            # Tìm múi giờ hiện tại của hệ thống
-            local_timezone = datetime.datetime.now().astimezone().tzinfo
-            
-            # Thêm thông tin múi giờ vào thời gian địa phương
-            local_start_time = local_start_time.replace(tzinfo=local_timezone)
-            local_end_time = local_end_time.replace(tzinfo=local_timezone)
-            
-            # Chuyển đổi sang UTC
-            start_time = local_start_time.astimezone(datetime.timezone.utc)
-            end_time = local_end_time.astimezone(datetime.timezone.utc)
-            
-            start_time_str = start_time.isoformat()
-            end_time_str = end_time.isoformat()
-            
-            logger.info(f"Thời gian UTC - Bắt đầu: {start_time}, Kết thúc: {end_time}")
-            logger.info(f"Lấy dữ liệu feed {feed_key} từ {start_time_str} đến {end_time_str}")
-            
-            url = f"{self.base_url}/feeds/{feed_key}/data"
-            params = {
-                "limit": limit,
-                "start_time": start_time_str,
-                "end_time": end_time_str
-            }
-                
-            response = requests.get(url, headers=self.headers, params=params)
-            
-            if response.status_code == 200:
-                data = response.json()
-                logger.info(f"Đã lấy được {len(data)} điểm dữ liệu từ feed {feed_key} cho ngày {date}")
-                return data
-            else:
-                logger.error(f"Lỗi khi lấy dữ liệu feed {feed_key}: {response.status_code} - {response.text}")
-                return []
-        except Exception as e:
-            logger.error(f"Lỗi khi lấy dữ liệu feed: {str(e)}")
-            return []
-    
-    def save_to_database(self, feed_id: str, data_points: List[Dict[str, Any]]) -> int:
-        """
-        Lưu dữ liệu từ Adafruit IO vào database
-        
-        Args:
-            feed_id: ID của feed
-            data_points: Danh sách các điểm dữ liệu
-            
-        Returns:
-            Số lượng bản ghi đã lưu
-        """
-        if not data_points:
-            logger.info(f"Không có dữ liệu từ feed {feed_id}")
-            return 0
-            
-        # Chuẩn hóa feed_id để tránh trùng lặp do chữ hoa/chữ thường
-        normalized_feed_id = feed_id.lower()
-        
-        # Đảm bảo thiết bị tồn tại
-        self._ensure_device_exists(normalized_feed_id)
-        
-        # Bắt đầu giao dịch mới để lưu dữ liệu
-        count = 0
-        db = self.SessionLocal()
-        
-        try:
-            for point in data_points:
-                try:
-                    # Lấy ID để kiểm tra trùng lặp (chỉ khi không có force_reload)
-                    if not self.force_reload:
-                        point_id = point.get("id")
-                        if point_id:
-                            # Kiểm tra xem điểm dữ liệu đã tồn tại trong database chưa
-                            from sqlalchemy import text
-                            # Sử dụng tham số để tránh lỗi SQL injection
-                            result = db.execute(
-                                text("SELECT id FROM sensor_data WHERE raw_data LIKE :pattern LIMIT 1"), 
-                                {"pattern": f"%{point_id}%"}
-                            ).fetchone()
-                            if result:
-                                logger.debug(f"Bỏ qua điểm dữ liệu {point_id} (đã tồn tại trong database)")
-                                continue
-                
-                    # Lấy giá trị và chuyển đổi sang số
-                    value_str = point.get("value", "0")
-                    try:
-                        value = float(value_str)
-                    except (ValueError, TypeError):
-                        value = 0.0
-                    
-                    # Xử lý timestamp từ dữ liệu Adafruit
-                    timestamp_str = point.get("created_at")
-                    timestamp = datetime.datetime.utcnow()
-                    
-                    if timestamp_str:
-                        try:
-                            timestamp = datetime.datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
-                            
-                            # Nếu có created_epoch, sử dụng nó cho timestamp
-                            if "created_epoch" in point:
-                                try:
-                                    timestamp = datetime.datetime.fromtimestamp(int(point["created_epoch"]))
-                                except (ValueError, TypeError):
-                                    pass
-                        except (ValueError, TypeError):
-                            pass
-                    
-                    # Tạo bản ghi mới chỉ với cột timestamp
-                    new_data = SensorData(
-                        device_id=normalized_feed_id,
-                        feed_id=normalized_feed_id,
-                        value=value,
-                        raw_data=json.dumps(point),
-                        timestamp=timestamp
-                    )
-                    
-                    db.add(new_data)
-                    count += 1
-                    
-                    # Commit sau mỗi 10 bản ghi để tránh giao dịch quá lớn
-                    if count % 10 == 0:
-                        db.commit()
-                    
-                except Exception as e:
-                    logger.error(f"Lỗi khi xử lý điểm dữ liệu: {str(e)}")
-                    # Không làm gì cả, tiếp tục với điểm dữ liệu tiếp theo
-            
-            # Commit các bản ghi còn lại
-            if count % 10 != 0:
-                db.commit()
-            
-            logger.info(f"Đã lưu {count} điểm dữ liệu mới vào database từ feed {normalized_feed_id}")
-            
-            return count
-        except Exception as e:
-            logger.error(f"Lỗi khi lưu vào database: {str(e)}")
-            db.rollback()
-            return 0
-        finally:
-            db.close()
-    
-    def fetch_and_save_for_date(self, date: datetime.date, limit: int = 50) -> int:
-        """
-        Lấy dữ liệu từ tất cả feeds cho một ngày cụ thể và lưu vào database
-        
-        Args:
-            date: Ngày cần lấy dữ liệu
-            limit: Số lượng bản ghi cần lấy cho mỗi feed
-            
-        Returns:
-            Tổng số bản ghi đã lưu
-        """
-        total_saved = 0
-        
-        logger.info(f"Bắt đầu lấy dữ liệu cho ngày {date} với tối đa {limit} bản ghi cho mỗi feed")
-        
-        # Lấy danh sách tất cả feeds
-        feeds = self.get_feeds()
-        if not feeds:
-            logger.warning("Không thể lấy danh sách feeds. Vui lòng kiểm tra kết nối hoặc thông tin đăng nhập Adafruit IO.")
-            return 0
-            
-        # Tạo từ điển để theo dõi các feed đã xử lý (tránh trùng lặp do chữ hoa/chữ thường)
-        processed_feeds = {}
-        
-        logger.info(f"Tìm thấy {len(feeds)} feeds từ Adafruit IO")
-        for feed in feeds:
-            feed_key = feed.get("key")
-            feed_name = feed.get("name", "Không có tên")
-            
-            if feed_key:
-                # Chuẩn hóa feed_key để tránh trùng lặp
-                normalized_key = feed_key.lower()
-                
-                # Kiểm tra xem feed này đã được xử lý chưa
-                if normalized_key in processed_feeds:
-                    logger.info(f"Bỏ qua feed trùng lặp: {feed_name} (key: {feed_key}, đã xử lý dưới dạng: {processed_feeds[normalized_key]})")
-                    continue
-                    
-                processed_feeds[normalized_key] = feed_key
-                
-                logger.info(f"Đang xử lý feed: {feed_name} (key: {feed_key})")
-                data = self.get_feed_data_for_date(feed_key, date, limit)
-                saved = self.save_to_database(feed_key, data)
-                total_saved += saved
-                logger.info(f"Đã lưu {saved}/{len(data)} bản ghi từ feed {feed_name}")
-                
-                # Tạm dừng một chút giữa các request để tránh giới hạn rate
-                import time
-                time.sleep(0.5)
-        
-        return total_saved
-
-def main():
-    parser = argparse.ArgumentParser(description="Lấy dữ liệu thủ công từ Adafruit IO cho một ngày cụ thể")
-    parser.add_argument("--date", type=str, help="Ngày cần lấy dữ liệu (định dạng YYYY-MM-DD, mặc định: hôm nay)")
-    parser.add_argument("--limit", type=int, default=50, help="Số lượng bản ghi cần lấy cho mỗi feed (mặc định: 50)")
-    parser.add_argument("--force-reload", action="store_true", help="Bỏ qua kiểm tra trùng lặp, tải lại tất cả dữ liệu")
-    
-    args = parser.parse_args()
-    
-    # Xử lý tham số ngày
-    target_date = None
-    if args.date:
-        try:
-            target_date = datetime.datetime.strptime(args.date, "%Y-%m-%d").date()
-        except ValueError:
-            logger.error(f"Định dạng ngày không hợp lệ: {args.date}. Vui lòng sử dụng định dạng YYYY-MM-DD.")
-            sys.exit(1)
-    else:
-        # Sử dụng thời gian địa phương của máy thay vì UTC
-        local_now = datetime.datetime.now()
-        logger.info(f"Thời gian hiện tại của máy: {local_now}")
-        target_date = local_now.date()
-    
-    logger.info(f"Đang lấy dữ liệu cho ngày: {target_date}")
-    if args.force_reload:
-        logger.info("Chế độ FORCE RELOAD: Bỏ qua kiểm tra trùng lặp, tải lại tất cả dữ liệu")
+def get_feeds():
+    """Lấy danh sách tất cả feeds từ Adafruit IO"""
+    headers = {
+        "X-AIO-Key": ADAFRUIT_IO_KEY,
+        "Content-Type": "application/json"
+    }
     
     try:
-        fetcher = AdafruitIOManualFetcher(force_reload=args.force_reload)
-        total_saved = fetcher.fetch_and_save_for_date(target_date, args.limit)
+        response = requests.get(f"{BASE_URL}/feeds", headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"Lỗi khi lấy feeds: {str(e)}")
+        return []
+
+def get_feed_data(feed_key, limit=100, start_time=None):
+    """Lấy dữ liệu từ một feed cụ thể"""
+    headers = {
+        "X-AIO-Key": ADAFRUIT_IO_KEY,
+        "Content-Type": "application/json"
+    }
+    
+    params = {"limit": limit}
+    if start_time:
+        params["start_time"] = start_time.isoformat()
+    
+    try:
+        response = requests.get(
+            f"{BASE_URL}/feeds/{feed_key}/data",
+            headers=headers,
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"Lỗi khi lấy dữ liệu feed {feed_key}: {str(e)}")
+        return []
+
+def ensure_device_exists(db, feed_id):
+    """Đảm bảo device tồn tại và có mapping với feed_id"""
+    # Kiểm tra xem đã có mapping chưa
+    mapping = db.execute(
+        text("SELECT device_id FROM feed_device_mapping WHERE feed_id = :feed_id"),
+        {"feed_id": feed_id}
+    ).fetchone()
+    
+    if mapping:
+        return mapping[0]  # Trả về device_id hiện tại
+    
+    # Nếu chưa có mapping, tạo device mới và mapping
+    device_id = feed_id  # Mặc định sử dụng feed_id làm device_id
+    
+    # Đảm bảo device tồn tại
+    result = db.execute(
+        text("SELECT id FROM devices WHERE device_id = :device_id"),
+        {"device_id": device_id}
+    ).fetchone()
+    
+    if not result:
+        db.execute(
+            text("""
+                INSERT INTO devices (device_id, name, description, created_at) 
+                VALUES (:device_id, :name, :description, NOW())
+            """),
+            {
+                "device_id": device_id,
+                "name": f"Device {device_id}",
+                "description": f"Device from Adafruit IO feed: {device_id}"
+            }
+        )
+    
+    # Tạo mapping
+    db.execute(
+        text("""
+            INSERT INTO feed_device_mapping (feed_id, device_id)
+            VALUES (:feed_id, :device_id)
+        """),
+        {
+            "feed_id": feed_id,
+            "device_id": device_id
+        }
+    )
+    
+    db.commit()
+    logger.info(f"Đã tạo mapping mới: feed_id={feed_id} -> device_id={device_id}")
+    return device_id
+
+def save_to_database(feed_id, data_points):
+    """Lưu dữ liệu vào database"""
+    db = SessionLocal()
+    count = 0
+    
+    try:
+        # Lấy device_id từ mapping
+        device_id = ensure_device_exists(db, feed_id)
         
-        logger.info(f"Hoàn thành: Đã lưu tổng cộng {total_saved} bản ghi mới vào database")
+        for point in data_points:
+            try:
+                # Lấy giá trị từ point
+                raw_value = point.get("value")
+                
+                # Chỉ lưu các giá trị số
+                try:
+                    value = float(raw_value)
+                except (ValueError, TypeError):
+                    # Bỏ qua các giá trị không phải số
+                    continue
+                
+                # Xử lý timestamp
+                timestamp_str = point.get("created_at")
+                if timestamp_str:
+                    # Thay thế 'Z' bằng '+00:00' để phù hợp với định dạng ISO
+                    timestamp_str = timestamp_str.replace('Z', '+00:00')
+                    try:
+                        timestamp = datetime.fromisoformat(timestamp_str)
+                    except ValueError:
+                        # Nếu không thể parse ISO format, sử dụng thời gian hiện tại
+                        timestamp = datetime.utcnow()
+                else:
+                    timestamp = datetime.utcnow()
+                
+                # Tạo bản ghi mới
+                new_data = SensorData(
+                    device_id=device_id,
+                    feed_id=feed_id,
+                    value=value,
+                    timestamp=timestamp
+                )
+                
+                db.add(new_data)
+                count += 1
+                
+            except Exception as e:
+                logger.warning(f"Bỏ qua điểm dữ liệu không hợp lệ: {str(e)}")
+                continue
         
-        # In đánh dấu phân cách để dễ theo dõi trong log
-        print("="*80)
-        print(f"ĐÃ LƯU {total_saved} BẢN GHI MỚI TỪ ADAFRUIT IO CHO NGÀY {target_date}")
-        print("="*80)
+        db.commit()
+        logger.info(f"Đã lưu {count} điểm dữ liệu từ feed {feed_id}")
         
     except Exception as e:
-        logger.error(f"Lỗi khi lấy dữ liệu: {str(e)}")
-        sys.exit(1)
+        db.rollback()
+        logger.error(f"Lỗi khi lưu vào database: {str(e)}")
+    finally:
+        db.close()
+    
+    return count
+
+def main():
+    # Parse arguments
+    parser = argparse.ArgumentParser(description='Fetch data from Adafruit IO')
+    parser.add_argument('--all', action='store_true', help='Fetch all data regardless of date')
+    args = parser.parse_args()
+    
+    # Tạo bảng nếu chưa tồn tại
+    Base.metadata.create_all(bind=engine)
+    
+    # Lấy danh sách feeds
+    feeds = get_feeds()
+    if not feeds:
+        logger.error("Không thể lấy danh sách feeds. Vui lòng kiểm tra kết nối hoặc thông tin đăng nhập Adafruit IO.")
+        return
+    
+    total_saved = 0
+    
+    # Xác định thời gian bắt đầu
+    start_time = None
+    if not args.all:
+        # Lấy dữ liệu từ đầu ngày hôm nay
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_time = today
+    
+    # Xử lý từng feed
+    for feed in feeds:
+        feed_key = feed.get("key")
+        if not feed_key:
+            continue
+            
+        logger.info(f"Đang xử lý feed: {feed_key}")
+        
+        # Lấy dữ liệu từ feed
+        data = get_feed_data(feed_key, start_time=start_time)
+        if not data:
+            logger.warning(f"Không có dữ liệu từ feed {feed_key}")
+            continue
+        
+        # Lưu vào database
+        saved = save_to_database(feed_key, data)
+        total_saved += saved
+    
+    logger.info(f"Hoàn thành: Đã lưu tổng cộng {total_saved} bản ghi mới vào database")
 
 if __name__ == "__main__":
     main() 

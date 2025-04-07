@@ -5,7 +5,7 @@ Models cho các bảng dữ liệu trong hệ thống.
 Các lớp này định nghĩa cấu trúc dữ liệu cho SQLAlchemy ORM.
 """
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Boolean, Text, Numeric
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Boolean, Text, Numeric, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB, TSRANGE
@@ -23,6 +23,10 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationships
+    devices = relationship("Device", back_populates="user")
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
@@ -35,17 +39,16 @@ class Device(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(String, unique=True, index=True)
-    name = Column(String)
-    description = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     
-    # Relationship với các bảng khác
+    # Relationships
+    user = relationship("User", back_populates="devices")
     original_samples = relationship("OriginalSamples", back_populates="device")
     compressed_data_optimized = relationship("CompressedDataOptimized", back_populates="device")
-    sensor_data = relationship("SensorData", back_populates="device")
+    sensor_data = relationship("SensorData", back_populates="device", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<Device(id={self.id}, device_id='{self.device_id}', name='{self.name}')>"
+        return f"<Device(id={self.id}, device_id='{self.device_id}')>"
 
 class OriginalSamples(Base):
     """
@@ -68,18 +71,23 @@ class SensorData(Base):
     """
     Bảng chứa dữ liệu cảm biến từ các thiết bị.
     Mỗi bản ghi chứa một giá trị cảm biến và thông tin liên quan.
+    Một thiết bị có thể có nhiều feed_id khác nhau.
     """
     __tablename__ = "sensor_data"
     
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(String, ForeignKey("devices.device_id"))
-    feed_id = Column(String, index=True)
+    device_id = Column(String, ForeignKey("devices.device_id", ondelete="CASCADE"))
+    feed_id = Column(String)
     value = Column(Float)
-    raw_data = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     
     # Relationship với Device
     device = relationship("Device", back_populates="sensor_data")
+    
+    # Tạo unique constraint cho device_id và feed_id
+    __table_args__ = (
+        UniqueConstraint('device_id', 'feed_id', name='uix_device_feed'),
+    )
     
     def __repr__(self):
         return f"<SensorData(id={self.id}, device_id='{self.device_id}', feed_id='{self.feed_id}', value={self.value})>"

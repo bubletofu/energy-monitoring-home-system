@@ -9,13 +9,43 @@ from config import settings
 import models
 from database import get_db
 import logging
+from pydantic import BaseModel
+import os
+from dotenv import load_dotenv
+
+# Load biến môi trường
+load_dotenv()
 
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Cài đặt JWT
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_DAYS = 7  # Token hết hạn sau 7 ngày
+
+# Cài đặt OAuth2
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Cài đặt password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Cài đặt cookie
+COOKIE_NAME = "auth_token"
+COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 ngày
+COOKIE_PATH = "/"
+COOKIE_DOMAIN = None
+COOKIE_SECURE = True
+COOKIE_HTTPONLY = True
+COOKIE_SAMESITE = "lax"
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
 
 def verify_password(plain_password, hashed_password):
     logger.info(f"Verifying password for hash: {hashed_password[:20]}...")
@@ -36,11 +66,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=15)
+            expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
         to_encode.update({"exp": expire})
         logger.info(f"Token data to encode: {to_encode}")
-        logger.info(f"Using secret key: {settings.SECRET_KEY[:10]}...")
-        encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        logger.info(f"Using secret key: {SECRET_KEY[:10]}...")
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         logger.info("Token created successfully")
         return encoded_jwt
     except Exception as e:
@@ -60,7 +90,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         
         try:
             logger.info("Decoding JWT token")
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             logger.info(f"Token payload: {payload}")
             
             username: str = payload.get("sub")
@@ -88,4 +118,46 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(
             status_code=500,
             detail=f"Authentication error: {str(e)}"
-        ) 
+        )
+
+def set_auth_cookie(response, token: str):
+    """
+    Thiết lập cookie xác thực cho response
+    
+    Args:
+        response: FastAPI response object
+        token: JWT token
+    """
+    try:
+        response.set_cookie(
+            key=COOKIE_NAME,
+            value=token,
+            max_age=COOKIE_MAX_AGE,
+            path=COOKIE_PATH,
+            domain=COOKIE_DOMAIN,
+            secure=COOKIE_SECURE,
+            httponly=COOKIE_HTTPONLY,
+            samesite=COOKIE_SAMESITE
+        )
+        logger.info("Đã thiết lập cookie xác thực")
+    except Exception as e:
+        logger.error(f"Lỗi khi thiết lập cookie: {str(e)}")
+        raise
+
+def clear_auth_cookie(response):
+    """
+    Xóa cookie xác thực
+    
+    Args:
+        response: FastAPI response object
+    """
+    try:
+        response.delete_cookie(
+            key=COOKIE_NAME,
+            path=COOKIE_PATH,
+            domain=COOKIE_DOMAIN
+        )
+        logger.info("Đã xóa cookie xác thực")
+    except Exception as e:
+        logger.error(f"Lỗi khi xóa cookie: {str(e)}")
+        raise 

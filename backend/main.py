@@ -141,7 +141,10 @@ class Token(BaseModel):
 
 class DeviceClaim(BaseModel):
     device_id: str = Field(..., min_length=1, max_length=100, description="ID của thiết bị cần yêu cầu sở hữu")
-    name: Optional[str] = Field(None, max_length=200, description="Tên mới cho thiết bị (tùy chọn)")
+
+class DeviceRename(BaseModel):
+    old_device_id: str
+    new_device_id: str
 
 @app.post("/register/", response_model=dict)
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -594,14 +597,13 @@ def claim_device(
     
     Args:
         device_id: ID của thiết bị cần yêu cầu sở hữu
-        name: Tên mới cho thiết bị (tùy chọn)
     """
     device_claimed = False  # Biến để theo dõi xem có claim thiết bị mới không
     
     try:
         if has_device_adder:
             # Sử dụng module add_device nếu có
-            result = add_device_for_user(device.device_id, current_user.id, device.name)
+            result = add_device_for_user(device.device_id, current_user.id, None)
             
             if not result["success"]:
                 raise HTTPException(
@@ -644,8 +646,6 @@ def claim_device(
             if existing_device.user_id is None or existing_device.user_id == 1:
                 # Cập nhật thông tin thiết bị
                 existing_device.user_id = current_user.id
-                if device.name:
-                    existing_device.name = device.name
                 
                 db.commit()
                 device_claimed = True  # Đánh dấu đã claim thiết bị mới
@@ -666,7 +666,6 @@ def claim_device(
                     "success": True,
                     "message": f"Đã cập nhật thiết bị {device.device_id} cho tài khoản của bạn",
                     "device_id": device.device_id,
-                    "name": existing_device.name,
                     "user_id": current_user.id
                 }
             
@@ -681,7 +680,6 @@ def claim_device(
                     "success": True,
                     "message": f"Thiết bị {device.device_id} đã thuộc về tài khoản của bạn",
                     "device_id": device.device_id,
-                    "name": existing_device.name,
                     "user_id": current_user.id
                 }
     
@@ -899,3 +897,91 @@ def get_device_status(
             status_code=500, 
             detail=f"Lỗi server: {str(e)}"
         ) 
+
+@app.post("/devices/rename/", response_model=dict)
+def rename_device(
+    device_rename: DeviceRename,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Đổi tên device_id của người dùng.
+    Chỉ cho phép đổi tên nếu người dùng sở hữu thiết bị đó.
+    """
+    try:
+        # Kiểm tra quyền sở hữu thiết bị
+        device = db.query(models.Device).filter(
+            models.Device.device_id == device_rename.old_device_id,
+            models.Device.user_id == current_user.id
+        ).first()
+        
+        if not device:
+            raise HTTPException(
+                status_code=403,
+                detail="Bạn không có quyền đổi tên thiết bị này"
+            )
+        
+        # Kiểm tra device_id mới chưa tồn tại
+        existing_device = db.query(models.Device).filter(
+            models.Device.device_id == device_rename.new_device_id
+        ).first()
+        
+        if existing_device:
+            raise HTTPException(
+                status_code=400,
+                detail="Device_id mới đã tồn tại"
+            )
+        
+        # Gọi hàm rename_device từ user_device.py
+        from user_action.user_device import rename_device
+        rename_device(
+            device_rename.old_device_id,
+            device_rename.new_device_id,
+            current_user.id
+        )
+        
+        return {
+            "message": f"Đã đổi tên device_id từ '{device_rename.old_device_id}' thành '{device_rename.new_device_id}' thành công"
+        }
+        
+    except Exception as e:
+        logger.error(f"Lỗi khi đổi tên device_id: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        ) 
+
+@app.get("/sensor-data/{device_id}")
+async def get_sensor_data(device_id: str):
+    """
+    Lấy dữ liệu cảm biến của một thiết bị
+    """
+    try:
+        with engine.connect() as conn:
+            # Lấy dữ liệu từ bảng sensor_data
+            result = conn.execute(
+                text("""
+                    SELECT id, device_id, feed_id, value, timestamp
+                    FROM sensor_data
+                    WHERE device_id = :device_id
+                    ORDER BY timestamp DESC
+                    LIMIT 100
+                """),
+                {"device_id": device_id}
+            )
+            
+            data = []
+            for row in result:
+                data.append({
+                    "id": row[0],
+                    "device_id": row[1],
+                    "feed_id": row[2],
+                    "value": row[3],
+                    "timestamp": row[4]
+                })
+            
+            return {"status": "success", "data": data}
+            
+    except Exception as e:
+        logger.error(f"Lỗi khi lấy dữ liệu cảm biến: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) 
