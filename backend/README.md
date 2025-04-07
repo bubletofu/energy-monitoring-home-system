@@ -45,15 +45,17 @@ Tải app về máy:
 https://www.docker.com/products/docker-desktop/
 ```
 
-Mac OS:
+Chạy ứng dụng: 
 
+
+``` bash
+open -a Docker (Mac OS)
 ```
-open -a Docker
+
+``` bash
+
+Mở Docker Desktop từ Start Menu (chờ nó báo “Docker is running”). (Window)
 ```
-
-Window: 
-
-Mở Docker Desktop từ Start Menu (chờ nó báo “Docker is running”).
 
    
 #### Tạo môi trường ảo mới
