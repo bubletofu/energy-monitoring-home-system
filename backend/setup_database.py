@@ -43,7 +43,7 @@ def load_env_vars():
         except (ImportError, AttributeError):
             # Nếu không thể import từ config.py, tải từ biến môi trường
             logger.warning("Không thể tải cấu hình từ config.py, đang sử dụng biến môi trường.")
-            database_url = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5433/iot_db")
+            database_url = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5444/iot_db")
         
         # Kiểm tra xem file .env có tồn tại không
         env_path = Path(os.path.dirname(os.path.abspath(__file__))) / '.env'
@@ -169,7 +169,7 @@ def create_sample_data(database_url):
         sys.path.append(os.path.dirname(os.path.abspath(__file__)))
         try:
             from sqlalchemy.orm import sessionmaker
-            from models import User, Device, DeviceConfig
+            from models import User, Device
             import datetime
         except ImportError as e:
             logger.error(f"Không thể import các model cần thiết: {str(e)}")
@@ -210,16 +210,6 @@ def create_sample_data(database_url):
         
         session.commit()
         
-        # Tạo device config mẫu
-        for device in sample_devices:
-            sample_config = DeviceConfig(
-                user_id=sample_user.id,
-                device_id=device.device_id,
-                config_data={"threshold": 25, "interval": 60}
-            )
-            session.add(sample_config)
-        
-        session.commit()
         logger.info("Đã tạo dữ liệu mẫu thành công!")
         
         return True

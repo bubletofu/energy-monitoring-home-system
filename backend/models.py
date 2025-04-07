@@ -23,26 +23,9 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    device_configs = relationship("DeviceConfig", back_populates="owner")
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
-
-class DeviceConfig(Base):
-    """
-    Bảng chứa cấu hình thiết bị của người dùng.
-    """
-    __tablename__ = "device_configs"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    device_id = Column(String, ForeignKey("devices.device_id"), index=True)
-    config_data = Column(JSONB)
-    owner = relationship("User", back_populates="device_configs")
-    device = relationship("Device", back_populates="device_configs")
-    
-    def __repr__(self):
-        return f"<DeviceConfig(id={self.id}, user_id='{self.user_id}', device_id='{self.device_id}')>"
 
 class Device(Base):
     """
@@ -59,7 +42,6 @@ class Device(Base):
     # Relationship với các bảng khác
     original_samples = relationship("OriginalSamples", back_populates="device")
     compressed_data_optimized = relationship("CompressedDataOptimized", back_populates="device")
-    device_configs = relationship("DeviceConfig", back_populates="device")
     sensor_data = relationship("SensorData", back_populates="device")
     
     def __repr__(self):
