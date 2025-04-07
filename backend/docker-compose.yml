@@ -1,25 +1,24 @@
-version: '3'
+version: '3.8'
 
 services:
-  # Database PostgreSQL
+  # Database (PostgreSQL)
   db:
-    image: postgres:14
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234
-      POSTGRES_DB: iot_db
+    image: postgres:15
     ports:
       - "5444:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=iot_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db:/docker-entrypoint-initdb.d
-    networks:
-      - iot-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - iot-network
 
   # Ứng dụng chính (FastAPI)
   app:
@@ -29,7 +28,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:1234@db:5432/iot_db
+      - DATABASE_URL=postgresql://postgres:1234@db:5444/iot_db
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
     depends_on:
       db:
         condition: service_healthy
