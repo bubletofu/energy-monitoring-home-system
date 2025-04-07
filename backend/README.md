@@ -14,12 +14,13 @@ brew install --cask docker
 ```
 2. Tạo file `.env` 
 ``` bash
-DATABASE_URL=postgresql://postgres:1234@localhost:5433/iot_db
+DATABASE_URL=postgresql://postgres:1234@localhost:5444/iot_db
+SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
 ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+ACCESS_TOKEN_EXPIRE_DAYS = 7 
 
 # config cho Adafruit IO
-ADAFRUIT_IO_USERNAME=
+ADAFRUIT_IO_USERNAME=NguyenNgocDuy
 ADAFRUIT_IO_KEY=
 MQTT_HOST=io.adafruit.com
 MQTT_PORT=8883 
@@ -29,12 +30,23 @@ MQTT_TOPIC=${ADAFRUIT_IO_USERNAME}/feeds/#
 MQTT_SSL=true  # Thêm flag để xác định có sử dụng SSL hay không
 
 DB_HOST=localhost
-DB_PORT=5433
+DB_PORT=5444
 DB_NAME=iot_db
 DB_USER=postgres
 DB_PASS=1234
 ```
 3. Chạy hệ thống:
+
+### Bật Docker Desktop
+
+	•	macOS:
+```
+open -a Docker
+```
+
+	•	Windows:
+Mở Docker Desktop từ Start Menu (chờ nó báo “Docker is running”).
+
    
 #### Tạo môi trường ảo mới
 ```
@@ -47,23 +59,49 @@ source docker_env/bin/activate  # Trên macOS/Linux
 docker_env\Scripts\activate # Trên Window
 ```
 
-### Thủ công
 
-4. Cài đặt các thư viện
+### Chạy PostgreSQL & App bằng Docker Compose
 
+(Đảm bảo app Docker đã bật mỗi khi chạy lệnh docker compose) 
+
+``` bash
+
+docker compose up -d db
 ```
-pip install -r requirements.txt
-```
 
-5. Thiết lặp database PostGre
 
-Mình dùng port 5433 
+### Chạy file khởi tạo cơ sở dữ liệu
 
 ```
 python setup_database.py
 ```
 
-6. Khởi chạy ứng dụng (dành cho front end)
+
+### Khi gặp lỗi và cần reset database:
+
+ Xóa toàn bộ container + volume
+
+```
+docker compose down -v
+```
+
+sau đó làm lại các bước thiết lập docker từ đầu.
+
+
+
+### Kết nối với PostgreSQL từ bên ngoài
+
+```
+Thông số	Giá trị
+Host	localhost
+Port	5444
+User	postgres
+Password	1234
+Database	(Tùy tên bạn tạo)
+```
+
+
+4. Khởi chạy ứng dụng (dành cho front end)
 ```
 uvicorn main:app --reload
 ```
@@ -87,27 +125,11 @@ python fetch.py
 
 Mặc định sẽ lấy dữ liệu của ngày hiện tại.
 
-  
 
-### Lấy dữ liệu theo ngày cụ thể:
-
-```
-python fetch.py --date 2023-03-30
-```
-
-
-### Giới hạn số lượng bản ghi:
+### Tải tất cả
 
 ```
-python fetch.py --date 2023-11-20 --limit 100
-```
-
-  
-
-### Nếu gặp lỗi, thử ép buộc tải lại dữ liệu:
-
-```
-python fetch.py --date 2025-03-30 --force-reload
+python fetch.py --all
 ```
 
 ## Công cụ nén và giải nén dữ liệu (Data Compression) 
