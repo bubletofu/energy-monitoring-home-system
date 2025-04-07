@@ -79,6 +79,14 @@ python setup_database.py
 ```
 
 
+4. Khởi chạy ứng dụng (dành cho front end)
+```
+uvicorn main:app --reload
+```
+
+Ở đây cung cấp các tính năng cơ bản như login, claim device, remove device, đẩy feed lên adafruit, lấy danh sách feed từ adafruit, theo dõi thiết bị online/offline. 
+
+
 ### Khi gặp lỗi và cần reset database:
 
  Xóa toàn bộ container + volume
@@ -94,22 +102,12 @@ sau đó làm lại các bước thiết lập docker từ đầu.
 ### Kết nối với PostgreSQL từ bên ngoài
 
 ```
-Thông số	Giá trị
 Host	localhost
 Port	5444
 User	postgres
 Password	1234
 Database	(Tùy tên bạn tạo)
 ```
-
-
-4. Khởi chạy ứng dụng (dành cho front end)
-```
-uvicorn main:app --reload
-```
-
-Ở đây cung cấp các tính năng cơ bản như login, claim device, remove device, đẩy feed lên adafruit, lấy danh sách feed từ adafruit, theo dõi thiết bị online/offline. 
-
 
 ## Lấy dữ liệu từ Adafruit theo ngày cụ thể
 
