@@ -39,6 +39,12 @@ DB_PASS=1234
 
 ### Bật Docker Desktop
 
+Tải app về máy:
+
+```
+https://www.docker.com/products/docker-desktop/
+```
+
 Mac OS:
 
 ```
