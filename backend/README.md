@@ -39,12 +39,14 @@ DB_PASS=1234
 
 ### Bật Docker Desktop
 
-	•	macOS:
+Mac OS:
+
 ```
 open -a Docker
 ```
 
-	•	Windows:
+Window: 
+
 Mở Docker Desktop từ Start Menu (chờ nó báo “Docker is running”).
 
    
