@@ -173,6 +173,115 @@ def rename_device(old_device_id: str, new_device_id: str, user_id: int) -> Dict[
             "message": f"Lỗi khi đổi tên device_id: {str(e)}"
         }
 
+def claim_device(device_id: str, user_id: int) -> None:
+    """
+    Yêu cầu sở hữu một thiết bị.
+    
+    Args:
+        device_id: ID của thiết bị cần yêu cầu sở hữu
+        user_id: ID của người dùng yêu cầu sở hữu
+        
+    Raises:
+        ValueError: Nếu thiết bị đã có chủ sở hữu khác
+    """
+    try:
+        # Kết nối database
+        from database import engine
+        with engine.connect() as conn:
+            # Kiểm tra thiết bị đã có chủ sở hữu chưa
+            result = conn.execute(
+                text("""
+                    SELECT user_id 
+                    FROM devices 
+                    WHERE device_id = :device_id
+                """),
+                {"device_id": device_id}
+            )
+            device = result.first()
+            
+            if not device:
+                # Nếu thiết bị chưa tồn tại, tạo mới với user_id = NULL (chưa có chủ sở hữu)
+                conn.execute(
+                    text("""
+                        INSERT INTO devices (device_id, user_id)
+                        VALUES (:device_id, NULL)
+                    """),
+                    {"device_id": device_id}
+                )
+                conn.commit()
+                return
+                
+            current_user_id = device[0]
+            
+            # Nếu thiết bị đã có chủ sở hữu khác
+            if current_user_id is not None and current_user_id != user_id:
+                raise ValueError("Thiết bị đã có chủ sở hữu khác")
+                
+            # Cập nhật user_id cho thiết bị
+            conn.execute(
+                text("""
+                    UPDATE devices 
+                    SET user_id = :user_id 
+                    WHERE device_id = :device_id
+                """),
+                {"device_id": device_id, "user_id": user_id}
+            )
+            conn.commit()
+            
+    except Exception as e:
+        logger.error(f"Lỗi khi yêu cầu sở hữu thiết bị: {str(e)}")
+        raise
+
+def remove_device(device_id: str, user_id: int) -> None:
+    """
+    Từ bỏ quyền sở hữu một thiết bị.
+    
+    Args:
+        device_id: ID của thiết bị cần từ bỏ quyền sở hữu
+        user_id: ID của người dùng đang sở hữu thiết bị
+        
+    Raises:
+        ValueError: Nếu người dùng không sở hữu thiết bị
+    """
+    try:
+        # Kết nối database
+        from database import engine
+        with engine.connect() as conn:
+            # Kiểm tra quyền sở hữu thiết bị
+            result = conn.execute(
+                text("""
+                    SELECT user_id 
+                    FROM devices 
+                    WHERE device_id = :device_id
+                """),
+                {"device_id": device_id}
+            )
+            device = result.first()
+            
+            if not device:
+                raise ValueError("Thiết bị không tồn tại")
+                
+            current_user_id = device[0]
+            
+            # Kiểm tra người dùng có sở hữu thiết bị không
+            if current_user_id != user_id:
+                raise ValueError("Bạn không có quyền từ bỏ thiết bị này")
+                
+            # Cập nhật user_id về NULL (chưa có chủ sở hữu)
+            conn.execute(
+                text("""
+                    UPDATE devices 
+                    SET user_id = NULL 
+                    WHERE device_id = :device_id
+                """),
+                {"device_id": device_id}
+            )
+            conn.commit()
+            
+    except Exception as e:
+        logger.error(f"Lỗi khi từ bỏ quyền sở hữu thiết bị: {str(e)}")
+        raise
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Đổi tên device_id của người dùng')
     parser.add_argument('old_device_id', help='Device_id cũ')

@@ -48,10 +48,8 @@ logger = logging.getLogger(__name__)
 # Cấu hình Database
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5433/iot_db")
 
-# Biến toàn cục để kiểm soát trạng thái daemon
-daemon_running = False
-daemon_thread = None
-current_watcher_user_id = None  # ID của người dùng hiện tại đang sử dụng watcher
+# Thay thế biến toàn cục bằng dict để lưu trữ nhiều watcher
+active_watchers = {}  # Dict để lưu trữ các watcher đang hoạt động: {user_id: {"thread": thread, "running": bool}}
 
 # Hàm trợ giúp để làm việc với timezone
 def get_current_utc_time():
@@ -524,7 +522,7 @@ class DeviceWatcher:
         """
         Chạy liên tục như một dịch vụ nền
         """
-        global daemon_running
+        global active_watchers
         logger.info(f"Bắt đầu theo dõi thiết bị mỗi {self.check_interval} phút" + 
                    (f" cho người dùng {self.user_id}" if self.user_id else ""))
         
@@ -538,15 +536,7 @@ class DeviceWatcher:
         schedule.every(self.check_interval).minutes.do(self.check_all_devices)
         
         try:
-            while daemon_running:
-                # Nếu có chỉ định user_id và người dùng không có thiết bị, kiểm tra lại mỗi giờ
-                if self.user_id and not self.has_devices:
-                    # Kiểm tra xem người dùng đã claim thiết bị chưa
-                    if schedule.jobs:
-                        schedule.clear()
-                    schedule.every(60).minutes.do(self.check_all_devices)  # Kiểm tra lại sau 1 giờ
-                    logger.info(f"Người dùng {self.user_id} không có thiết bị nào, sẽ kiểm tra lại sau 1 giờ")
-                
+            while active_watchers[self.user_id]["running"]:
                 schedule.run_pending()
                 time.sleep(1)
         except Exception as e:
@@ -564,7 +554,7 @@ def start_watcher(check_interval=5, offline_threshold=10, user_id=None):
         offline_threshold: Ngưỡng thời gian để xác định thiết bị đang offline (phút, mặc định: 10 phút)
         user_id: ID của người dùng (chỉ kiểm tra thiết bị của người dùng này)
     """
-    global daemon_running, daemon_thread, current_watcher_user_id
+    global active_watchers
     
     # Đảm bảo tham số có giá trị hợp lý
     if offline_threshold <= 0:
@@ -575,45 +565,73 @@ def start_watcher(check_interval=5, offline_threshold=10, user_id=None):
         logger.warning(f"Khoảng thời gian kiểm tra không hợp lệ: {check_interval}, đặt về giá trị mặc định 5 phút")
         check_interval = 5
     
-    # Nếu đã có daemon đang chạy, kiểm tra xem có phải cùng user_id không
-    if daemon_running:
-        if current_watcher_user_id == user_id:
+    # Nếu đã có watcher cho user này, kiểm tra xem có đang chạy không
+    if user_id in active_watchers:
+        if active_watchers[user_id]["running"]:
             logger.info(f"Dịch vụ theo dõi thiết bị đã đang chạy cho người dùng {user_id}")
             return
         else:
-            # Nếu khác user_id, dừng daemon cũ và tạo mới
-            stop_watcher()
-            logger.info(f"Đã dừng dịch vụ theo dõi thiết bị cho người dùng {current_watcher_user_id}")
+            # Nếu watcher cũ đã dừng, xóa nó đi
+            logger.info(f"Xóa watcher cũ không hoạt động của người dùng {user_id}")
+            del active_watchers[user_id]
     
-    # Đánh dấu daemon đang chạy
-    daemon_running = True
-    current_watcher_user_id = user_id
-    
-    # Tạo watcher
+    # Tạo watcher mới
     watcher = DeviceWatcher(check_interval, offline_threshold, user_id)
     
-    # Chạy watcher trong một thread riêng biệt
-    daemon_thread = threading.Thread(target=watcher.run_as_daemon, daemon=True)
-    daemon_thread.start()
+    # Tạo và lưu trạng thái cho watcher mới
+    watcher_state = {"running": True}
     
-    logger.info(f"Đã bắt đầu dịch vụ theo dõi thiết bị mỗi {check_interval} phút, ngưỡng offline {offline_threshold} phút" + 
-               (f" cho người dùng {user_id}" if user_id else ""))
+    # Hàm chạy watcher trong thread
+    def run_watcher():
+        try:
+            while watcher_state["running"]:
+                try:
+                    watcher.check_all_devices()
+                except Exception as e:
+                    logger.error(f"Lỗi khi kiểm tra thiết bị trong thread của user {user_id}: {str(e)}")
+                
+                # Chờ đến lần kiểm tra tiếp theo
+                time.sleep(check_interval * 60)
+        except Exception as e:
+            logger.error(f"Lỗi trong thread watcher của user {user_id}: {str(e)}")
+        finally:
+            logger.info(f"Thread watcher của user {user_id} đã kết thúc")
+    
+    # Tạo và start thread mới
+    thread = threading.Thread(target=run_watcher, daemon=True)
+    thread.start()
+    
+    # Lưu thông tin watcher
+    active_watchers[user_id] = {
+        "thread": thread,
+        "state": watcher_state
+    }
+    
+    logger.info(f"Đã bắt đầu dịch vụ theo dõi thiết bị mỗi {check_interval} phút cho người dùng {user_id}")
 
-def stop_watcher():
+def stop_watcher(user_id=None):
     """
     Dừng dịch vụ theo dõi thiết bị
+    
+    Args:
+        user_id: ID của người dùng cần dừng theo dõi. Nếu None, dừng tất cả.
     """
-    global daemon_running, current_watcher_user_id
+    global active_watchers
     
-    if not daemon_running:
-        logger.info("Dịch vụ theo dõi thiết bị không đang chạy")
-        return
-    
-    # Đánh dấu daemon cần dừng
-    daemon_running = False
-    user_id_info = f" cho người dùng {current_watcher_user_id}" if current_watcher_user_id else ""
-    logger.info(f"Đã gửi tín hiệu dừng cho dịch vụ theo dõi thiết bị{user_id_info}")
-    current_watcher_user_id = None
+    if user_id is None:
+        # Dừng tất cả các watcher
+        for uid, watcher_info in active_watchers.items():
+            watcher_info["state"]["running"] = False
+            logger.info(f"Đã gửi tín hiệu dừng cho watcher của người dùng {uid}")
+        active_watchers.clear()
+        logger.info("Đã dừng tất cả các dịch vụ theo dõi thiết bị")
+    elif user_id in active_watchers:
+        # Dừng watcher của user cụ thể
+        active_watchers[user_id]["state"]["running"] = False
+        del active_watchers[user_id]
+        logger.info(f"Đã dừng dịch vụ theo dõi thiết bị cho người dùng {user_id}")
+    else:
+        logger.info(f"Không tìm thấy dịch vụ theo dõi thiết bị đang chạy cho người dùng {user_id}")
 
 def format_time_difference(minutes):
     """Format time difference in human-readable format (hours and minutes)"""
