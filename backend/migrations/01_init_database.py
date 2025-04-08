@@ -42,6 +42,7 @@ def run_migration():
                     DROP TABLE IF EXISTS users CASCADE;
                     DROP TABLE IF EXISTS original_samples CASCADE;
                     DROP TABLE IF EXISTS compressed_data_optimized CASCADE;
+                    DROP TABLE IF EXISTS feeds CASCADE;
                 """))
                 logger.info("Đã xóa các bảng cũ")
                 
@@ -108,6 +109,17 @@ def run_migration():
                     )
                 """))
                 logger.info("Đã tạo bảng compressed_data_optimized")
+                
+                # Tạo bảng feeds
+                conn.execute(text("""
+                    CREATE TABLE feeds (
+                        id SERIAL PRIMARY KEY,
+                        feed_id VARCHAR(255) UNIQUE NOT NULL,
+                        device_id VARCHAR(255) NOT NULL,
+                        FOREIGN KEY (device_id) REFERENCES devices(device_id) ON DELETE CASCADE
+                    )
+                """))
+                logger.info("Đã tạo bảng feeds")
                 
                 # Commit transaction
                 transaction.commit()
