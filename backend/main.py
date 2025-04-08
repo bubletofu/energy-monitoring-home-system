@@ -335,11 +335,12 @@ def read_root():
         "message": "IoT Backend API - Authentication Service",
         "features": [
             "User authentication (login/register)",
-            "View devices and data",
+            "View device status",
             "Claim ownership of devices",
-            "Delete devices"
+            "Rename devices",
+            "Remove device ownership"
         ],
-        "note": "Người dùng chỉ có thể xem dữ liệu và thực hiện các thao tác với thiết bị. Việc tạo thiết bị mới và gửi dữ liệu mẫu từ thiết bị không được hỗ trợ qua API này."
+        "note": "Người dùng chỉ có thể xem trạng thái thiết bị và thực hiện các thao tác quản lý thiết bị. Việc tạo thiết bị mới và gửi dữ liệu mẫu từ thiết bị không được hỗ trợ qua API này."
     }
 
 @app.get("/device-status/", response_model=List[Dict])
