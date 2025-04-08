@@ -14,20 +14,11 @@ from fastapi.responses import FileResponse
 import jwt
 from config import settings
 from fastapi.security import OAuth2PasswordBearer
+
+# Import các module từ user_action
 from user_action.user_device import rename_device
 from user_action.add_device import add_device_for_user
 from user_action.remove_device import remove_device
-from user_action.rename_device import rename_device
-from user_action.user_device import check_device_ownership
-from user_action.feed import (
-    create_feed,
-    get_feeds,
-    update_feed,
-    delete_feed,
-    add_device_to_feed,
-    remove_device_from_feed,
-    get_feed_devices
-)
 
 # Hàm trợ giúp để làm việc với timezone
 def get_current_utc_time():
