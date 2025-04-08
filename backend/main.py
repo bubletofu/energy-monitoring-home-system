@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 import jwt
 from config import settings
 from fastapi.security import OAuth2PasswordBearer
+from user_action.user_device import rename_device
 
 # Hàm trợ giúp để làm việc với timezone
 def get_current_utc_time():
@@ -117,16 +118,16 @@ async def startup_event():
 async def shutdown_event():
     """
     Sự kiện khi ứng dụng đang dừng
-    - Dừng dịch vụ theo dõi thiết bị
+    - Dừng dịch vụ theo dõi thiết bị cho tất cả người dùng
     """
     logger.info("Ứng dụng đang dừng...")
     
-    # Dừng dịch vụ theo dõi thiết bị
+    # Dừng dịch vụ theo dõi thiết bị cho tất cả người dùng
     if has_device_watcher:
         try:
-            logger.info("Dừng dịch vụ theo dõi thiết bị...")
-            stop_watcher()
-            logger.info("Dịch vụ theo dõi thiết bị đã được dừng")
+            logger.info("Dừng dịch vụ theo dõi thiết bị cho tất cả người dùng...")
+            stop_watcher()  # Không truyền user_id để dừng tất cả
+            logger.info("Dịch vụ theo dõi thiết bị đã được dừng cho tất cả người dùng")
         except Exception as e:
             logger.error(f"Lỗi khi dừng dịch vụ theo dõi thiết bị: {str(e)}")
 
@@ -167,7 +168,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         logger.error(f"Error in register: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/login/", response_model=Token)
+@app.post("/login/")
 def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(), 
@@ -208,38 +209,27 @@ def login(
         )
         logger.info("Access token created successfully")
         
-        # Chuyển sang theo dõi thiết bị của người dùng đã đăng nhập
-        if has_device_watcher:
-            try:
-                # Ngưỡng để xác định thiết bị offline (phút)
-                OFFLINE_THRESHOLD = 10
-                # Khoảng thời gian kiểm tra (phút)
-                CHECK_INTERVAL = 5
-                
-                logger.info(f"Chuyển sang theo dõi thiết bị của người dùng {user.username} (ID: {user.id})")
-                
-                # Nếu là admin (user_id=1), không cần chuyển đổi vì đã đang theo dõi tất cả thiết bị
-                if user.id != 1:
-                    # Khởi động watcher mới chỉ theo dõi thiết bị của người dùng này
-                    from user_action.watching import start_watcher
-                    start_watcher(
-                        check_interval=CHECK_INTERVAL, 
-                        offline_threshold=OFFLINE_THRESHOLD, 
-                        user_id=user.id
-                    )
-                    logger.info(f"Đã chuyển sang theo dõi thiết bị của người dùng {user.username} " +
-                                f"(check_interval={CHECK_INTERVAL}, offline_threshold={OFFLINE_THRESHOLD})")
-                else:
-                    logger.info(f"Đã đăng nhập với tài khoản admin, tiếp tục theo dõi tất cả thiết bị")
-                
-            except Exception as e:
-                logger.error(f"Lỗi khi chuyển sang theo dõi thiết bị của người dùng {user.username}: {str(e)}")
-                # Không raise exception ở đây vì đăng nhập vẫn thành công dù không chuyển được chế độ theo dõi
-        
         # Thiết lập cookie trong response
         auth.set_auth_cookie(response, access_token)
         
-        return {"access_token": access_token, "token_type": "bearer"}
+        # Kích hoạt theo dõi thiết bị cho người dùng này
+        if has_device_watcher:
+            try:
+                logger.info(f"Kích hoạt theo dõi thiết bị cho người dùng {user.id}")
+                start_watcher(check_interval=5, offline_threshold=10, user_id=user.id)
+            except Exception as e:
+                logger.error(f"Lỗi khi kích hoạt theo dõi thiết bị: {str(e)}")
+                # Không raise exception vì việc đăng nhập vẫn thành công
+        
+        # Trả về thông tin người dùng thay vì token
+        return {
+            "success": True,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            }
+        }
         
     except HTTPException as http_ex:
         logger.error(f"HTTP Exception in login: {str(http_ex)}")
@@ -253,12 +243,27 @@ def login(
         )
 
 @app.post("/logout/")
-def logout(response: Response):
+def logout(
+    response: Response,
+    current_user: models.User = Depends(auth.get_current_user)
+):
     """
     Đăng xuất người dùng hiện tại bằng cách xóa cookie.
     """
-    auth.clear_auth_cookie(response)
-    return {"message": "Đăng xuất thành công"}
+    try:
+        # Dừng theo dõi thiết bị cho người dùng này
+        if has_device_watcher:
+            try:
+                logger.info(f"Dừng theo dõi thiết bị cho người dùng {current_user.id}")
+                stop_watcher(user_id=current_user.id)
+            except Exception as e:
+                logger.error(f"Lỗi khi dừng theo dõi thiết bị: {str(e)}")
+    except Exception as e:
+        logger.error(f"Lỗi khi đăng xuất: {str(e)}")
+    finally:
+        # Xóa cookie bất kể có lỗi hay không
+        auth.clear_auth_cookie(response)
+        return {"message": "Đăng xuất thành công"}
 
 @app.get("/check-auth/")
 async def check_auth(request: Request, db: Session = Depends(get_db)):
@@ -323,374 +328,6 @@ def read_root():
         ],
         "note": "Người dùng chỉ có thể xem dữ liệu và thực hiện các thao tác với thiết bị. Việc tạo thiết bị mới và gửi dữ liệu mẫu từ thiết bị không được hỗ trợ qua API này."
     }
-
-@app.get("/fetch-data/", response_model=List[Dict])
-def fetch_data(
-    target_date: Optional[str] = Query(None, description="Ngày cần lấy dữ liệu (định dạng YYYY-MM-DD, mặc định: hôm nay)"),
-    device_id: Optional[str] = Query(None, description="ID của thiết bị cần lấy dữ liệu (để trống để lấy tất cả)"),
-    limit: int = Query(50, ge=1, le=1000, description="Số lượng bản ghi tối đa cần lấy"),
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Lấy dữ liệu từ bảng sensor_data cho một ngày cụ thể.
-    Tương đương với việc chạy lệnh fetch.py --date <ngày tháng cụ thể>
-    
-    Args:
-        target_date: Ngày cần lấy dữ liệu (định dạng YYYY-MM-DD, mặc định: hôm nay)
-        device_id: ID của thiết bị cần lấy dữ liệu (để trống để lấy tất cả)
-        limit: Số lượng bản ghi tối đa cần lấy
-    """
-    try:
-        # Xử lý tham số ngày
-        parsed_date = None
-        if target_date:
-            try:
-                parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
-            except ValueError:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Định dạng ngày không hợp lệ: {target_date}. Vui lòng sử dụng định dạng YYYY-MM-DD."
-                )
-        else:
-            parsed_date = get_current_utc_time().date()
-        
-        logger.info(f"Đang lấy dữ liệu cho ngày: {parsed_date}")
-        
-        # Tạo thời gian bắt đầu và kết thúc cho ngày đã chọn
-        start_time = datetime.combine(parsed_date, datetime.min.time())
-        end_time = datetime.combine(parsed_date, datetime.max.time())
-        
-        # Chuẩn bị truy vấn SQL
-        query = """
-        SELECT id, device_id, feed_id, value, timestamp, raw_data
-        FROM sensor_data
-        WHERE timestamp BETWEEN :start_time AND :end_time
-        """
-        
-        params = {
-            "start_time": start_time,
-            "end_time": end_time
-        }
-        
-        # Thêm điều kiện device_id nếu có
-        if device_id:
-            query += " AND device_id = :device_id"
-            params["device_id"] = device_id
-            
-        # Thêm limit và sắp xếp
-        query += " ORDER BY timestamp DESC LIMIT :limit"
-        params["limit"] = limit
-        
-        # Thực hiện truy vấn
-        result = []
-        with engine.connect() as conn:
-            rows = conn.execute(text(query), params)
-            for row in rows:
-                # Chuyển đổi raw_data từ JSON string sang dict nếu có
-                raw_data = None
-                if row[5]:  # raw_data
-                    try:
-                        import json
-                        raw_data = json.loads(row[5])
-                    except:
-                        raw_data = row[5]
-                
-                # Tạo dict cho mỗi bản ghi
-                record = {
-                    "id": row[0],
-                    "device_id": row[1],
-                    "feed_id": row[2],
-                    "value": row[3],
-                    "timestamp": row[4].isoformat() if row[4] else None,
-                    "raw_data": raw_data
-                }
-                result.append(record)
-        
-        logger.info(f"Đã lấy {len(result)} bản ghi cho ngày {parsed_date}")
-        
-        return result
-    
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        logger.error(f"Lỗi khi lấy dữ liệu: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Lỗi server: {str(e)}"
-        )
-
-@app.get("/fetch-devices/", response_model=List[Dict])
-def fetch_devices(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Lấy danh sách các thiết bị có trong bảng sensor_data
-    """
-    try:
-        # Truy vấn để lấy danh sách các device_id duy nhất
-        query = """
-        SELECT DISTINCT device_id, 
-               COUNT(*) as record_count, 
-               MIN(timestamp) as first_record, 
-               MAX(timestamp) as last_record
-        FROM sensor_data
-        GROUP BY device_id
-        ORDER BY device_id
-        """
-        
-        # Thực hiện truy vấn
-        result = []
-        with engine.connect() as conn:
-            rows = conn.execute(text(query))
-            for row in rows:
-                device = {
-                    "device_id": row[0],
-                    "record_count": row[1],
-                    "first_record": row[2].isoformat() if row[2] else None,
-                    "last_record": row[3].isoformat() if row[3] else None
-                }
-                result.append(device)
-        
-        logger.info(f"Đã lấy danh sách {len(result)} thiết bị từ bảng sensor_data")
-        
-        return result
-    
-    except Exception as e:
-        logger.error(f"Lỗi khi lấy danh sách thiết bị: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Lỗi server: {str(e)}"
-        )
-
-@app.delete("/devices/{device_id}", tags=["devices"])
-async def delete_device(
-    device_id: str,
-    confirm: bool = Query(False, description="Xác nhận xóa mà không cần hỏi lại"),
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Xóa thiết bị và tất cả dữ liệu liên quan.
-    
-    - Yêu cầu xác thực người dùng
-    - Chỉ người dùng sở hữu thiết bị hoặc admin mới có quyền xóa
-    - Tham số `confirm=True` để xác nhận xóa mà không cần hỏi lại
-    """
-    # Kiểm tra quyền hạn - admin hoặc chủ sở hữu thiết bị mới được xóa
-    is_admin = current_user.id == 1
-    
-    # Kiểm tra thiết bị tồn tại và thuộc về người dùng
-    try:
-        device = db.query(models.Device).filter(models.Device.device_id == device_id).first()
-        
-        if not device:
-            raise HTTPException(status_code=404, detail=f"Không tìm thấy thiết bị: {device_id}")
-        
-        # Kiểm tra quyền sở hữu
-        if not is_admin and device.user_id != current_user.id:
-            raise HTTPException(
-                status_code=403, 
-                detail=f"Bạn không có quyền xóa thiết bị này. Thiết bị thuộc về người dùng khác."
-            )
-        
-        # Thử dùng module device_remover nếu có
-        try:
-            from user_action.remove_device import remove_device as device_remover
-            
-            # Ghi log hành động xóa thiết bị
-            logger.info(f"Người dùng {current_user.username} (ID: {current_user.id}) đang xóa thiết bị {device_id}")
-            
-            # Thực hiện xóa thiết bị
-            result = device_remover(device_id, confirm, current_user.id)
-            
-            if not result["success"]:
-                raise HTTPException(status_code=400, detail=result["message"])
-            
-            return {
-                "status": "success",
-                "message": f"Đã xóa thiết bị {device_id} thành công",
-                "details": result.get("deleted_counts", {})
-            }
-        
-        except ImportError:
-            # Nếu không có module remove_device, thì dùng cách xóa cũ
-            logger.warning("Không tìm thấy module remove_device, sử dụng cách xóa cũ")
-            
-            if not confirm:
-                return {
-                    "status": "error",
-                    "message": "Chưa xác nhận xóa thiết bị. Vui lòng gửi lại với tham số confirm=True"
-                }
-            
-            # Xóa dữ liệu từ các bảng liên quan
-            deleted_data = {}
-            
-            # Xóa dữ liệu sensor_data
-            sensor_data_count = db.query(models.SensorData).filter(models.SensorData.device_id == device_id).count()
-            if sensor_data_count > 0:
-                db.query(models.SensorData).filter(models.SensorData.device_id == device_id).delete()
-                deleted_data["sensor_data"] = sensor_data_count
-            
-            # Xóa dữ liệu original_samples nếu bảng tồn tại
-            try:
-                original_samples_count = db.execute(
-                    text("SELECT COUNT(*) FROM original_samples WHERE device_id = :device_id"),
-                    {"device_id": device_id}
-                ).scalar()
-                
-                if original_samples_count and original_samples_count > 0:
-                    db.execute(
-                        text("DELETE FROM original_samples WHERE device_id = :device_id"),
-                        {"device_id": device_id}
-                    )
-                    deleted_data["original_samples"] = original_samples_count
-            except Exception as e:
-                logger.warning(f"Không thể xóa dữ liệu từ original_samples: {str(e)}")
-            
-            # Xóa dữ liệu compressed_data_optimized nếu bảng tồn tại
-            try:
-                compressed_count = db.execute(
-                    text("SELECT COUNT(*) FROM compressed_data_optimized WHERE device_id = :device_id"),
-                    {"device_id": device_id}
-                ).scalar()
-                
-                if compressed_count and compressed_count > 0:
-                    db.execute(
-                        text("DELETE FROM compressed_data_optimized WHERE device_id = :device_id"),
-                        {"device_id": device_id}
-                    )
-                    deleted_data["compressed_data_optimized"] = compressed_count
-            except Exception as e:
-                logger.warning(f"Không thể xóa dữ liệu từ compressed_data_optimized: {str(e)}")
-            
-            # Xóa thiết bị từ bảng devices
-            db.delete(device)
-            deleted_data["devices"] = 1
-            
-            # Commit các thay đổi vào database
-            db.commit()
-            
-            return {
-                "status": "success", 
-                "message": f"Đã xóa thiết bị {device_id} thành công",
-                "details": deleted_data
-            }
-            
-    except HTTPException as http_e:
-        # Re-raise HTTP exceptions
-        raise http_e
-    except Exception as e:
-        logger.error(f"Lỗi khi xóa thiết bị {device_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Lỗi khi xóa thiết bị: {str(e)}")
-
-@app.post("/claim-device/", response_model=Dict[str, Any])
-def claim_device(
-    device: DeviceClaim,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Yêu cầu sở hữu một thiết bị đã tồn tại.
-    Chỉ hoạt động cho các thiết bị chưa có chủ (user_id là NULL) hoặc thuộc tài khoản mặc định (user_id = 1)
-    
-    Args:
-        device_id: ID của thiết bị cần yêu cầu sở hữu
-    """
-    device_claimed = False  # Biến để theo dõi xem có claim thiết bị mới không
-    
-    try:
-        if has_device_adder:
-            # Sử dụng module add_device nếu có
-            result = add_device_for_user(device.device_id, current_user.id, None)
-            
-            if not result["success"]:
-                raise HTTPException(
-                    status_code=400,
-                    detail=result["message"]
-                )
-                
-            logger.info(f"Người dùng {current_user.username} đã yêu cầu sở hữu thiết bị {device.device_id}")
-            device_claimed = True  # Đánh dấu đã claim thiết bị mới
-            
-            # Kích hoạt lại theo dõi thiết bị sau khi claim
-            if device_claimed and has_device_watcher:
-                try:
-                    logger.info(f"Kích hoạt lại theo dõi thiết bị sau khi claim thiết bị {device.device_id}")
-                    from user_action.watching import start_watcher
-                    start_watcher(check_interval=5, offline_threshold=10, user_id=current_user.id)
-                except Exception as e:
-                    logger.error(f"Lỗi khi kích hoạt lại theo dõi thiết bị: {str(e)}")
-                    # Không cần raise exception vì việc claim thiết bị vẫn thành công
-            
-            return result
-        else:
-            # Xử lý thủ công nếu không có module add_device
-            existing_device = db.query(models.Device).filter(models.Device.device_id == device.device_id).first()
-            
-            if not existing_device:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Không tìm thấy thiết bị với ID: {device.device_id}. Thiết bị phải tồn tại trước khi được gán cho người dùng."
-                )
-            
-            # Kiểm tra xem thiết bị đã có chủ chưa
-            if existing_device.user_id is not None and existing_device.user_id != 1 and existing_device.user_id != current_user.id:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Thiết bị {device.device_id} đã thuộc về người dùng khác"
-                )
-            
-            # Cập nhật thiết bị cho người dùng hiện tại
-            if existing_device.user_id is None or existing_device.user_id == 1:
-                # Cập nhật thông tin thiết bị
-                existing_device.user_id = current_user.id
-                
-                db.commit()
-                device_claimed = True  # Đánh dấu đã claim thiết bị mới
-                
-                logger.info(f"Người dùng {current_user.username} đã yêu cầu sở hữu thiết bị {device.device_id}")
-                
-                # Kích hoạt lại theo dõi thiết bị sau khi claim
-                if device_claimed and has_device_watcher:
-                    try:
-                        logger.info(f"Kích hoạt lại theo dõi thiết bị sau khi claim thiết bị {device.device_id}")
-                        from user_action.watching import start_watcher
-                        start_watcher(check_interval=5, offline_threshold=10, user_id=current_user.id)
-                    except Exception as e:
-                        logger.error(f"Lỗi khi kích hoạt lại theo dõi thiết bị: {str(e)}")
-                        # Không cần raise exception vì việc claim thiết bị vẫn thành công
-                
-                return {
-                    "success": True,
-                    "message": f"Đã cập nhật thiết bị {device.device_id} cho tài khoản của bạn",
-                    "device_id": device.device_id,
-                    "user_id": current_user.id
-                }
-            
-            # Nếu thiết bị đã thuộc về người dùng này
-            if existing_device.user_id == current_user.id:
-                # Cập nhật tên nếu có thay đổi
-                if device.name and device.name != existing_device.name:
-                    existing_device.name = device.name
-                    db.commit()
-                    
-                return {
-                    "success": True,
-                    "message": f"Thiết bị {device.device_id} đã thuộc về tài khoản của bạn",
-                    "device_id": device.device_id,
-                    "user_id": current_user.id
-                }
-    
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        logger.error(f"Lỗi khi yêu cầu sở hữu thiết bị: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Lỗi server: {str(e)}"
-        )
 
 @app.get("/device-status/", response_model=List[Dict])
 def get_device_status(
@@ -899,7 +536,7 @@ def get_device_status(
         ) 
 
 @app.post("/devices/rename/", response_model=dict)
-def rename_device(
+def rename_device_endpoint(
     device_rename: DeviceRename,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
@@ -909,39 +546,16 @@ def rename_device(
     Chỉ cho phép đổi tên nếu người dùng sở hữu thiết bị đó.
     """
     try:
-        # Kiểm tra quyền sở hữu thiết bị
-        device = db.query(models.Device).filter(
-            models.Device.device_id == device_rename.old_device_id,
-            models.Device.user_id == current_user.id
-        ).first()
+        result = rename_device(device_rename.old_device_id, device_rename.new_device_id, current_user.id)
         
-        if not device:
-            raise HTTPException(
-                status_code=403,
-                detail="Bạn không có quyền đổi tên thiết bị này"
-            )
-        
-        # Kiểm tra device_id mới chưa tồn tại
-        existing_device = db.query(models.Device).filter(
-            models.Device.device_id == device_rename.new_device_id
-        ).first()
-        
-        if existing_device:
+        if not result["success"]:
             raise HTTPException(
                 status_code=400,
-                detail="Device_id mới đã tồn tại"
+                detail=result["message"]
             )
-        
-        # Gọi hàm rename_device từ user_device.py
-        from user_action.user_device import rename_device
-        rename_device(
-            device_rename.old_device_id,
-            device_rename.new_device_id,
-            current_user.id
-        )
-        
+            
         return {
-            "message": f"Đã đổi tên device_id từ '{device_rename.old_device_id}' thành '{device_rename.new_device_id}' thành công"
+            "message": result["message"]
         }
         
     except Exception as e:
@@ -949,39 +563,65 @@ def rename_device(
         raise HTTPException(
             status_code=500,
             detail=str(e)
-        ) 
+        )
 
-@app.get("/sensor-data/{device_id}")
-async def get_sensor_data(device_id: str):
+@app.post("/devices/claim/", response_model=dict)
+def claim_device(
+    device_claim: DeviceClaim,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Lấy dữ liệu cảm biến của một thiết bị
+    Yêu cầu sở hữu một thiết bị.
     """
     try:
-        with engine.connect() as conn:
-            # Lấy dữ liệu từ bảng sensor_data
-            result = conn.execute(
-                text("""
-                    SELECT id, device_id, feed_id, value, timestamp
-                    FROM sensor_data
-                    WHERE device_id = :device_id
-                    ORDER BY timestamp DESC
-                    LIMIT 100
-                """),
-                {"device_id": device_id}
+        # Gọi hàm add_device_for_user từ add_device.py
+        from user_action.add_device import add_device_for_user
+        result = add_device_for_user(device_claim.device_id, current_user.id)
+        
+        if not result["success"]:
+            raise HTTPException(
+                status_code=400,
+                detail=result["message"]
             )
             
-            data = []
-            for row in result:
-                data.append({
-                    "id": row[0],
-                    "device_id": row[1],
-                    "feed_id": row[2],
-                    "value": row[3],
-                    "timestamp": row[4]
-                })
-            
-            return {"status": "success", "data": data}
-            
+        return {
+            "message": result["message"]
+        }
+        
     except Exception as e:
-        logger.error(f"Lỗi khi lấy dữ liệu cảm biến: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        logger.error(f"Lỗi khi yêu cầu sở hữu thiết bị: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+@app.post("/devices/remove/", response_model=dict)
+def remove_device(
+    device_id: str,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Từ bỏ quyền sở hữu một thiết bị.
+    """
+    try:
+        # Gọi hàm remove_device từ user_device.py
+        from user_action.user_device import remove_device
+        remove_device(device_id, current_user.id)
+        
+        return {
+            "message": f"Đã từ bỏ quyền sở hữu thiết bị {device_id} thành công"
+        }
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi từ bỏ quyền sở hữu thiết bị: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        ) 
