@@ -142,7 +142,7 @@ def setup_tables(database_url):
         logger.info(f"Các bảng hiện có trong cơ sở dữ liệu: {', '.join(tables)}")
         
         # Kiểm tra các bảng quan trọng
-        required_tables = ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized']
+        required_tables = ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized', 'feeds']
         missing_tables = [table for table in required_tables if table not in tables]
         
         if missing_tables:

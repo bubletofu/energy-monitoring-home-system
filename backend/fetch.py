@@ -9,7 +9,7 @@ import logging
 import requests
 import argparse
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, text, UniqueConstraint
 from sqlalchemy.orm import declarative_base, sessionmaker
 from dotenv import load_dotenv
 
@@ -39,6 +39,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Tạo model
 Base = declarative_base()
 
+class Feed(Base):
+    __tablename__ = "feeds"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    feed_id = Column(String, unique=True, index=True)
+    device_id = Column(String, index=True)
+
 class SensorData(Base):
     __tablename__ = "sensor_data"
     
@@ -47,6 +54,11 @@ class SensorData(Base):
     feed_id = Column(String, index=True)
     value = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    # Thêm unique constraint cho (device_id, feed_id, timestamp) để tránh trùng lặp dữ liệu
+    __table_args__ = (
+        UniqueConstraint('device_id', 'feed_id', 'timestamp', name='uix_device_feed_time'),
+    )
 
 def get_feeds():
     """Lấy danh sách tất cả feeds từ Adafruit IO"""
@@ -89,49 +101,19 @@ def get_feed_data(feed_key, limit=100, start_time=None):
 def ensure_device_exists(db, feed_id):
     """Đảm bảo device tồn tại và có mapping với feed_id"""
     # Kiểm tra xem đã có mapping chưa
-    mapping = db.execute(
-        text("SELECT device_id FROM feed_device_mapping WHERE feed_id = :feed_id"),
-        {"feed_id": feed_id}
-    ).fetchone()
+    feed = db.query(Feed).filter(Feed.feed_id == feed_id).first()
     
-    if mapping:
-        return mapping[0]  # Trả về device_id hiện tại
+    if feed:
+        return feed.device_id  # Trả về device_id hiện tại
     
     # Nếu chưa có mapping, tạo device mới và mapping
     device_id = feed_id  # Mặc định sử dụng feed_id làm device_id
     
-    # Đảm bảo device tồn tại
-    result = db.execute(
-        text("SELECT id FROM devices WHERE device_id = :device_id"),
-        {"device_id": device_id}
-    ).fetchone()
-    
-    if not result:
-        db.execute(
-            text("""
-                INSERT INTO devices (device_id, name, description, created_at) 
-                VALUES (:device_id, :name, :description, NOW())
-            """),
-            {
-                "device_id": device_id,
-                "name": f"Device {device_id}",
-                "description": f"Device from Adafruit IO feed: {device_id}"
-            }
-        )
-    
     # Tạo mapping
-    db.execute(
-        text("""
-            INSERT INTO feed_device_mapping (feed_id, device_id)
-            VALUES (:feed_id, :device_id)
-        """),
-        {
-            "feed_id": feed_id,
-            "device_id": device_id
-        }
-    )
-    
+    new_feed = Feed(feed_id=feed_id, device_id=device_id)
+    db.add(new_feed)
     db.commit()
+    
     logger.info(f"Đã tạo mapping mới: feed_id={feed_id} -> device_id={device_id}")
     return device_id
 
@@ -199,6 +181,7 @@ def main():
     # Parse arguments
     parser = argparse.ArgumentParser(description='Fetch data from Adafruit IO')
     parser.add_argument('--all', action='store_true', help='Fetch all data regardless of date')
+    parser.add_argument('--date', type=str, help='Fetch data for specific date (format: YYYY-MM-DD)')
     args = parser.parse_args()
     
     # Tạo bảng nếu chưa tồn tại
@@ -214,10 +197,19 @@ def main():
     
     # Xác định thời gian bắt đầu
     start_time = None
-    if not args.all:
+    if args.date:
+        try:
+            # Parse ngày từ input
+            start_time = datetime.strptime(args.date, "%Y-%m-%d")
+            logger.info(f"Đang lấy dữ liệu cho ngày {args.date}")
+        except ValueError:
+            logger.error("Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD (ví dụ: 2024-04-08)")
+            return
+    elif not args.all:
         # Lấy dữ liệu từ đầu ngày hôm nay
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         start_time = today
+        logger.info("Đang lấy dữ liệu từ đầu ngày hôm nay")
     
     # Xử lý từng feed
     for feed in feeds:
