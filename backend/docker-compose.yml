@@ -28,7 +28,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:1234@db:5444/iot_db
+      - DATABASE_URL=postgresql://postgres:1234@db:5432/iot_db
       - API_HOST=0.0.0.0
       - API_PORT=8000
     depends_on:
