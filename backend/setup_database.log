@@ -1,0 +1,122 @@
+2025-04-08 07:57:56,200 - ERROR - Lỗi khi thiết lập database: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-08 08:05:16,839 - ERROR - Lỗi khi thiết lập database: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-08 08:07:25,026 - WARNING - Python-dotenv could not parse statement starting at line 21
+2025-04-08 08:07:25,026 - WARNING - Python-dotenv could not parse statement starting at line 23
+2025-04-08 08:07:25,026 - WARNING - Python-dotenv could not parse statement starting at line 24
+2025-04-08 08:07:25,026 - WARNING - Python-dotenv could not parse statement starting at line 25
+2025-04-08 08:07:25,026 - WARNING - Python-dotenv could not parse statement starting at line 26
+2025-04-08 08:07:25,026 - WARNING - Python-dotenv could not parse statement starting at line 27
+2025-04-08 08:07:25,074 - ERROR - Lỗi khi thiết lập database: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-08 08:07:30,510 - ERROR - Lỗi khi thiết lập database: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-08 08:43:31,280 - ERROR - Lỗi khi thiết lập database: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5444 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-08 08:45:50,809 - INFO - Đã thiết lập database thành công!
+2025-04-08 08:50:19,032 - INFO - Đã thiết lập database thành công!
+2025-04-09 02:29:02,052 - INFO - Đã thiết lập database thành công!
+2025-04-09 04:22:23,994 - INFO - Đã thiết lập database thành công!
+2025-04-09 04:31:08,117 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized', 'feeds']
+2025-04-09 04:31:08,117 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-09 04:40:33,125 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-09 04:40:33,126 - WARNING - Python-dotenv could not parse statement starting at line 21
+2025-04-09 04:40:33,126 - WARNING - Python-dotenv could not parse statement starting at line 23
+2025-04-09 04:40:33,126 - WARNING - Python-dotenv could not parse statement starting at line 24
+2025-04-09 04:40:33,126 - WARNING - Python-dotenv could not parse statement starting at line 25
+2025-04-09 04:40:33,126 - WARNING - Python-dotenv could not parse statement starting at line 26
+2025-04-09 04:40:33,126 - WARNING - Python-dotenv could not parse statement starting at line 27
+2025-04-09 04:40:33,126 - INFO - Environment variables:
+2025-04-09 04:40:33,126 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:40:33,126 - INFO - ALGORITHM from env: HS256
+2025-04-09 04:40:33,126 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-09 04:40:33,129 - WARNING - Python-dotenv could not parse statement starting at line 21
+2025-04-09 04:40:33,130 - WARNING - Python-dotenv could not parse statement starting at line 23
+2025-04-09 04:40:33,130 - WARNING - Python-dotenv could not parse statement starting at line 24
+2025-04-09 04:40:33,130 - WARNING - Python-dotenv could not parse statement starting at line 25
+2025-04-09 04:40:33,130 - WARNING - Python-dotenv could not parse statement starting at line 26
+2025-04-09 04:40:33,130 - WARNING - Python-dotenv could not parse statement starting at line 27
+2025-04-09 04:40:33,130 - INFO - Settings loaded successfully
+2025-04-09 04:40:33,130 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:40:33,130 - INFO - Final Algorithm being used: HS256
+2025-04-09 04:40:33,130 - INFO - Final Token expire minutes: 30
+2025-04-09 04:40:33,130 - INFO - Đã tải cấu hình từ config.py
+2025-04-09 04:40:33,207 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized', 'feeds']
+2025-04-09 04:40:33,208 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-09 04:40:33,219 - INFO - Đã tạo bảng sensor_data
+2025-04-09 04:40:40,855 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-09 04:40:40,856 - INFO - Environment variables:
+2025-04-09 04:40:40,856 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:40:40,856 - INFO - ALGORITHM from env: HS256
+2025-04-09 04:40:40,856 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-09 04:40:40,859 - INFO - Settings loaded successfully
+2025-04-09 04:40:40,859 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:40:40,859 - INFO - Final Algorithm being used: HS256
+2025-04-09 04:40:40,859 - INFO - Final Token expire minutes: 30
+2025-04-09 04:40:40,859 - INFO - Đã tải cấu hình từ config.py
+2025-04-09 04:40:40,906 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized', 'feeds']
+2025-04-09 04:40:40,906 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-09 04:40:40,914 - INFO - Đã tạo bảng sensor_data
+2025-04-09 04:43:35,374 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-09 04:43:35,375 - INFO - Environment variables:
+2025-04-09 04:43:35,376 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:43:35,376 - INFO - ALGORITHM from env: HS256
+2025-04-09 04:43:35,376 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-09 04:43:35,380 - INFO - Settings loaded successfully
+2025-04-09 04:43:35,380 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:43:35,380 - INFO - Final Algorithm being used: HS256
+2025-04-09 04:43:35,380 - INFO - Final Token expire minutes: 30
+2025-04-09 04:43:35,380 - INFO - Đã tải cấu hình từ config.py
+2025-04-09 04:43:35,472 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized', 'feeds']
+2025-04-09 04:43:35,472 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-09 04:43:35,482 - INFO - Đã tạo bảng sensor_data
+2025-04-09 04:43:35,489 - INFO - Đã tạo bảng feeds
+2025-04-09 04:45:31,700 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-09 04:45:31,701 - INFO - Environment variables:
+2025-04-09 04:45:31,701 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:45:31,701 - INFO - ALGORITHM from env: HS256
+2025-04-09 04:45:31,701 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-09 04:45:31,704 - INFO - Settings loaded successfully
+2025-04-09 04:45:31,704 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:45:31,704 - INFO - Final Algorithm being used: HS256
+2025-04-09 04:45:31,704 - INFO - Final Token expire minutes: 30
+2025-04-09 04:45:31,704 - INFO - Đã tải cấu hình từ config.py
+2025-04-09 04:45:31,773 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-09 04:45:31,773 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-09 04:45:31,778 - INFO - Đã tạo bảng sensor_data
+2025-04-09 04:45:31,782 - INFO - Đã tạo bảng feeds
+2025-04-09 04:56:17,187 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-09 04:56:17,188 - INFO - Environment variables:
+2025-04-09 04:56:17,188 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:56:17,188 - INFO - ALGORITHM from env: HS256
+2025-04-09 04:56:17,188 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-09 04:56:17,192 - INFO - Settings loaded successfully
+2025-04-09 04:56:17,192 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-09 04:56:17,192 - INFO - Final Algorithm being used: HS256
+2025-04-09 04:56:17,192 - INFO - Final Token expire minutes: 30
+2025-04-09 04:56:17,192 - INFO - Đã tải cấu hình từ config.py
+2025-04-09 04:56:17,259 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'feeds', 'sensor_data']
+2025-04-09 04:56:17,259 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-09 04:56:17,269 - INFO - Đã tạo bảng sensor_data
+2025-04-09 04:56:17,274 - INFO - Đã tạo bảng feeds

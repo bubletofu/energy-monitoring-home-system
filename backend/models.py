@@ -76,8 +76,8 @@ class SensorData(Base):
     __tablename__ = "sensor_data"
     
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(String, ForeignKey("devices.device_id", ondelete="CASCADE"))
-    feed_id = Column(String)
+    device_id = Column(String, index=True)
+    feed_id = Column(String, index=True)
     value = Column(Float)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     
@@ -134,3 +134,16 @@ class CompressedDataOptimized(Base):
             except:
                 pass
         return "Không có thông tin thời gian"
+
+class Feed(Base):
+    """
+    Bảng mapping giữa feed_id của Adafruit IO và device_id trong hệ thống
+    """
+    __tablename__ = "feeds"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    feed_id = Column(String, unique=True, index=True)
+    device_id = Column(String, index=True)
+    
+    def __repr__(self):
+        return f"<Feed(id={self.id}, feed_id='{self.feed_id}', device_id='{self.device_id}')>"
