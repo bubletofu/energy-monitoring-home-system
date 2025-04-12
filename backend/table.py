@@ -30,7 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Kết nối database từ biến môi trường hoặc giá trị mặc định
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5433/iot_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5444/iot_db")
 
 def create_engine_and_session():
     """
@@ -377,7 +377,7 @@ def example_usage():
     print("from models import Device, OriginalSample, CompressedDataOptimized")
     print()
     print("# Tạo session")
-    print("engine = create_engine('postgresql://postgres:1234@localhost:5433/iot_db')")
+    print("engine = create_engine('postgresql://postgres:1234@localhost:5444/iot_db')")
     print("Session = sessionmaker(bind=engine)")
     print("session = Session()")
     print()

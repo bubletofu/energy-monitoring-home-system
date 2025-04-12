@@ -44,7 +44,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Cấu hình Database
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5433/iot_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5444/iot_db")
 
 # Tạo models
 Base = declarative_base()

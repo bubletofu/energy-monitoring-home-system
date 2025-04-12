@@ -120,3 +120,211 @@ connection to server at "localhost" (127.0.0.1), port 5444 failed: Connection re
 2025-04-09 04:56:17,259 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
 2025-04-09 04:56:17,269 - INFO - Đã tạo bảng sensor_data
 2025-04-09 04:56:17,274 - INFO - Đã tạo bảng feeds
+2025-04-10 16:14:40,888 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-10 16:14:40,890 - INFO - Environment variables:
+2025-04-10 16:14:40,890 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:14:40,890 - INFO - ALGORITHM from env: HS256
+2025-04-10 16:14:40,890 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-10 16:14:40,895 - INFO - Settings loaded successfully
+2025-04-10 16:14:40,895 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:14:40,895 - INFO - Final Algorithm being used: HS256
+2025-04-10 16:14:40,895 - INFO - Final Token expire minutes: 30
+2025-04-10 16:14:40,895 - INFO - Đã tải cấu hình từ config.py
+2025-04-10 16:14:41,157 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'feeds', 'sensor_data']
+2025-04-10 16:14:41,157 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-10 16:14:41,172 - INFO - Đã tạo bảng sensor_data
+2025-04-10 16:14:41,178 - INFO - Đã tạo bảng feeds
+2025-04-10 16:33:26,899 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-10 16:33:26,901 - INFO - Environment variables:
+2025-04-10 16:33:26,901 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:33:26,901 - INFO - ALGORITHM from env: HS256
+2025-04-10 16:33:26,901 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-10 16:33:26,907 - INFO - Settings loaded successfully
+2025-04-10 16:33:26,907 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:33:26,907 - INFO - Final Algorithm being used: HS256
+2025-04-10 16:33:26,907 - INFO - Final Token expire minutes: 30
+2025-04-10 16:33:26,907 - INFO - Đã tải cấu hình từ config.py
+2025-04-10 16:33:27,004 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'feeds', 'sensor_data']
+2025-04-10 16:33:27,004 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-10 16:33:27,013 - INFO - Đã tạo bảng sensor_data
+2025-04-10 16:33:27,017 - INFO - Đã tạo bảng feeds
+2025-04-10 16:40:39,423 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-10 16:40:39,424 - INFO - Environment variables:
+2025-04-10 16:40:39,424 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:40:39,424 - INFO - ALGORITHM from env: HS256
+2025-04-10 16:40:39,424 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-10 16:40:39,430 - INFO - Settings loaded successfully
+2025-04-10 16:40:39,430 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:40:39,430 - INFO - Final Algorithm being used: HS256
+2025-04-10 16:40:39,430 - INFO - Final Token expire minutes: 30
+2025-04-10 16:40:39,430 - INFO - Đã tải cấu hình từ config.py
+2025-04-10 16:40:39,532 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-10 16:40:39,532 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-10 16:40:39,547 - INFO - Đã tạo bảng sensor_data
+2025-04-10 16:40:39,557 - INFO - Đã tạo bảng feeds
+2025-04-10 16:41:05,269 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-10 16:41:05,270 - INFO - Environment variables:
+2025-04-10 16:41:05,270 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:41:05,270 - INFO - ALGORITHM from env: HS256
+2025-04-10 16:41:05,270 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-10 16:41:05,275 - INFO - Settings loaded successfully
+2025-04-10 16:41:05,275 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:41:05,275 - INFO - Final Algorithm being used: HS256
+2025-04-10 16:41:05,275 - INFO - Final Token expire minutes: 30
+2025-04-10 16:41:05,275 - INFO - Đã tải cấu hình từ config.py
+2025-04-10 16:41:05,354 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-10 16:41:05,354 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-10 16:41:05,364 - INFO - Đã tạo bảng sensor_data
+2025-04-10 16:41:05,370 - INFO - Đã tạo bảng feeds
+2025-04-10 16:45:02,734 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-10 16:45:02,735 - INFO - Environment variables:
+2025-04-10 16:45:02,735 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:45:02,736 - INFO - ALGORITHM from env: HS256
+2025-04-10 16:45:02,736 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-10 16:45:02,742 - INFO - Settings loaded successfully
+2025-04-10 16:45:02,742 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-10 16:45:02,742 - INFO - Final Algorithm being used: HS256
+2025-04-10 16:45:02,742 - INFO - Final Token expire minutes: 30
+2025-04-10 16:45:02,742 - INFO - Đã tải cấu hình từ config.py
+2025-04-10 16:45:02,854 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'feeds', 'sensor_data']
+2025-04-10 16:45:02,854 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-10 16:45:02,864 - INFO - Đã tạo bảng sensor_data
+2025-04-10 16:45:02,868 - INFO - Đã tạo bảng feeds
+2025-04-11 08:43:38,239 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-11 08:43:38,241 - INFO - Environment variables:
+2025-04-11 08:43:38,241 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-11 08:43:38,241 - INFO - ALGORITHM from env: HS256
+2025-04-11 08:43:38,241 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-11 08:43:38,247 - INFO - Settings loaded successfully
+2025-04-11 08:43:38,261 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-11 08:43:38,261 - INFO - Final Algorithm being used: HS256
+2025-04-11 08:43:38,261 - INFO - Final Token expire minutes: 30
+2025-04-11 08:43:38,261 - INFO - Đã tải cấu hình từ config.py
+2025-04-11 08:43:38,429 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-11 08:43:38,458 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-11 08:43:38,553 - INFO - Đã tạo bảng sensor_data
+2025-04-11 08:43:38,559 - INFO - Đã tạo bảng feeds
+2025-04-12 21:31:04,191 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-12 21:31:04,193 - INFO - Environment variables:
+2025-04-12 21:31:04,193 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:31:04,193 - INFO - ALGORITHM from env: HS256
+2025-04-12 21:31:04,193 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-12 21:31:04,198 - INFO - Settings loaded successfully
+2025-04-12 21:31:04,198 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:31:04,198 - INFO - Final Algorithm being used: HS256
+2025-04-12 21:31:04,198 - INFO - Final Token expire minutes: 30
+2025-04-12 21:31:04,198 - INFO - Đã tải cấu hình từ config.py
+2025-04-12 21:31:07,026 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'feeds', 'sensor_data']
+2025-04-12 21:31:07,027 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-12 21:31:07,320 - INFO - Đã tạo bảng sensor_data
+2025-04-12 21:31:07,327 - INFO - Đã tạo bảng feeds
+2025-04-12 21:36:15,432 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-12 21:36:15,439 - INFO - Environment variables:
+2025-04-12 21:36:15,439 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:36:15,439 - INFO - ALGORITHM from env: HS256
+2025-04-12 21:36:15,439 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-12 21:36:15,445 - INFO - Settings loaded successfully
+2025-04-12 21:36:15,445 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:36:15,445 - INFO - Final Algorithm being used: HS256
+2025-04-12 21:36:15,445 - INFO - Final Token expire minutes: 30
+2025-04-12 21:36:15,445 - INFO - Đã tải cấu hình từ config.py
+2025-04-12 21:36:15,549 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-12 21:36:15,549 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-12 21:36:15,561 - INFO - Đã tạo bảng sensor_data
+2025-04-12 21:36:15,566 - INFO - Đã tạo bảng feeds
+2025-04-12 21:37:54,013 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-12 21:37:54,016 - INFO - Environment variables:
+2025-04-12 21:37:54,016 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:37:54,016 - INFO - ALGORITHM from env: HS256
+2025-04-12 21:37:54,016 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-12 21:37:54,021 - INFO - Settings loaded successfully
+2025-04-12 21:37:54,021 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:37:54,021 - INFO - Final Algorithm being used: HS256
+2025-04-12 21:37:54,021 - INFO - Final Token expire minutes: 30
+2025-04-12 21:37:54,021 - INFO - Đã tải cấu hình từ config.py
+2025-04-12 21:37:54,106 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized', 'feeds']
+2025-04-12 21:37:54,106 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-12 21:37:54,115 - INFO - Đã tạo bảng sensor_data
+2025-04-12 21:37:54,121 - INFO - Đã tạo bảng feeds
+2025-04-12 21:39:08,610 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-12 21:39:08,611 - INFO - Environment variables:
+2025-04-12 21:39:08,611 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:39:08,611 - INFO - ALGORITHM from env: HS256
+2025-04-12 21:39:08,611 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-12 21:39:08,617 - INFO - Settings loaded successfully
+2025-04-12 21:39:08,617 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:39:08,617 - INFO - Final Algorithm being used: HS256
+2025-04-12 21:39:08,617 - INFO - Final Token expire minutes: 30
+2025-04-12 21:39:08,617 - INFO - Đã tải cấu hình từ config.py
+2025-04-12 21:39:08,701 - WARNING - Phát hiện các bảng không cần thiết: ['sensor_data_predictions']
+2025-04-12 21:39:08,701 - WARNING - Các bảng này sẽ bị xóa để đảm bảo tính nhất quán của database
+2025-04-12 21:39:08,703 - INFO - Đã xóa bảng sensor_data_predictions
+2025-04-12 21:39:08,707 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-12 21:39:08,707 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-12 21:39:08,715 - INFO - Đã tạo bảng sensor_data
+2025-04-12 21:39:08,721 - INFO - Đã tạo bảng feeds
+2025-04-12 21:43:37,213 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-12 21:43:37,215 - INFO - Environment variables:
+2025-04-12 21:43:37,215 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:43:37,215 - INFO - ALGORITHM from env: HS256
+2025-04-12 21:43:37,215 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-12 21:43:37,220 - INFO - Settings loaded successfully
+2025-04-12 21:43:37,220 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:43:37,220 - INFO - Final Algorithm being used: HS256
+2025-04-12 21:43:37,220 - INFO - Final Token expire minutes: 30
+2025-04-12 21:43:37,221 - INFO - Đã tải cấu hình từ config.py
+2025-04-12 21:43:37,340 - WARNING - Phát hiện các bảng không cần thiết: ['sensor_data_predictions']
+2025-04-12 21:43:37,340 - WARNING - Các bảng này sẽ bị xóa để đảm bảo tính nhất quán của database
+2025-04-12 21:43:37,345 - INFO - Đã xóa bảng sensor_data_predictions
+2025-04-12 21:43:37,350 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-12 21:43:37,351 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-12 21:43:37,359 - INFO - Đã tạo bảng sensor_data
+2025-04-12 21:43:37,364 - INFO - Đã tạo bảng feeds
+2025-04-12 21:45:09,234 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-12 21:45:09,236 - INFO - Environment variables:
+2025-04-12 21:45:09,236 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:45:09,236 - INFO - ALGORITHM from env: HS256
+2025-04-12 21:45:09,236 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-12 21:45:09,241 - INFO - Settings loaded successfully
+2025-04-12 21:45:09,241 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5433/iot_db
+2025-04-12 21:45:09,241 - INFO - Final Algorithm being used: HS256
+2025-04-12 21:45:09,241 - INFO - Final Token expire minutes: 30
+2025-04-12 21:45:09,241 - INFO - Đã tải cấu hình từ config.py
+2025-04-12 21:45:09,456 - WARNING - Phát hiện các bảng không cần thiết: ['sensor_data_predictions']
+2025-04-12 21:45:09,457 - WARNING - Các bảng này sẽ bị xóa để đảm bảo tính nhất quán của database
+2025-04-12 21:45:09,458 - INFO - Đã xóa bảng sensor_data_predictions
+2025-04-12 21:45:09,465 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-12 21:45:09,465 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-12 21:45:09,476 - INFO - Đã tạo bảng sensor_data
+2025-04-12 21:45:09,481 - INFO - Đã tạo bảng feeds
+2025-04-12 21:51:54,986 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-12 21:51:54,991 - INFO - Environment variables:
+2025-04-12 21:51:54,991 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5444/iot_db
+2025-04-12 21:51:54,991 - INFO - ALGORITHM from env: HS256
+2025-04-12 21:51:54,991 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-12 21:51:54,998 - INFO - Settings loaded successfully
+2025-04-12 21:51:54,998 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5444/iot_db
+2025-04-12 21:51:54,998 - INFO - Final Algorithm being used: HS256
+2025-04-12 21:51:54,998 - INFO - Final Token expire minutes: 30
+2025-04-12 21:51:54,998 - INFO - Đã tải cấu hình từ config.py
+2025-04-12 21:51:55,104 - WARNING - Thiếu các bảng cần thiết: ['users', 'devices', 'sensor_data', 'original_samples', 'compressed_data_optimized', 'feeds']
+2025-04-12 21:51:55,104 - WARNING - Các bảng này sẽ được tạo mới
+2025-04-12 21:51:55,209 - INFO - Đã tạo các bảng còn thiếu thành công
+2025-04-12 21:51:55,211 - INFO - Các bảng hiện có trong database: ['sensor_data', 'feeds', 'users', 'devices', 'original_samples', 'compressed_data_optimized']
+2025-04-12 21:51:55,211 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-12 21:51:55,217 - INFO - Đã tạo bảng sensor_data
+2025-04-12 21:51:55,221 - INFO - Đã tạo bảng feeds
+2025-04-12 21:54:48,656 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/242/energy-monitoring-home-system/backend/.env
+2025-04-12 21:54:48,658 - INFO - Environment variables:
+2025-04-12 21:54:48,659 - INFO - DATABASE_URL from env: postgresql://postgres:1234@localhost:5444/iot_db
+2025-04-12 21:54:48,659 - INFO - ALGORITHM from env: HS256
+2025-04-12 21:54:48,659 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-04-12 21:54:48,665 - INFO - Settings loaded successfully
+2025-04-12 21:54:48,665 - INFO - Final Database URL being used: postgresql://postgres:1234@localhost:5444/iot_db
+2025-04-12 21:54:48,665 - INFO - Final Algorithm being used: HS256
+2025-04-12 21:54:48,665 - INFO - Final Token expire minutes: 30
+2025-04-12 21:54:48,665 - INFO - Đã tải cấu hình từ config.py
+2025-04-12 21:54:48,819 - INFO - Các bảng hiện có trong database: ['users', 'devices', 'original_samples', 'compressed_data_optimized', 'sensor_data', 'feeds']
+2025-04-12 21:54:48,819 - INFO - Tất cả các bảng cần thiết đã được thiết lập thành công!
+2025-04-12 21:54:48,825 - INFO - Đã tạo bảng sensor_data
+2025-04-12 21:54:48,830 - INFO - Đã tạo bảng feeds
