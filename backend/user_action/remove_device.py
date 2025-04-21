@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script để xóa thiết bị và tất cả dữ liệu liên quan từ database
-
-Cách sử dụng:
-    python remove_device.py --device-id <device_id> [--confirm]
-    
-    Tham số:
-    --device-id: ID của thiết bị cần xóa
-    --confirm: Xác nhận xóa mà không cần hỏi lại
-    --user-id: ID của người dùng yêu cầu xóa thiết bị (để kiểm tra quyền sở hữu)
-"""
+# -*- coding: utf-8 -*-
 
 import argparse
 import logging
@@ -37,7 +27,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Cấu hình Database
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5433/iot_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5444/iot_db")
 
 def check_tables_with_device_foreign_keys(engine, device_id):
     """
@@ -71,17 +61,17 @@ def check_tables_with_device_foreign_keys(engine, device_id):
         logger.error(f"Lỗi khi kiểm tra các bảng có foreign key: {str(e)}")
         return {}
 
-def remove_device(device_id, confirm=False, user_id=None):
+def remove_device(device_id: str, confirm: bool = False, user_id: int = None) -> dict:
     """
-    Xóa thiết bị và tất cả dữ liệu liên quan
+    Từ bỏ quyền sở hữu thiết bị (chuyển user_id về 1)
     
     Args:
-        device_id: ID của thiết bị cần xóa
-        confirm: Xác nhận xóa mà không cần hỏi lại
-        user_id: ID của người dùng (để kiểm tra quyền sở hữu)
-        
+        device_id: ID của thiết bị cần từ bỏ quyền sở hữu
+        confirm: Xác nhận từ bỏ quyền sở hữu
+        user_id: ID của người dùng hiện tại (để kiểm tra quyền sở hữu)
+    
     Returns:
-        dict: Kết quả xóa thiết bị
+        dict: Kết quả từ bỏ quyền sở hữu thiết bị
     """
     try:
         # Kết nối database
@@ -89,109 +79,59 @@ def remove_device(device_id, confirm=False, user_id=None):
         
         with engine.connect() as conn:
             # Bắt đầu transaction
-            transaction = conn.begin()
-            
-            # Biến để theo dõi trạng thái
-            device_exists = False
-            has_devices_table = False
-            
-            # Thử kiểm tra bảng devices
-            try:
-                conn.execute(text("SELECT 1 FROM devices LIMIT 1"))
-                has_devices_table = True
+            with conn.begin():
+                # Kiểm tra thiết bị tồn tại và thuộc về người dùng
+                device = conn.execute(
+                    text("SELECT user_id FROM devices WHERE device_id = :device_id"),
+                    {"device_id": device_id}
+                ).first()
                 
-                if has_devices_table:
-                    # Lấy thông tin chi tiết về thiết bị
-                    device_info = conn.execute(
-                        text("SELECT id, device_id, user_id FROM devices WHERE device_id = :device_id"),
-                        {"device_id": device_id}
-                    ).fetchone()
-                    
-                    if device_info:
-                        device_exists = True
-                        device_id_in_db = device_info[1]  # device_id
-                        device_owner_id = device_info[2]  # user_id
-                        logger.info(f"Tìm thấy thiết bị trong bảng devices: {device_id_in_db} (Owner ID: {device_owner_id})")
-                        
-                        # Kiểm tra quyền sở hữu nếu user_id được cung cấp
-                        if user_id is not None and device_owner_id is not None and device_owner_id != user_id and user_id != 1:
-                            logger.warning(f"Người dùng {user_id} không có quyền xóa thiết bị thuộc về người dùng {device_owner_id}")
-                            return {
-                                "success": False,
-                                "message": f"Bạn không có quyền xóa thiết bị này. Thiết bị thuộc về người dùng khác.",
-                                "device_id": device_id,
-                                "owner_id": device_owner_id
-                            }
-            except Exception as e:
-                logger.warning(f"Lỗi khi kiểm tra bảng devices: {str(e)}")
-            
-            # Kiểm tra các bảng có tham chiếu đến thiết bị này
-            references = check_tables_with_device_foreign_keys(engine, device_id)
-            
-            # Nếu không tìm thấy thiết bị trong bất kỳ bảng nào
-            if not device_exists and not references:
-                logger.warning(f"Không tìm thấy thiết bị {device_id} trong bất kỳ bảng nào")
-                return {
-                    "success": False,
-                    "message": f"Không tìm thấy thiết bị {device_id}",
-                    "device_id": device_id
-                }
-            
-            # Nếu không có xác nhận và có dữ liệu
-            if not confirm and references:
-                # Hiển thị thông tin về dữ liệu sẽ bị xóa
-                return {
-                    "success": False,
-                    "message": "Cần xác nhận xóa",
-                    "device_id": device_id,
-                    "references": references,
-                    "needs_confirmation": True
-                }
-            
-            try:
-                # Xóa dữ liệu từ các bảng con trước
-                for table in references:
-                    if table != "devices":  # Để bảng devices lại để xóa cuối cùng
-                        conn.execute(
-                            text(f"DELETE FROM {table} WHERE device_id = :device_id"),
-                            {"device_id": device_id}
-                        )
-                        logger.info(f"Đã xóa dữ liệu từ bảng {table}")
+                if not device:
+                    logger.error(f"Không tìm thấy thiết bị: {device_id}")
+                    return {
+                        "success": False,
+                        "message": f"Không tìm thấy thiết bị: {device_id}"
+                    }
                 
-                # Cuối cùng xóa từ bảng devices nếu có
-                if has_devices_table:
-                    conn.execute(
-                        text("DELETE FROM devices WHERE device_id = :device_id"),
-                        {"device_id": device_id}
-                    )
-                    logger.info("Đã xóa thiết bị từ bảng devices")
+                # Kiểm tra quyền sở hữu
+                if user_id and device[0] != user_id and user_id != 1:
+                    logger.error(f"Thiết bị {device_id} không thuộc về người dùng {user_id}")
+                    return {
+                        "success": False,
+                        "message": f"Bạn không có quyền từ bỏ quyền sở hữu thiết bị này"
+                    }
                 
-                # Commit transaction
-                transaction.commit()
-                logger.info(f"Đã xóa thành công thiết bị {device_id}")
+                if not confirm:
+                    return {
+                        "success": False,
+                        "message": "Vui lòng xác nhận từ bỏ quyền sở hữu thiết bị"
+                    }
                 
-                return {
-                    "success": True,
-                    "message": f"Đã xóa thiết bị {device_id} và tất cả dữ liệu liên quan",
-                    "device_id": device_id,
-                    "deleted_counts": references
-                }
+                # Chuyển user_id về 1 (mặc định)
+                result = conn.execute(
+                    text("UPDATE devices SET user_id = 1 WHERE device_id = :device_id"),
+                    {"device_id": device_id}
+                )
                 
-            except Exception as e:
-                transaction.rollback()
-                logger.error(f"Lỗi khi xóa thiết bị: {str(e)}")
-                return {
-                    "success": False,
-                    "message": f"Lỗi khi xóa thiết bị: {str(e)}",
-                    "device_id": device_id
-                }
-                
+                if result.rowcount > 0:
+                    logger.info(f"Đã chuyển thiết bị {device_id} về người dùng mặc định (user_id = 1)")
+                    return {
+                        "success": True,
+                        "message": f"Đã từ bỏ quyền sở hữu thiết bị {device_id}",
+                        "device_id": device_id
+                    }
+                else:
+                    logger.error(f"Không thể cập nhật thiết bị {device_id}")
+                    return {
+                        "success": False,
+                        "message": f"Không thể từ bỏ quyền sở hữu thiết bị {device_id}"
+                    }
+        
     except Exception as e:
-        logger.error(f"Lỗi khi kết nối database: {str(e)}")
+        logger.error(f"Lỗi khi từ bỏ quyền sở hữu thiết bị {device_id}: {str(e)}")
         return {
             "success": False,
-            "message": f"Lỗi khi kết nối database: {str(e)}",
-            "device_id": device_id
+            "message": f"Lỗi: {str(e)}"
         }
 
 def main():
