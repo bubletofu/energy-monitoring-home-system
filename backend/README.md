@@ -58,7 +58,9 @@ Mở Docker Desktop từ Start Menu (chờ nó báo “Docker is running”). (W
 ```
 
    
-#### Tạo môi trường ảo mới
+#### Tạo môi trường ảo mới 
+
+Có sẵn thư mục docker_env thì bước này không cần 
 ```
 python -m venv docker_env
 ```
