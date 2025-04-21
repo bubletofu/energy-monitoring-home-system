@@ -69,7 +69,7 @@ def setup_database():
                 CREATE TABLE IF NOT EXISTS devices (
                     id SERIAL PRIMARY KEY,
                     device_id VARCHAR UNIQUE NOT NULL,
-                    name VARCHAR,
+                    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
@@ -79,6 +79,7 @@ def setup_database():
                 conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS ix_devices_id ON devices (id);
                     CREATE UNIQUE INDEX IF NOT EXISTS ix_devices_device_id ON devices (device_id);
+                    CREATE INDEX IF NOT EXISTS ix_devices_user_id ON devices (user_id);
                 """))
             except Exception as e:
                 logger.warning(f"Không thể tạo index cho bảng devices: {str(e)}")
@@ -88,7 +89,7 @@ def setup_database():
                 CREATE TABLE IF NOT EXISTS original_samples (
                     id SERIAL PRIMARY KEY,
                     device_id VARCHAR NOT NULL,
-                    value JSONB NOT NULL,
+                    value NUMERIC(10,2) NOT NULL,
                     timestamp TIMESTAMP NOT NULL,
                     FOREIGN KEY (device_id) REFERENCES devices(device_id)
                 )
@@ -1094,14 +1095,10 @@ def save_to_database(device_id: str, data: List[float], timestamps: List[datetim
                     # Tạo dữ liệu cơ bản
                     record = {
                         'device_id': device_id,
-                        'value': data[j],  # Thay original_data bằng value
+                        'value': float(data[j]),  # Chuyển đổi sang float để đảm bảo kiểu dữ liệu
                         'timestamp': timestamps[j]
                     }
                     
-                    # Thêm created_at nếu cột này tồn tại
-                    if 'created_at' in columns:
-                        record['created_at'] = datetime.now()
-                        
                     batch_data.append(record)
                 
                 try:
@@ -1130,13 +1127,13 @@ def save_to_database(device_id: str, data: List[float], timestamps: List[datetim
         logger.error(f"Lỗi khi lưu dữ liệu vào database: {str(e)}")
         raise
 
-def ensure_device_exists(device_id: str, user_id=1):
+def ensure_device_exists(device_id: str, user_id=None):
     """
     Kiểm tra thiết bị đã tồn tại chưa, nếu chưa thì tạo mới
     
     Args:
         device_id: ID của thiết bị cần kiểm tra/tạo
-        user_id: ID của người dùng sở hữu thiết bị (mặc định: 1 - admin)
+        user_id: ID của người dùng sở hữu thiết bị (mặc định: None - chưa được claim)
         
     Returns:
         bool: True nếu thành công, False nếu thất bại
@@ -1166,16 +1163,16 @@ def ensure_device_exists(device_id: str, user_id=1):
                 
                 # Chỉ sử dụng các cột cơ bản và các cột thực sự tồn tại
                 insert_data = {
-                    'device_id': device_id,
-                    'name': f"Auto-created device {device_id}"
+                    'device_id': device_id
                 }
+                
+                # Thêm user_id nếu được cung cấp và cột user_id tồn tại
+                if user_id is not None and 'user_id' in columns:
+                    insert_data['user_id'] = user_id
                 
                 # Thêm các cột khác nếu tồn tại
                 if 'created_at' in columns:
                     insert_data['created_at'] = current_time
-                    
-                if 'user_id' in columns:
-                    insert_data['user_id'] = user_id
                 
                 # Tạo câu SQL động dựa trên các cột có sẵn
                 column_names = ', '.join(insert_data.keys())
@@ -1206,7 +1203,7 @@ def main():
     # Tạo parser cho các tham số command line
     parser = argparse.ArgumentParser(description='Tạo dữ liệu giả lập cho template')
     parser.add_argument('--device-id', type=str, default='template_two', help='ID của thiết bị')
-    parser.add_argument('--user-id', type=int, default=1, help='ID của người dùng (mặc định: 1 - admin)')
+    parser.add_argument('--user-id', type=int, default=None, help='ID của người dùng (mặc định: None - chưa được claim)')
     parser.add_argument('--num-days', type=int, default=7, help='Số ngày dữ liệu cần tạo')
     parser.add_argument('--start-date', type=str, help='Ngày bắt đầu (định dạng YYYY-MM-DD)')
     parser.add_argument('--no-save-db', action='store_true', help='Không lưu dữ liệu vào database')
