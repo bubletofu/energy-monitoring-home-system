@@ -93,7 +93,12 @@ def get_feed_data(feed_key, limit=100, start_time=None):
     
     params = {"limit": limit}
     if start_time:
-        params["start_time"] = start_time.isoformat()
+        # Đảm bảo format đúng định dạng ISO 8601 cho Adafruit IO
+        iso_time = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        params["start_time"] = iso_time
+        logger.info(f"Lấy dữ liệu từ {iso_time} (UTC) cho feed {feed_key} (limit={limit})")
+    else:
+        logger.info(f"Lấy {limit} điểm dữ liệu mới nhất cho feed {feed_key}")
     
     try:
         response = requests.get(
@@ -101,24 +106,106 @@ def get_feed_data(feed_key, limit=100, start_time=None):
             headers=headers,
             params=params
         )
+        
+        if response.status_code != 200:
+            logger.error(f"Lỗi khi lấy dữ liệu feed {feed_key}: HTTP {response.status_code}")
+            logger.error(f"Response: {response.text}")
+            return []
+            
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        logger.info(f"Đã nhận {len(data)} điểm dữ liệu từ feed {feed_key}")
+        return data
     except Exception as e:
         logger.error(f"Lỗi khi lấy dữ liệu feed {feed_key}: {str(e)}")
         return []
 
-def ensure_feed_exists(db, feed_id):
-    """Đảm bảo feed tồn tại trong bảng feeds"""
+def ensure_device_exists(db, device_id):
+    """Đảm bảo device_id tồn tại trong bảng devices"""
+    try:
+        # Kiểm tra xem device đã tồn tại chưa
+        device = db.execute(text("SELECT 1 FROM devices WHERE device_id = :device_id"), 
+                           {"device_id": device_id}).first()
+        
+        if device:
+            logger.info(f"Device đã tồn tại: device_id={device_id}")
+            return True
+        
+        # Nếu chưa tồn tại, tạo device mới
+        db.execute(
+            text("INSERT INTO devices (device_id, user_id) VALUES (:device_id, NULL)"),
+            {"device_id": device_id}
+        )
+        db.commit()
+        
+        logger.info(f"Đã tạo device mới: device_id={device_id}")
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Lỗi khi tạo device: {str(e)}")
+        return False
+
+def ensure_feed_exists(db, feed_id, device_id=None):
+    """
+    Đảm bảo feed tồn tại trong bảng feeds và được liên kết với thiết bị đúng
+    
+    Args:
+        db: Database session
+        feed_id: ID của feed
+        device_id: ID của thiết bị (nếu đã biết)
+        
+    Returns:
+        str: device_id được liên kết với feed
+    """
     try:
         # Kiểm tra xem feed đã tồn tại chưa
         feed = db.query(Feed).filter(Feed.feed_id == feed_id).first()
         
         if feed:
             logger.info(f"Feed đã tồn tại: feed_id={feed_id}, device_id={feed.device_id}")
+            
+            # Nếu device_id được cung cấp và khác với device_id đã lưu, cập nhật nó
+            if device_id and feed.device_id != device_id:
+                # Đảm bảo device mới tồn tại
+                if ensure_device_exists(db, device_id):
+                    old_device_id = feed.device_id
+                    
+                    # Cập nhật feed để sử dụng device_id mới
+                    feed.device_id = device_id
+                    db.commit()
+                    
+                    # Kiểm tra và cập nhật sensor_data tương ứng
+                    try:
+                        db.execute(
+                            text("""
+                                UPDATE sensor_data 
+                                SET device_id = :new_device_id 
+                                WHERE device_id = :old_device_id AND feed_id = :feed_id
+                            """),
+                            {
+                                "new_device_id": device_id,
+                                "old_device_id": old_device_id,
+                                "feed_id": feed_id
+                            }
+                        )
+                        db.commit()
+                        logger.info(f"Đã cập nhật sensor_data cho feed_id={feed_id} từ device_id={old_device_id} sang device_id={device_id}")
+                    except Exception as e:
+                        logger.warning(f"Lỗi khi cập nhật sensor_data: {str(e)}")
+                    
+                    logger.info(f"Đã cập nhật feed_id={feed_id} từ device_id={old_device_id} sang device_id={device_id}")
+            
             return feed.device_id
         
-        # Nếu chưa tồn tại, tạo feed mới với device_id duy nhất
-        device_id = f"device-{feed_id}"  # Tạo device_id duy nhất từ feed_id
+        # Nếu không có device_id được cung cấp, tạo từ feed_id
+        if not device_id:
+            device_id = f"device-{feed_id}"
+        
+        # Đảm bảo thiết bị tồn tại
+        ensure_device_exists(db, device_id)
+        
+        # Tạo feed mới
         new_feed = Feed(feed_id=feed_id, device_id=device_id)
         db.add(new_feed)
         db.commit()
@@ -135,7 +222,6 @@ def save_to_database(feed_id, data_points):
     """Lưu dữ liệu vào database"""
     db = SessionLocal()
     count = 0
-    updated = 0
     
     try:
         # Lấy device_id từ feed
@@ -168,7 +254,12 @@ def save_to_database(feed_id, data_points):
                 if timestamp_str:
                     timestamp_str = timestamp_str.replace('Z', '+00:00')
                     try:
-                        timestamp = datetime.fromisoformat(timestamp_str)
+                        # Phân tích thời gian UTC
+                        timestamp_utc = datetime.fromisoformat(timestamp_str)
+                        # Chuyển đổi sang múi giờ local
+                        timestamp_local = timestamp_utc.astimezone()
+                        # Loại bỏ thông tin múi giờ để lưu vào database
+                        timestamp = timestamp_local.replace(tzinfo=None)
                     except ValueError:
                         timestamp = datetime.utcnow()
                         logger.warning(f"Sử dụng thời gian hiện tại do không thể parse: {timestamp_str}")
@@ -209,6 +300,7 @@ def main():
     parser = argparse.ArgumentParser(description='Fetch data from Adafruit IO')
     parser.add_argument('--all', action='store_true', help='Fetch all data regardless of date')
     parser.add_argument('--date', type=str, help='Fetch data for specific date (format: YYYY-MM-DD)')
+    parser.add_argument('--last', action='store_true', help='Fetch data for the last 1 hour')
     args = parser.parse_args()
     
     # Tạo bảng nếu chưa tồn tại
@@ -232,11 +324,14 @@ def main():
         except ValueError:
             logger.error("Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD (ví dụ: 2024-04-08)")
             return
+    elif args.last:
+        # Đơn giản hóa: Lấy dữ liệu từ 1 giờ trước
+        start_time = datetime.utcnow() - timedelta(hours=1)
+        logger.info(f"Đang lấy dữ liệu từ 1 giờ gần nhất (từ {start_time.strftime('%Y-%m-%d %H:%M:%S')} UTC)")
     elif not args.all:
         # Lấy dữ liệu từ đầu ngày hôm nay
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        start_time = today
-        logger.info("Đang lấy dữ liệu từ đầu ngày hôm nay")
+        start_time = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(f"Đang lấy dữ liệu từ đầu ngày hôm nay (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     
     # Xử lý từng feed
     for feed in feeds:
@@ -246,11 +341,24 @@ def main():
             
         logger.info(f"Đang xử lý feed: {feed_key}")
         
+        # Tăng limit cho trường hợp --last
+        limit = 1000 if args.last else 100
+        
         # Lấy dữ liệu từ feed
-        data = get_feed_data(feed_key, start_time=start_time)
+        data = get_feed_data(feed_key, start_time=start_time, limit=limit)
         if not data:
             logger.warning(f"Không có dữ liệu từ feed {feed_key}")
             continue
+        
+        # Hiển thị phạm vi thời gian của dữ liệu
+        if len(data) > 0:
+            first_point = data[-1]  # Điểm dữ liệu cũ nhất
+            last_point = data[0]    # Điểm dữ liệu mới nhất
+            
+            if 'created_at' in first_point and 'created_at' in last_point:
+                logger.info(f"Dải thời gian dữ liệu nhận được:")
+                logger.info(f"  - Điểm cũ nhất: {first_point['created_at']}")
+                logger.info(f"  - Điểm mới nhất: {last_point['created_at']}")
         
         # Lưu vào database
         saved = save_to_database(feed_key, data)
