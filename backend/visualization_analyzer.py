@@ -1402,10 +1402,9 @@ def create_size_comparison_chart(compression_id, device_id, output_dir):
 
         # Create detailed chart
         plt.figure(figsize=(12, 6))
-        
-        # Draw bars
-        plt.bar(['Original Data'], [original_size/1024], color='#2ecc71', label='Total Size')
-        plt.bar(['Compressed Data'], [compressed_size/1024], color='#e74c3c', label='Total Size')
+
+        plt.bar(['Original Data'], [original_size / 1024], color='#2ecc71')
+        plt.bar(['Compressed Data'], [compressed_size / 1024], color='#e74c3c')
 
         # Thêm device_id vào tiêu đề
         plt.title(f'Data Size Comparison - Device: {device_id}')

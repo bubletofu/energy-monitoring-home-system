@@ -3,7 +3,6 @@
 """
 Script giải nén dữ liệu từ bảng compressed_data_optimized và lưu kết quả vào file JSON.
 Cách tiếp cận tối ưu không sử dụng bảng ref.
-Hỗ trợ dữ liệu đa chiều (power, humidity, pressure, temperature)
 """
 
 import sys
@@ -375,6 +374,15 @@ def decompress_data(compression_record):
         encoded_stream = compression_record.get('encoded_stream', [])
         time_range = compression_record.get('time_range')
         
+        # Lấy metadata từ bản ghi nén
+        compression_metadata = compression_record.get('metadata', {})
+        
+        # Sao chép các thông tin từ metadata của bản ghi nén
+        if compression_metadata:
+            decompressed_results['metadata']['total_values'] = compression_metadata.get('total_values', 0)
+            decompressed_results['metadata']['num_templates'] = compression_metadata.get('num_templates', 0)
+            decompressed_results['metadata']['compression_ratio'] = compression_metadata.get('compression_ratio', 0)
+        
         # Xử lý time_range
         if time_range:
             try:
@@ -441,6 +449,24 @@ def decompress_data(compression_record):
             decompressed_results['decompressed_data'].sort(
                 key=lambda x: x.get('start_time', '9999-12-31T23:59:59')
             )
+        
+        # Nếu không có thông tin trong metadata, tính toán từ dữ liệu giải nén
+        if decompressed_results['metadata'].get('total_values', 0) == 0:
+            total_values = 0
+            for block in decompressed_results['decompressed_data']:
+                values = block.get('values', [])
+                if isinstance(values, list):
+                    total_values += len(values)
+                elif isinstance(values, dict):
+                    for key, data_values in values.items():
+                        if isinstance(data_values, list):
+                            total_values += len(data_values)
+            
+            decompressed_results['metadata']['total_values'] = total_values
+        
+        # Nếu không có thông tin về số lượng template, tính toán từ dữ liệu giải nén
+        if decompressed_results['metadata'].get('num_templates', 0) == 0:
+            decompressed_results['metadata']['num_templates'] = len(templates)
         
         return decompressed_results
 
@@ -537,7 +563,7 @@ def main():
     """
     Hàm chính để thực thi script
     """
-    parser = argparse.ArgumentParser(description='Giải nén dữ liệu từ bảng compressed_data_optimized (hỗ trợ đa chiều)')
+    parser = argparse.ArgumentParser(description='Giải nén dữ liệu từ bảng compressed_data_optimized')
     parser.add_argument('--compression-id', type=int, help='ID của bản ghi nén cụ thể')
     parser.add_argument('--device-id', type=str, help='ID của thiết bị cần giải nén dữ liệu')
     parser.add_argument('--start-date', type=str, help='Ngày bắt đầu để lọc dữ liệu (định dạng YYYY-MM-DD)')
@@ -546,7 +572,6 @@ def main():
     parser.add_argument('--limit', type=int, default=10, 
                         help='Số lượng bản ghi tối đa cần giải nén (mặc định: 10)')
     parser.add_argument('--list', action='store_true', help='Chỉ liệt kê các bản ghi nén, không giải nén')
-    parser.add_argument('--dimension', type=str, help='Chiều dữ liệu cần hiển thị (power, humidity, temperature, pressure). Không chỉ định hiển thị tất cả.')
     parser.add_argument('--show-time', action='store_true', help='Hiển thị thông tin thời gian chi tiết của các block dữ liệu')
     parser.add_argument('--console-only', action='store_true', help='Chỉ hiển thị kết quả trên console, không lưu file')
     
@@ -676,8 +701,6 @@ def main():
                     return
             
             # Hiển thị kết quả
-            dimensions = result_to_use['metadata'].get('dimensions', ['power'])
-            
             # Hiển thị thông tin chung
             print("\n===== KẾT QUẢ GIẢI NÉN =====")
             print(f"Thiết bị: {result_to_use['device_id']}")
@@ -688,28 +711,13 @@ def main():
             # Hiển thị thông tin thời gian
             if 'time_range' in result_to_use['metadata']:
                 print(f"Phạm vi thời gian: {result_to_use['metadata']['time_range']}")
-            
-            # Hiển thị thông tin về các chiều dữ liệu có sẵn
-            print(f"Chiều dữ liệu: {', '.join(dimensions)}")
                 
             # Hiển thị dữ liệu mẫu - hiển thị 5 block đầu tiên
             print("\n--- DỮLIỆU MẪU ---")
             display_count = min(5, len(result_to_use.get('decompressed_data', [])))
             
-            # Lọc chiều dữ liệu nếu người dùng chỉ định
-            target_dimension = args.dimension
-            if target_dimension:
-                if target_dimension not in dimensions:
-                    logger.warning(f"Chiều dữ liệu '{target_dimension}' không tồn tại. Chiều dữ liệu có sẵn: {', '.join(dimensions)}")
-                    available_dimension = next(iter(dimensions), 'power')
-                    logger.info(f"Sử dụng chiều dữ liệu '{available_dimension}' mặc định")
-                    target_dimension = available_dimension
-            else:
-                target_dimension = next(iter(dimensions), 'power')
-            
             for i, block in enumerate(result_to_use.get('decompressed_data', [])[:display_count]):
                 template_id = block.get('template_id', 'N/A')
-                block_dimensions = block.get('dimensions', ['power'])
                 
                 # Hiển thị thông tin thời gian của block
                 time_info = ""
@@ -728,25 +736,26 @@ def main():
                         if time_field in block:
                             print(f"  {time_field}: {block[time_field]}")
                 
-                # Hiển thị dữ liệu theo chiều được chỉ định 
-                values = block.get('values', {})
+                # Hiển thị dữ liệu
+                values = block.get('values', [])
                 
                 if isinstance(values, dict):
-                    # Dữ liệu đa chiều
-                    if target_dimension in values:
-                        data_values = values[target_dimension]
-                        print(f"  Dữ liệu [{target_dimension}]: {data_values[:10]}...")
-                        if len(data_values) > 10:
-                            print(f"  (Hiển thị 10/{len(data_values)} điểm dữ liệu)")
-                    else:
-                        print(f"  Không có dữ liệu cho chiều '{target_dimension}' trong block này")
-                        print(f"  Các chiều có sẵn: {', '.join(values.keys())}")
+                    # Nếu values là dictionary, hiển thị tất cả các giá trị
+                    for key, data_values in values.items():
+                        if isinstance(data_values, (list, tuple, np.ndarray)):
+                            print(f"  Dữ liệu [{key}]: {data_values[:10]}...")
+                            if len(data_values) > 10:
+                                print(f"  (Hiển thị 10/{len(data_values)} điểm dữ liệu)")
+                        else:
+                            print(f"  Dữ liệu [{key}]: {data_values}")
                 else:
                     # Dữ liệu một chiều
-                    data_values = values
-                    print(f"  Dữ liệu: {data_values[:10]}...")
-                    if len(data_values) > 10:
-                        print(f"  (Hiển thị 10/{len(data_values)} điểm dữ liệu)")
+                    if isinstance(values, (list, tuple, np.ndarray)):
+                        print(f"  Dữ liệu: {values[:10]}...")
+                        if len(values) > 10:
+                            print(f"  (Hiển thị 10/{len(values)} điểm dữ liệu)")
+                    else:
+                        print(f"  Dữ liệu: {values}")
             
             # Thông báo thêm
             if display_count < len(result_to_use.get('decompressed_data', [])):

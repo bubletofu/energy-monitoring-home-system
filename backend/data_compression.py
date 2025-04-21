@@ -1574,7 +1574,7 @@ class DataCompressor:
         
         # Số lượng thông tin có hiệu lực đã thu thập được
         r = self.blocks_processed
-        rmin = self.config['min_blocks_before_adjustment']
+        rmin = max(500, self.config['min_blocks_before_adjustment'])  # Sử dụng rmin = 500 theo tài liệu
         
         # Số lần chuyển đổi kích thước block
         k = len(self.block_size_history)
@@ -1591,6 +1591,30 @@ class DataCompressor:
         # Phân tích xu hướng hit ratio để quyết định điều chỉnh
         if len(self.continuous_hit_ratio) >= 3:
             hit_ratio_trend = (self.continuous_hit_ratio[-1] - self.continuous_hit_ratio[-3])
+        
+        # Tính toán ρmin dựa trên mô hình Bernoulli
+        if r >= rmin:
+            # Tính p_min từ hit ratio hiện tại
+            p_min = max(0.1, current_hit_ratio - 0.1)  # Đảm bảo p_min không quá thấp
+            
+            # Tính ρmin theo công thức từ tài liệu
+            n = self.current_block_size
+            rho_min = (8 * n) / (1 + 8 * n - 8 * n * p_min)
+            
+            # Lưu ρmin để theo dõi
+            if not hasattr(self, 'rho_min_history'):
+                self.rho_min_history = []
+            self.rho_min_history.append(rho_min)
+            
+            # Giới hạn kích thước lịch sử
+            if len(self.rho_min_history) > 10:
+                self.rho_min_history = self.rho_min_history[-10:]
+                
+            # Lưu thông tin về ρmin vào previous_adjustments
+            if len(self.previous_adjustments) > 0:
+                self.previous_adjustments[-1] = (self.previous_adjustments[-1][0], 
+                                               self.previous_adjustments[-1][1], 
+                                               rho_min)
         
         # Kiểm tra điều kiện cho phép điều chỉnh
         if r >= rmin and k < kmax:
