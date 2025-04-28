@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Add Link import
+import { useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { login } from '../api/api';
 import backgroundImage from '../assets/background.jpg';
 
+// Styled Components
 const LoginContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -34,8 +35,7 @@ const Logo = styled.h1`
 `;
 
 const FormContainer = styled.div`
-  background-color: #1e293b;
-  opacity: 0.9;
+  background-color: rgba(30, 41, 59, 0.9);
   padding: 30px;
   border-radius: 10px;
   width: 350px;
@@ -52,6 +52,8 @@ const Title = styled.h2`
 const Form = styled.form`
   display: flex;
   flex-direction: column;
+  align-items: center;
+  width: 100%;
 `;
 
 const Label = styled.label`
@@ -59,10 +61,13 @@ const Label = styled.label`
   font-size: 14px;
   text-align: left;
   margin-bottom: 5px;
+  width: 100%;
+  max-width: 300px;
 `;
 
 const Input = styled.input`
   width: 100%;
+  max-width: 300px;
   padding: 10px;
   margin-bottom: 15px;
   border: 1px solid #64748b;
@@ -85,18 +90,28 @@ const Button = styled.button`
   cursor: pointer;
   font-size: 16px;
   margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 300px;
   &:hover {
     background-color: #059669;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
 const LinksContainer = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   margin-top: 15px;
+  width: 100%;
 `;
 
-const LinkStyled = styled(Link)` // Changed from 'a' to 'Link'
+const LinkStyled = styled(Link)`
   color: #10b981;
   font-size: 12px;
   text-decoration: none;
@@ -109,6 +124,8 @@ const ErrorMessage = styled.p`
   color: #e11d48;
   font-size: 14px;
   margin-top: 10px;
+  width: 100%;
+  max-width: 300px;
 `;
 
 const Footer = styled.footer`
@@ -127,25 +144,59 @@ const FooterLink = styled.a`
   }
 `;
 
+const LoadingSpinner = styled.div`
+  border: 2px solid white;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+  margin-left: 10px;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
 function Login() {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const validateForm = () => {
+    if (!credentials.username.trim()) {
+      setError('Username is required');
+      return false;
+    }
+    if (!credentials.password) {
+      setError('Password is required');
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
+    setLoading(true);
     try {
-      const response = await login(credentials);
+      const response = await login(new URLSearchParams(credentials));
       if (response.data.success) {
-        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('token', response.data.access_token);
         setError('');
-        navigate('/');
+        navigate('/dashboard');
       } else {
-        setError('Login failed. Check your credentials.');
+        setError('Login failed. Please check your credentials.');
       }
     } catch (error) {
-      setError('Login failed. Check server status or credentials.');
-      console.error('Login error:', error);
+      const errorMessage = error.response?.data?.detail || 'Login failed. Please check server status or credentials.';
+      setError(errorMessage);
+      console.error('Login error:', errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -156,26 +207,33 @@ function Login() {
       <FormContainer>
         <Title>Welcome Back</Title>
         <Form onSubmit={handleSubmit}>
-          <Label>Email</Label>
+          <Label htmlFor="username">Username</Label>
           <Input
+            id="username"
             type="text"
-            placeholder="Email"
+            placeholder="Username"
             value={credentials.username}
             onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+            aria-label="Enter your username"
+            disabled={loading}
           />
-          <Label>Password</Label>
+          <Label htmlFor="password">Password</Label>
           <Input
+            id="password"
             type="password"
             placeholder="Password"
             value={credentials.password}
             onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+            aria-label="Enter your password"
+            disabled={loading}
           />
-          <Button type="submit">Login</Button>
+          <Button type="submit" disabled={loading}>
+            Login {loading && <LoadingSpinner />}
+          </Button>
           {error && <ErrorMessage>{error}</ErrorMessage>}
         </Form>
         <LinksContainer>
-          <LinkStyled to="#">Forgot Password?</LinkStyled>
-          <LinkStyled to="/signup">Create Account</LinkStyled> {/* Updated to navigate */}
+          <LinkStyled to="/signup">Create Account</LinkStyled>
         </LinksContainer>
       </FormContainer>
       <Footer>

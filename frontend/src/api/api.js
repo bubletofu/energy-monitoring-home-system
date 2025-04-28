@@ -1,156 +1,111 @@
-// import axios from 'axios';
-
-// const API = axios.create({
-//   baseURL: 'http://localhost:8000',
-//   headers: {
-//     'Content-Type': 'application/json',
-//   },
-// });
-
-// API.interceptors.request.use((config) => {
-//   const token = localStorage.getItem('token');
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
-
-// // Mock data for testing without a backend
-// const mockUser = {
-//   id: 1,
-//   username: 'mockuser',
-//   email: 'mockuser@example.com',
-// };
-
-// const mockDevices = [
-//   {
-//     id: 1,
-//     device_id: 'device1',
-//     name: 'Living Room Thermostat',
-//     is_online: true,
-//     last_value: '72.0',
-//     status_details: {
-//       data_source: 'sensor_data',
-//       last_data_time: '2025-04-08T10:00:00Z',
-//       current_time: '2025-04-08T10:05:00Z',
-//       message: 'Refreshed',
-//     },
-//     user_id: 1,
-//   },
-//   {
-//     id: 2,
-//     device_id: 'device2',
-//     name: 'Kitchen Lights',
-//     is_online: false,
-//     last_value: 'N/A',
-//     status_details: {
-//       data_source: 'sensor_data',
-//       last_data_time: '2025-04-07T15:00:00Z',
-//       current_time: '2025-04-08T10:05:00Z',
-//       message: 'Cached',
-//     },
-//     user_id: 1,
-//   },
-// ];
-
-// // Mock API functions to match the API documentation
-
-// // 1. Đăng nhập (POST /login/)
-// export const login = async (credentials) => {
-//   console.log('Mock login with:', credentials);
-//   return {
-//     data: {
-//       success: true,
-//       user: mockUser,
-//       token: 'mock-jwt-token', // Added token to match typical auth flow
-//     },
-//   };
-// };
-
-// // 2. Đăng xuất (POST /logout/)
-// export const logout = async () => {
-//   console.log('Mock logout');
-//   return { data: { message: 'Đăng xuất thành công' } };
-// };
-
-// // 3. Kiểm tra đăng nhập (GET /check-auth/)
-// export const checkAuth = async () => {
-//   console.log('Mock check-auth');
-//   return {
-//     data: {
-//       is_authenticated: true,
-//       user: mockUser,
-//     },
-//   };
-// };
-
-// // 4. Lấy trạng thái thiết bị (GET /device-status/)
-// export const getDeviceStatus = async (params) => {
-//   console.log('Mock getDeviceStatus with params:', params);
-//   return { data: mockDevices };
-// };
-
-// // 5. Đổi tên thiết bị (POST /devices/rename/)
-// export const renameDevice = async (data) => {
-//   console.log('Mock renameDevice:', data);
-//   return { data: { message: 'Device renamed successfully' } };
-// };
-
-// // 6. Yêu cầu sở hữu thiết bị (POST /devices/claim/)
-// export const claimDevice = async (data) => {
-//   console.log('Mock claimDevice:', data);
-//   return { data: { message: 'Device claimed successfully' } };
-// };
-
-// // 7. Từ bỏ quyền sở hữu thiết bị (POST /devices/remove/)
-// export const removeDevice = async (data) => {
-//   console.log('Mock removeDevice:', data);
-//   return { data: { message: 'Device removed successfully' } };
-// };
-
-// // 10. Quản lý người dùng
-
-// // Tạo người dùng mới (POST /users/)
-// export const createUser = async (data) => {
-//   console.log('Mock createUser:', data);
-//   return { data: { id: 2, username: data.username, email: data.email } };
-// };
-
-// // Lấy thông tin người dùng hiện tại (GET /users/me/)
-// export const getCurrentUser = async () => {
-//   console.log('Mock getCurrentUser');
-//   return { data: mockUser };
-// };
-
-// export default API;
-
-
 import axios from 'axios';
 
+// Create an Axios instance for API requests
 const API = axios.create({
   baseURL: 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // Set a 10-second timeout for all requests
 });
 
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Interceptor to add Authorization header with token from localStorage
+API.interceptors.request.use(
+  (config) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    } catch (error) {
+      console.error('Error retrieving token from localStorage:', error);
+      return config; // Proceed without token if retrieval fails
+    }
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
-// API functions for real backend calls
-export const login = (credentials) => API.post('/login/', credentials);
+// Interceptor to handle response errors (e.g., 401 Unauthorized)
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.warn('Unauthorized request - redirecting to login');
+      localStorage.removeItem('token'); // Clear invalid token
+      window.location.href = '/login'; // Redirect to login page
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Authentication Endpoints
+
+/**
+ * Logs in a user by sending credentials to the backend.
+ * @param {Object} formData - Contains username and password (e.g., { username: 'user', password: 'pass' })
+ * @returns {Promise} - Axios response with access token and user data
+ */
+export const login = (formData) =>
+  API.post('/login/', formData, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+
+/**
+ * Registers a new user.
+ * @param {Object} data - Contains username, email, and password (e.g., { username: 'user', email: 'user@example.com', password: 'pass' })
+ * @returns {Promise} - Axios response with success message
+ */
+export const register = (data) => API.post('/register/', data);
+
+/**
+ * Logs out the current user by clearing the auth cookie on the backend.
+ * @returns {Promise} - Axios response with success message
+ */
 export const logout = () => API.post('/logout/');
+
+/**
+ * Checks if the user is authenticated.
+ * @returns {Promise} - Axios response with authentication status (e.g., { is_authenticated: true, user: {...} })
+ */
 export const checkAuth = () => API.get('/check-auth/');
-export const getDeviceStatus = (params) => API.get('/device-status/', { params });
+
+/**
+ * Fetches the current user's information.
+ * @returns {Promise} - Axios response with user data (e.g., { id: 1, username: 'user', email: 'user@example.com' })
+ */
+export const getCurrentUser = () => API.get('/auth/me/');
+
+// Device Management Endpoints
+
+/**
+ * Renames a device for the authenticated user.
+ * @param {Object} data - Contains old_device_id and new_device_id (e.g., { old_device_id: 'device1', new_device_id: 'device2' })
+ * @returns {Promise} - Axios response with success message
+ */
 export const renameDevice = (data) => API.post('/devices/rename/', data);
-export const claimDevice = (data) => API.post('/devices/claim/', data);
-export const removeDevice = (data) => API.post('/devices/remove/', data);
-export const createUser = (data) => API.post('/users/', data);
-export const getCurrentUser = () => API.get('/users/me/');
+
+/**
+ * Claims ownership of a device for the authenticated user.
+ * @param {string} deviceId - The ID of the device to claim (e.g., 'device1')
+ * @returns {Promise} - Axios response with success message
+ */
+export const claimDevice = (deviceId) => API.post(`/api/devices/claim/${deviceId}`);
+
+/**
+ * Removes ownership of a device for the authenticated user.
+ * @param {string} deviceId - The ID of the device to remove (e.g., 'device1')
+ * @returns {Promise} - Axios response with success message
+ */
+export const removeDevice = (deviceId) => API.post('/devices/remove/', { device_id: deviceId });
+
+/**
+ * Turns a device on or off for the authenticated user.
+ * @param {Object} data - Contains device_id and value (e.g., { device_id: 'device1', value: 1 })
+ * @returns {Promise} - Axios response with success message
+ */
+export const turnDevice = (data) => API.post('/devices/turn/', data);
 
 export default API;
