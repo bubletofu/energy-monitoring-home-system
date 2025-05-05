@@ -128,6 +128,14 @@ const ErrorMessage = styled.p`
   max-width: 300px;
 `;
 
+const SuccessMessage = styled.p`
+  color: #10b981;
+  font-size: 14px;
+  margin-top: 10px;
+  width: 100%;
+  max-width: 300px;
+`;
+
 const Footer = styled.footer`
   color: white;
   font-size: 12px;
@@ -162,6 +170,7 @@ const LoadingSpinner = styled.div`
 function Signup() {
   const [formData, setFormData] = useState({ username: '', email: '', password: '' });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -192,6 +201,7 @@ function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     if (!validateForm()) return;
 
     setLoading(true);
@@ -201,26 +211,21 @@ function Signup() {
       console.log('Signup successful:', signupResponse.data);
 
       // Step 2: Automatically log the user in
-      const loginCredentials = {
-        username: formData.username,
-        password: formData.password,
-      };
-      const loginResponse = await login(new URLSearchParams(loginCredentials));
-      const { access_token, refresh_token, user } = loginResponse.data;
+      const loginCredentials = new URLSearchParams();
+      loginCredentials.append('username', formData.username);
+      loginCredentials.append('password', formData.password);
 
-      // Store the access token
-      localStorage.setItem('token', access_token);
-
-      // Store the refresh token if provided
-      if (refresh_token) {
-        localStorage.setItem('refresh_token', refresh_token);
+      const loginResponse = await login(loginCredentials);
+      if (loginResponse.data.success) {
+        localStorage.setItem('token', loginResponse.data.access_token);
+        setSuccess('Signup and login successful! Redirecting...');
+        setTimeout(() => navigate('/dashboard'), 2000); // Redirect after 2 seconds
+      } else {
+        setError('Signup succeeded, but auto-login failed. Please log in manually.');
+        setTimeout(() => navigate('/login'), 2000);
       }
-
-      console.log('Auto-login successful:', user);
-      setError('');
-      navigate('/dashboard');
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Signup or login failed. Please check server status or input data.';
+      const errorMessage = error.response?.data?.detail || 'Signup or login failed. Please try again.';
       setError(errorMessage);
       console.error('Signup or login error:', errorMessage);
       if (error.response?.status === 400 && error.response.data.detail === "Username already registered") {
@@ -272,6 +277,7 @@ function Signup() {
             Sign Up {loading && <LoadingSpinner />}
           </Button>
           {error && <ErrorMessage>{error}</ErrorMessage>}
+          {success && <SuccessMessage>{success}</SuccessMessage>}
         </Form>
         <LinksContainer>
           <LinkStyled to="/login">Already have an account? Log in</LinkStyled>
