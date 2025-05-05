@@ -436,4 +436,25 @@ def turn_device_endpoint(
         raise HTTPException(
             status_code=500,
             detail=str(e)
-        ) 
+        )
+
+@app.get("/devices/", response_model=List[dict])
+def list_devices(
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lấy danh sách các thiết bị thuộc về người dùng hiện tại.
+    """
+    try:
+        devices = db.query(models.Device).filter(models.Device.user_id == current_user.id).all()
+        return [
+            {
+                "id": device.id,
+                "device_id": device.device_id,
+            }
+            for device in devices
+        ]
+    except Exception as e:
+        logger.error(f"Error listing devices for user {current_user.id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) 
