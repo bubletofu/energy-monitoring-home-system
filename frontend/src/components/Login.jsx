@@ -179,18 +179,25 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     if (!validateForm()) return;
 
     setLoading(true);
     try {
       const response = await login(new URLSearchParams(credentials));
-      if (response.data.success) {
-        localStorage.setItem('token', response.data.access_token);
-        setError('');
-        navigate('/dashboard');
-      } else {
-        setError('Login failed. Please check your credentials.');
+      const { access_token, refresh_token, user } = response.data;
+
+      // Store the access token
+      localStorage.setItem('token', access_token);
+
+      // Store the refresh token if provided
+      if (refresh_token) {
+        localStorage.setItem('refresh_token', refresh_token);
       }
+
+      console.log('Login successful:', user);
+      setError('');
+      navigate('/dashboard');
     } catch (error) {
       const errorMessage = error.response?.data?.detail || 'Login failed. Please check server status or credentials.';
       setError(errorMessage);
