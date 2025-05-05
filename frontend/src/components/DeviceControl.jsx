@@ -1,133 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import axios from 'axios';
+import { renameDevice, claimDevice, removeDevice, turnDevice, listDevices } from '../api/api';
 
-// Create axios instance
-const API = axios.create({
-  baseURL: 'http://localhost:8000',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Mock data for testing without a backend
-const mockUser = {
-  id: 1,
-  username: 'mockuser',
-  email: 'mockuser@example.com',
-};
-
-const mockDevices = [
-  {
-    id: 1,
-    device_id: 'device1',
-    name: 'Living Room Thermostat',
-    is_online: true,
-    last_value: '72.0',
-    status_details: {
-      data_source: 'sensor_data',
-      last_data_time: '2025-04-08T10:00:00Z',
-      current_time: '2025-04-08T10:05:00Z',
-      message: 'Refreshed',
-    },
-    user_id: 1,
-  },
-  {
-    id: 2,
-    device_id: 'device2',
-    name: 'Kitchen Lights',
-    is_online: false,
-    last_value: 'N/A',
-    status_details: {
-      data_source: 'sensor_data',
-      last_data_time: '2025-04-07T15:00:00Z',
-      current_time: '2025-04-08T10:05:00Z',
-      message: 'Cached',
-    },
-    user_id: 1,
-  },
-];
-
-// Mock API functions to match the API documentation
-
-// 1. Đăng nhập (POST /login/)
-const login = async (credentials) => {
-  console.log('Mock login with:', credentials);
-  return {
-    data: {
-      success: true,
-      user: mockUser,
-      token: 'mock-jwt-token',
-    },
-  };
-};
-
-// 2. Đăng xuất (POST /logout/)
-const logout = async () => {
-  console.log('Mock logout');
-  return { data: { message: 'Đăng xuất thành công' } };
-};
-
-// 3. Kiểm tra đăng nhập (GET /check-auth/)
-const checkAuth = async () => {
-  console.log('Mock check-auth');
-  return {
-    data: {
-      is_authenticated: true,
-      user: mockUser,
-    },
-  };
-};
-
-// 4. Lấy trạng thái thiết bị (GET /device-status/)
-const getDeviceStatus = async (params) => {
-  console.log('Mock getDeviceStatus with params:', params);
-  return { data: mockDevices };
-};
-
-// 5. Đổi tên thiết bị (POST /devices/rename/)
-const renameDevice = async (data) => {
-  console.log('Mock renameDevice:', data);
-  return { data: { message: 'Device renamed successfully' } };
-};
-
-// 6. Yêu cầu sở hữu thiết bị (POST /devices/claim/)
-const claimDevice = async (data) => {
-  console.log('Mock claimDevice:', data);
-  return { data: { message: 'Device claimed successfully' } };
-};
-
-// 7. Từ bỏ quyền sở hữu thiết bị (POST /devices/remove/)
-const removeDevice = async (data) => {
-  console.log('Mock removeDevice:', data);
-  return { data: { message: 'Device removed successfully' } };
-};
-
-// 10. Quản lý người dùng
-
-// Tạo người dùng mới (POST /users/)
-const createUser = async (data) => {
-  console.log('Mock createUser:', data);
-  return { data: { id: 2, username: data.username, email: data.email } };
-};
-
-// Lấy thông tin người dùng hiện tại (GET /users/me/)
-const getCurrentUser = async () => {
-  console.log('Mock getCurrentUser');
-  return { data: mockUser };
-};
-
-// Styled components for DeviceControl
+// Styled Components
 const DeviceContainer = styled.div`
-  background-color: #0f172a; /* Match dashboard background */
+  background-color: #0f172a;
   padding: 20px;
   color: white;
 `;
@@ -139,7 +16,7 @@ const DeviceList = styled.div`
 `;
 
 const DeviceItem = styled.div`
-  background-color: #1e293b; /* Match container background */
+  background-color: #1e293b;
   padding: 15px;
   border-radius: 5px;
   display: flex;
@@ -155,17 +32,13 @@ const DeviceInfo = styled.div`
 const DeviceName = styled.h4`
   margin: 0;
   font-size: 16px;
-  color: #dbeafe; /* Match label color */
+  color: #dbeafe;
 `;
 
 const DeviceDetail = styled.p`
   margin: 5px 0 0 0;
   font-size: 14px;
   color: #dbeafe;
-`;
-
-const DeviceStatus = styled.span`
-  color: ${(props) => (props.online ? '#10b981' : '#e11d48')}; /* Green for online, red for offline */
 `;
 
 const DeviceActions = styled.div`
@@ -175,7 +48,7 @@ const DeviceActions = styled.div`
 
 const ActionButton = styled.button`
   background-color: transparent;
-  border: 1px solid #10b981; /* Green accent */
+  border: 1px solid #10b981;
   color: #10b981;
   padding: 5px 15px;
   border-radius: 20px;
@@ -184,6 +57,19 @@ const ActionButton = styled.button`
   font-size: 12px;
   &:hover {
     background-color: #10b981;
+    color: white;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const TurnButton = styled(ActionButton)`
+  border-color: ${(props) => (props.on ? '#e11d48' : '#10b981')};
+  color: ${(props) => (props.on ? '#e11d48' : '#10b981')};
+  &:hover {
+    background-color: ${(props) => (props.on ? '#e11d48' : '#10b981')};
     color: white;
   }
 `;
@@ -196,7 +82,7 @@ const ClaimSection = styled.div`
 `;
 
 const ClaimInput = styled.input`
-  background-color: #334155; /* Match input background */
+  background-color: #334155;
   border: 1px solid #64748b;
   border-radius: 5px;
   padding: 8px;
@@ -209,7 +95,7 @@ const ClaimInput = styled.input`
 `;
 
 const ClaimButton = styled.button`
-  background-color: #10b981; /* Green accent */
+  background-color: #10b981;
   border: none;
   color: white;
   padding: 8px 15px;
@@ -218,123 +104,290 @@ const ClaimButton = styled.button`
   text-transform: uppercase;
   font-size: 12px;
   &:hover {
-    background-color: #059669; /* Green hover */
+    background-color: #059669;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
+const ErrorMessage = styled.p`
+  color: #e11d48;
+  font-size: 14px;
+  margin-top: 10px;
+`;
+
+const RenameInput = styled.input`
+  background-color: #334155;
+  border: 1px solid #64748b;
+  border-radius: 5px;
+  padding: 5px;
+  color: white;
+  font-size: 14px;
+  margin-right: 10px;
+`;
+
+const LoadingSpinner = styled.div`
+  border: 2px solid #10b981;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+  margin-left: 10px;
+  display: inline-block;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+/**
+ * DeviceControl component for managing IoT devices.
+ * Fetches and displays a list of devices owned by the current user, allowing renaming, removing, claiming, and turning devices on/off.
+ */
 function DeviceControl() {
   const [devices, setDevices] = useState([]);
   const [newDeviceId, setNewDeviceId] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState({}); // Track loading state for each action
+  const [renameState, setRenameState] = useState({ deviceId: null, newName: '' }); // Manage rename input
 
+  // Fetch devices on mount
   useEffect(() => {
     const fetchDevices = async () => {
+      setLoading((prev) => ({ ...prev, fetch: true }));
       try {
-        const response = await getDeviceStatus();
-        setDevices(response.data);
+        const response = await listDevices();
+        setDevices(response.data || []);
+        setError('');
       } catch (error) {
-        console.error('Failed to fetch devices:', error);
+        const errorMessage = error.response?.data?.detail || 'Failed to fetch devices';
+        setError(errorMessage);
+        console.error('Failed to fetch devices:', errorMessage);
+        setDevices([]); // Empty list on failure
+      } finally {
+        setLoading((prev) => ({ ...prev, fetch: false }));
       }
     };
     fetchDevices();
   }, []);
 
+  /**
+   * Initiates the rename process for a device by showing an input field.
+   * @param {Object} device - The device to rename
+   */
+  const startRename = (device) => {
+    setRenameState({ deviceId: device.device_id, newName: device.device_id });
+  };
+
+  /**
+   * Handles renaming a device by sending the new name to the backend.
+   * @param {Object} device - The device to rename
+   */
   const handleRename = async (device) => {
-    const newName = prompt('Enter new device name:', device.name);
-    if (newName) {
-      try {
-        const response = await renameDevice({
-          old_device_id: device.device_id,
-          new_device_id: device.device_id, // API expects device_id, not name
-        });
-        alert(response.data.message);
-        // Update local state to reflect the new name
-        setDevices((prev) =>
-          prev.map((d) =>
-            d.device_id === device.device_id ? { ...d, name: newName } : d
-          )
-        );
-      } catch (error) {
-        console.error('Failed to rename device:', error);
-        alert('Failed to rename device');
-      }
-    }
-  };
-
-  const handleRemove = async (device) => {
-    if (window.confirm(`Are you sure you want to remove ${device.name}?`)) {
-      try {
-        const response = await removeDevice({ device_id: device.device_id });
-        alert(response.data.message);
-        // Remove device from local state
-        setDevices((prev) => prev.filter((d) => d.device_id !== device.device_id));
-      } catch (error) {
-        console.error('Failed to remove device:', error);
-        alert('Failed to remove device');
-      }
-    }
-  };
-
-  const handleClaim = async () => {
-    if (!newDeviceId) {
-      alert('Please enter a device ID');
+    if (!renameState.newName) {
+      setError('Please enter a new device ID');
       return;
     }
+    setLoading((prev) => ({ ...prev, [device.device_id]: 'rename' }));
     try {
-      const response = await claimDevice({ device_id: newDeviceId });
+      const response = await renameDevice({
+        old_device_id: device.device_id,
+        new_device_id: renameState.newName,
+      });
+      setDevices((prev) =>
+        prev.map((d) =>
+          d.device_id === device.device_id
+            ? { ...d, device_id: renameState.newName, name: renameState.newName }
+            : d
+        )
+      );
+      setRenameState({ deviceId: null, newName: '' });
+      setError('');
       alert(response.data.message);
-      // Simulate adding a new device (mock behavior)
-      const newDevice = {
-        id: devices.length + 1,
-        device_id: newDeviceId,
-        name: `New Device ${newDeviceId}`,
-        is_online: true,
-        last_value: 'N/A',
-        status_details: {
-          data_source: 'sensor_data',
-          last_data_time: '2025-04-08T10:00:00Z',
-          current_time: '2025-04-08T10:05:00Z',
-          message: 'Refreshed',
-        },
-        user_id: 1,
-      };
-      setDevices((prev) => [...prev, newDevice]);
-      setNewDeviceId(''); // Clear input
     } catch (error) {
-      console.error('Failed to claim device:', error);
-      alert('Failed to claim device');
+      const errorMessage = error.response?.data?.detail || 'Failed to rename device';
+      setError(errorMessage);
+      console.error('Failed to rename device:', errorMessage);
+    } finally {
+      setLoading((prev) => ({ ...prev, [device.device_id]: undefined }));
+    }
+  };
+
+  /**
+   * Handles removing a device from the user's ownership.
+   * @param {Object} device - The device to remove
+   */
+  const handleRemove = async (device) => {
+    if (!window.confirm(`Are you sure you want to remove ${device.device_id}?`)) return;
+    setLoading((prev) => ({ ...prev, [device.device_id]: 'remove' }));
+    try {
+      const response = await removeDevice(device.device_id);
+      setDevices((prev) => prev.filter((d) => d.device_id !== device.device_id));
+      setError('');
+      alert(response.data.message);
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 'Failed to remove device';
+      setError(errorMessage);
+      console.error('Failed to remove device:', errorMessage);
+    } finally {
+      setLoading((prev) => ({ ...prev, [device.device_id]: undefined }));
+    }
+  };
+
+  /**
+   * Handles claiming a new device by adding it to the user's ownership.
+   */
+  const handleClaim = async () => {
+    if (!newDeviceId) {
+      setError('Please enter a device ID');
+      return;
+    }
+    setLoading((prev) => ({ ...prev, claim: true }));
+    try {
+      const response = await claimDevice(newDeviceId);
+      // Refetch device list after claiming
+      const updatedResponse = await listDevices();
+      setDevices(updatedResponse.data || []);
+      setNewDeviceId('');
+      setError('');
+      alert(response.data.message);
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 'Failed to claim device';
+      setError(errorMessage);
+      console.error('Failed to claim device:', errorMessage);
+    } finally {
+      setLoading((prev) => ({ ...prev, claim: false }));
+    }
+  };
+
+  /**
+   * Handles turning a device on or off.
+   * @param {Object} device - The device to control
+   * @param {number} value - 1 to turn on, 0 to turn off
+   */
+  const handleTurn = async (device, value) => {
+    setLoading((prev) => ({ ...prev, [device.device_id]: `turn-${value}` }));
+    try {
+      const response = await turnDevice({
+        device_id: device.device_id,
+        value,
+      });
+      if (response.data.success) {
+        setDevices((prev) =>
+          prev.map((d) =>
+            d.device_id === device.device_id ? { ...d, last_value: value.toString() } : d
+          )
+        );
+        setError('');
+        alert(response.data.message);
+      } else {
+        setError(response.data.message);
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 'Failed to turn device';
+      setError(errorMessage);
+      console.error('Failed to turn device:', errorMessage);
+    } finally {
+      setLoading((prev) => ({ ...prev, [device.device_id]: undefined }));
     }
   };
 
   return (
     <DeviceContainer>
-      <DeviceList>
-        {devices.map((device) => (
-          <DeviceItem key={device.id}>
-            <DeviceInfo>
-              <DeviceName>{device.name}</DeviceName>
-              <DeviceDetail>
-                Status: <DeviceStatus online={device.is_online}>
-                  {device.is_online ? 'Online' : 'Offline'}
-                </DeviceStatus>
-              </DeviceDetail>
-              <DeviceDetail>Last Value: {device.last_value}</DeviceDetail>
-            </DeviceInfo>
-            <DeviceActions>
-              <ActionButton onClick={() => handleRename(device)}>Rename</ActionButton>
-              <ActionButton onClick={() => handleRemove(device)}>Remove</ActionButton>
-            </DeviceActions>
-          </DeviceItem>
-        ))}
-      </DeviceList>
+      {loading.fetch ? (
+        <LoadingSpinner />
+      ) : devices.length === 0 ? (
+        <p>No devices found. Claim a device to get started.</p>
+      ) : (
+        <DeviceList>
+          {devices.map((device) => (
+            <DeviceItem key={device.id}>
+              <DeviceInfo>
+                <DeviceName>{device.name}</DeviceName>
+                <DeviceDetail>Last Value: {device.last_value === '1' ? 'On' : 'Off'}</DeviceDetail>
+              </DeviceInfo>
+              <DeviceActions>
+                {renameState.deviceId === device.device_id ? (
+                  <>
+                    <RenameInput
+                      type="text"
+                      value={renameState.newName}
+                      onChange={(e) => setRenameState({ ...renameState, newName: e.target.value })}
+                      placeholder="New Device ID"
+                    />
+                    <ActionButton
+                      onClick={() => handleRename(device)}
+                      disabled={loading[device.device_id] === 'rename'}
+                      aria-label="Confirm rename device"
+                    >
+                      Save {loading[device.device_id] === 'rename' && <LoadingSpinner />}
+                    </ActionButton>
+                    <ActionButton
+                      onClick={() => setRenameState({ deviceId: null, newName: '' })}
+                      disabled={loading[device.device_id] === 'rename'}
+                      aria-label="Cancel rename device"
+                    >
+                      Cancel
+                    </ActionButton>
+                  </>
+                ) : (
+                  <ActionButton
+                    onClick={() => startRename(device)}
+                    disabled={loading[device.device_id]}
+                    aria-label={`Rename device ${device.name}`}
+                  >
+                    Rename
+                  </ActionButton>
+                )}
+                <ActionButton
+                  onClick={() => handleRemove(device)}
+                  disabled={loading[device.device_id]}
+                  aria-label={`Remove device ${device.name}`}
+                >
+                  Remove {loading[device.device_id] === 'remove' && <LoadingSpinner />}
+                </ActionButton>
+                <TurnButton
+                  on={device.last_value === '1'}
+                  onClick={() => handleTurn(device, 1)}
+                  disabled={loading[device.device_id]}
+                  aria-label={`Turn on device ${device.name}`}
+                >
+                  Turn On {loading[device.device_id] === 'turn-1' && <LoadingSpinner />}
+                </TurnButton>
+                <TurnButton
+                  on={device.last_value === '0'}
+                  onClick={() => handleTurn(device, 0)}
+                  disabled={loading[device.device_id]}
+                  aria-label={`Turn off device ${device.name}`}
+                >
+                  Turn Off {loading[device.device_id] === 'turn-0' && <LoadingSpinner />}
+                </TurnButton>
+              </DeviceActions>
+            </DeviceItem>
+          ))}
+        </DeviceList>
+      )}
       <ClaimSection>
         <ClaimInput
           type="text"
           placeholder="Device ID"
           value={newDeviceId}
           onChange={(e) => setNewDeviceId(e.target.value)}
+          aria-label="Enter device ID to claim"
         />
-        <ClaimButton onClick={handleClaim}>Claim New Device</ClaimButton>
+        <ClaimButton
+          onClick={handleClaim}
+          disabled={loading.claim}
+          aria-label="Claim new device"
+        >
+          Claim New Device {loading.claim && <LoadingSpinner />}
+        </ClaimButton>
       </ClaimSection>
+      {error && <ErrorMessage>{error}</ErrorMessage>}
     </DeviceContainer>
   );
 }
