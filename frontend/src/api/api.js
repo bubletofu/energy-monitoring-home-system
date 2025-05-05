@@ -81,6 +81,12 @@ export const getCurrentUser = () => API.get('/auth/me/');
 // Device Management Endpoints
 
 /**
+ * Fetches the list of devices owned by the authenticated user.
+ * @returns {Promise} - Axios response with array of device objects (e.g., [{ id, device_id, name, last_value, user_id }])
+ */
+export const listDevices = () => API.get('/devices/');
+
+/**
  * Renames a device for the authenticated user.
  * @param {Object} data - Contains old_device_id and new_device_id (e.g., { old_device_id: 'device1', new_device_id: 'device2' })
  * @returns {Promise} - Axios response with success message
