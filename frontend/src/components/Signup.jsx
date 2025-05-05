@@ -191,6 +191,7 @@ function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     if (!validateForm()) return;
 
     setLoading(true);
@@ -205,19 +206,26 @@ function Signup() {
         password: formData.password,
       };
       const loginResponse = await login(new URLSearchParams(loginCredentials));
-      if (loginResponse.data.success) {
-        localStorage.setItem('token', loginResponse.data.access_token);
-        setError('');
-        // Step 3: Redirect to dashboard
-        navigate('/dashboard');
-      } else {
-        setError('Auto-login failed. Please log in manually.');
-        navigate('/login');
+      const { access_token, refresh_token, user } = loginResponse.data;
+
+      // Store the access token
+      localStorage.setItem('token', access_token);
+
+      // Store the refresh token if provided
+      if (refresh_token) {
+        localStorage.setItem('refresh_token', refresh_token);
       }
+
+      console.log('Auto-login successful:', user);
+      setError('');
+      navigate('/dashboard');
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Signup failed. Please check server status or input data.';
+      const errorMessage = error.response?.data?.detail || 'Signup or login failed. Please check server status or input data.';
       setError(errorMessage);
-      console.error('Signup error:', errorMessage);
+      console.error('Signup or login error:', errorMessage);
+      if (error.response?.status === 400 && error.response.data.detail === "Username already registered") {
+        setError('Username already registered. Please choose a different one or log in.');
+      }
     } finally {
       setLoading(false);
     }
