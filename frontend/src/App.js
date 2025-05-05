@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -71,15 +71,17 @@ const NotFoundLink = styled.a`
 // PrivateRoute component to protect Dashboard
 const PrivateRoute = ({ children }) => {
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = React.useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const verifyAuth = async () => {
       try {
         const authResponse = await checkAuth();
         setIsAuthenticated(authResponse.data.is_authenticated);
-      } catch (error) {
-        console.error('Auth check failed:', error.response?.data?.detail || error.message);
+      } catch (err) {
+        console.error('Auth check failed:', err.response?.data?.detail || err.message);
+        setError('Failed to verify authentication. Please try again.');
         setIsAuthenticated(false);
       }
     };
@@ -91,6 +93,15 @@ const PrivateRoute = ({ children }) => {
       <LoadingContainer>
         <LoadingSpinner />
       </LoadingContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <NotFoundContainer>
+        <NotFoundTitle>{error}</NotFoundTitle>
+        <NotFoundLink href="/login">Go to Login</NotFoundLink>
+      </NotFoundContainer>
     );
   }
 
