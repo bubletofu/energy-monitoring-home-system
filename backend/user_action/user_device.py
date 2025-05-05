@@ -195,9 +195,19 @@ def rename_device(old_device_id: str, new_device_id: str, user_id: int) -> Dict[
                             )
                             db.commit()
                             logger.info(f"Đã cập nhật {original_samples_count} bản ghi trong bảng original_samples")
-                            
-                        # THAY ĐỔI: Bỏ qua cập nhật compressed_data_optimized
-                        logger.info("Bỏ qua cập nhật compressed_data_optimized, việc này sẽ được xử lý bởi compress.py")
+                        
+                        # BỔ SUNG: Cập nhật compressed_data_optimized
+                        compressed_count = db.execute(
+                            text("SELECT COUNT(*) FROM compressed_data_optimized WHERE device_id = :old_device_id"),
+                            {"old_device_id": old_device_id}
+                        ).scalar() or 0
+                        if compressed_count > 0:
+                            db.execute(
+                                text("UPDATE compressed_data_optimized SET device_id = :new_device_id WHERE device_id = :old_device_id"),
+                                {"new_device_id": new_device_id, "old_device_id": old_device_id}
+                            )
+                            db.commit()
+                            logger.info(f"Đã cập nhật {compressed_count} bản ghi trong bảng compressed_data_optimized")
                         
                     except Exception as e:
                         db.rollback()
@@ -308,8 +318,18 @@ def rename_device(old_device_id: str, new_device_id: str, user_id: int) -> Dict[
                         db.commit()
                         logger.info(f"Đã cập nhật {original_samples_count} bản ghi trong bảng original_samples")
                         
-                    # THAY ĐỔI: Bỏ qua cập nhật compressed_data_optimized
-                    logger.info("Bỏ qua cập nhật compressed_data_optimized, việc này sẽ được xử lý bởi compress.py")
+                    # BỔ SUNG: Cập nhật compressed_data_optimized
+                    compressed_count = db.execute(
+                        text("SELECT COUNT(*) FROM compressed_data_optimized WHERE device_id = :old_device_id"),
+                        {"old_device_id": old_device_id}
+                    ).scalar() or 0
+                    if compressed_count > 0:
+                        db.execute(
+                            text("UPDATE compressed_data_optimized SET device_id = :new_device_id WHERE device_id = :old_device_id"),
+                            {"new_device_id": new_device_id, "old_device_id": old_device_id}
+                        )
+                        db.commit()
+                        logger.info(f"Đã cập nhật {compressed_count} bản ghi trong bảng compressed_data_optimized")
                     
                 except Exception as e:
                     logger.warning(f"Lỗi khi cập nhật các bảng khác: {str(e)}")
