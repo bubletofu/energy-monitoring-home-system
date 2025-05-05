@@ -5,34 +5,7 @@ import EnergyConsumption from './EnergyConsumption';
 import DeviceControl from './DeviceControl';
 import Notifications from './Notifications';
 import EnergyAnalytics from './EnergyAnalytics';
-
-// Mock data for testing without a backend
-const mockUser = {
-  id: 1,
-  username: 'mockuser',
-  email: 'mockuser@example.com',
-};
-
-// Mock API functions
-const checkAuth = async () => {
-  console.log('Mock check-auth');
-  return {
-    data: {
-      is_authenticated: true,
-      user: mockUser,
-    },
-  };
-};
-
-const logout = async () => {
-  console.log('Mock logout');
-  return { data: { message: 'Đăng xuất thành công' } };
-};
-
-const getCurrentUser = async () => {
-  console.log('Mock getCurrentUser');
-  return { data: mockUser };
-};
+import { checkAuth, logout, getCurrentUser } from '../api/api';
 
 // Styled components (unchanged)
 const DashboardContainer = styled.div`
@@ -98,14 +71,39 @@ const FooterLink = styled.a`
   }
 `;
 
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #0f172a;
+  color: white;
+`;
+
+const LoadingSpinner = styled.div`
+  border: 4px solid #10b981;
+  border-top: 4px solid transparent;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const verifyAuth = async () => {
+      setLoading(true);
       try {
         const authResponse = await checkAuth();
         if (authResponse.data.is_authenticated) {
@@ -116,8 +114,10 @@ function Dashboard() {
           navigate('/login');
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('Auth check failed:', error.response?.data?.detail || error.message);
         navigate('/login');
+      } finally {
+        setLoading(false);
       }
     };
     verifyAuth();
@@ -125,13 +125,27 @@ function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      const response = await logout();
+      console.log(response.data.message);
       localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token'); // Remove refresh token if exists
       navigate('/login');
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Logout failed:', error.response?.data?.detail || error.message);
+      // Proceed with logout even if API call fails
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      navigate('/login');
     }
   };
+
+  if (loading) {
+    return (
+      <LoadingContainer>
+        <LoadingSpinner />
+      </LoadingContainer>
+    );
+  }
 
   if (!isAuthenticated) return null;
 
