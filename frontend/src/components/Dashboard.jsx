@@ -7,7 +7,7 @@ import Notifications from './Notifications';
 import EnergyAnalytics from './EnergyAnalytics';
 import { checkAuth, logout, getCurrentUser } from '../api/api';
 
-// Styled components (unchanged)
+// Styled components
 const DashboardContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -94,11 +94,28 @@ const LoadingSpinner = styled.div`
   }
 `;
 
+const ErrorContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #0f172a;
+  color: white;
+  flex-direction: column;
+`;
+
+const ErrorMessage = styled.p`
+  color: #e11d48;
+  font-size: 16px;
+  margin-bottom: 20px;
+`;
+
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -114,7 +131,7 @@ function Dashboard() {
           navigate('/login');
         }
       } catch (error) {
-        console.error('Auth check failed:', error.response?.data?.detail || error.message);
+        setError(error.response?.data?.detail || 'Failed to authenticate. Please try again.');
         navigate('/login');
       } finally {
         setLoading(false);
@@ -128,13 +145,11 @@ function Dashboard() {
       const response = await logout();
       console.log(response.data.message);
       localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token'); // Remove refresh token if exists
       navigate('/login');
     } catch (error) {
-      console.error('Logout failed:', error.response?.data?.detail || error.message);
+      setError(error.response?.data?.detail || 'Logout failed. Please try again.');
       // Proceed with logout even if API call fails
       localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
       navigate('/login');
     }
   };
@@ -147,12 +162,20 @@ function Dashboard() {
     );
   }
 
+  if (error) {
+    return (
+      <ErrorContainer>
+        <ErrorMessage>{error}</ErrorMessage>
+      </ErrorContainer>
+    );
+  }
+
   if (!isAuthenticated) return null;
 
   return (
     <DashboardContainer>
       <Header>
-        <Logo>EcoEnergy</Logo>
+        <Logo>EcoEnergy - Welcome, {user?.username || 'User'}</Logo>
         <NavLinks>
           <NavLink
             href="#"
@@ -218,7 +241,7 @@ function Dashboard() {
   );
 }
 
-// Quick Links Component (unchanged)
+// Quick Links Component
 const QuickLinksContainer = styled.div`
   background-color: #1e293b;
   padding: 20px;
