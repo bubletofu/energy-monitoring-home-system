@@ -330,6 +330,7 @@ function DeviceControl() {
               <DeviceInfo>
                 <DeviceName>{device.device_id}</DeviceName>
                 <DeviceDetail>Last Value: {device.last_value === '1' ? 'On' : 'Off'}</DeviceDetail>
+                <DeviceDetail>Type: {device.device_type}</DeviceDetail>
               </DeviceInfo>
               <DeviceActions>
                 {renameState.deviceId === device.device_id ? (
