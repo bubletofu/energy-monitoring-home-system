@@ -165,7 +165,7 @@ async def get_current_user(
         # Thử decode token
         try:
             # Thử giải mã trước với verify=False để xem cấu trúc
-            payload_unverified = jwt.decode(final_token, options={"verify_signature": False})
+            payload_unverified = jwt.decode(final_token, key=None, options={"verify_signature": False})
             logger.info(f"Token payload (unverified): {payload_unverified}")
         except Exception as e:
             logger.error(f"Lỗi khi decode token không xác minh: {str(e)}")

@@ -21,7 +21,8 @@ from fastapi import APIRouter
 from user_action.user_device import rename_device
 from user_action.add_device import add_device_for_user
 from user_action.remove_device import remove_device
-from user_action.turn_device import turn_device
+from user_action.device_features import DEVICE_FEATURES
+from user_action.control_device import control_device
 
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO)
@@ -110,16 +111,18 @@ class DeviceRename(BaseModel):
     old_device_id: str
     new_device_id: str
 
-class DeviceTurnRequest(BaseModel):
-    device_id: str = Field(..., min_length=1, max_length=100, description="ID của thiết bị cần bật/tắt")
-    value: int = Field(..., ge=0, le=1, description="Giá trị 0 (tắt) hoặc 1 (bật)")
+class DeviceControlRequest(BaseModel):
+    device_id: str
+    feature: str
+    value: int
 
 @app.post("/register/", response_model=dict)
 def register(user: UserCreate, db: Session = Depends(get_db)):
     try:
         db_user = db.query(models.User).filter(models.User.username == user.username).first()
         if db_user:
-            raise HTTPException(status_code=400, detail="Username already registered")
+            # Trả về thông báo rõ ràng khi tài khoản đã tồn tại
+            return {"success": False, "message": "Username already registered"}
         
         hashed_password = auth.get_password_hash(user.password)
         db_user = models.User(
@@ -130,7 +133,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
-        return {"message": "User created successfully"}
+        return {"success": True, "message": "User created successfully"}
     except Exception as e:
         logger.error(f"Error in register: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -407,37 +410,6 @@ def remove_device(
             detail=str(e)
         )
 
-@app.post("/devices/turn/", response_model=dict)
-def turn_device_endpoint(
-    turn_request: DeviceTurnRequest,
-    current_user: models.User = Depends(auth.get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Bật hoặc tắt thiết bị.
-    value=0: Tắt thiết bị
-    value=1: Bật thiết bị
-    
-    Chỉ cho phép điều khiển nếu người dùng sở hữu thiết bị đó.
-    """
-    try:
-        result = turn_device(turn_request.device_id, current_user.id, turn_request.value)
-        
-        if not result["success"]:
-            raise HTTPException(
-                status_code=400,
-                detail=result["message"]
-            )
-            
-        return result
-        
-    except Exception as e:
-        logger.error(f"Lỗi khi bật/tắt thiết bị: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
 @app.get("/devices/", response_model=List[dict])
 def list_devices(
     current_user: models.User = Depends(auth.get_current_user),
@@ -457,4 +429,18 @@ def list_devices(
         ]
     except Exception as e:
         logger.error(f"Error listing devices for user {current_user.id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/devices/control/")
+def control_device_api(request: DeviceControlRequest, current_user: models.User = Depends(auth.get_current_user)):
+    return control_device(request.device_id, current_user.id, request.feature, request.value)
+
+@app.get("/devices/{device_id}/features")
+def get_device_features(device_id: str):
+    features = DEVICE_FEATURES.get(device_id)
+    if not features:
+        raise HTTPException(status_code=404, detail="Device features not found")
+    return {
+        "device_id": device_id,
+        "features": features
+    } 
