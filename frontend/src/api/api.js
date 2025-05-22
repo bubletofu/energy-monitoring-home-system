@@ -105,7 +105,7 @@ export const claimDevice = (deviceId) => API.post(`/api/devices/claim/${deviceId
  * @param {string} deviceId - The ID of the device to remove (e.g., 'device1')
  * @returns {Promise} - Axios response with success message
  */
-export const removeDevice = (deviceId) => API.post('/devices/remove/', { device_id: deviceId });
+export const removeDevice = (deviceId) => API.post('/devices/remove/', null, { params: { device_id: deviceId } });
 
 /**
  * Turns a device on or off for the authenticated user.
@@ -113,5 +113,40 @@ export const removeDevice = (deviceId) => API.post('/devices/remove/', { device_
  * @returns {Promise} - Axios response with success message
  */
 export const turnDevice = (data) => API.post('/devices/turn/', data);
+
+/**
+ * Gửi lệnh điều khiển thiết bị (toggle/slider...)
+ * @param {Object} data - { device_id, feature, value }
+ * @returns {Promise} - Axios response
+ */
+export const controlDevice = (data) => API.post('/devices/control/', data);
+
+/**
+ * Thêm thiết bị mới (admin)
+ * @param {Object} data - { device_id, device_type }
+ * @returns {Promise}
+ */
+export const addDevice = (data) => API.post('/admin/add-device', data);
+
+/**
+ * Xóa thiết bị (admin)
+ * @param {string} deviceId
+ * @returns {Promise}
+ */
+export const deleteDevice = (deviceId) => API.post('/admin/delete-device', { device_id: deviceId });
+
+/**
+ * Nén dữ liệu thiết bị (admin)
+ * @param {string} deviceId
+ * @returns {Promise}
+ */
+export const compressDeviceData = (deviceId) => API.post('/admin/save-data', { device_id: deviceId });
+
+/**
+ * Lấy dữ liệu JSON đã giải nén cho device (admin)
+ * @param {string} deviceId
+ * @returns {Promise}
+ */
+export const decompressDeviceData = (deviceId) => API.post('/admin/decompress', { device_id: deviceId });
 
 export default API;
