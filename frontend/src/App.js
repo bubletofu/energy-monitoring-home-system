@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import styled from 'styled-components';
 import { checkAuth } from './api/api';
+import AdminDeviceManager from './components/AdminDeviceManager';
 
 const AppContainer = styled.div`
   font-family: 'Roboto', sans-serif;
@@ -144,6 +145,10 @@ function App() {
                   <Dashboard />
                 </PrivateRoute>
               }
+            />
+            <Route
+              path="/admin"
+              element={<AdminDeviceManager />}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
