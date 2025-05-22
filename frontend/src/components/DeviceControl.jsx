@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { renameDevice, claimDevice, removeDevice, turnDevice, listDevices } from '../api/api';
+import { renameDevice, claimDevice, removeDevice, turnDevice, listDevices, controlDevice } from '../api/api';
 
 // Styled Components
 const DeviceContainer = styled.div`
@@ -149,6 +149,23 @@ const LoadingSpinner = styled.div`
     100% { transform: rotate(360deg); }
   }
 `;
+
+// Mapping các feature cho từng loại thiết bị (FE mirror backend)
+const DEVICE_FEATURES = {
+  'yolo-fan': [
+    { feature: 'toggle_power', feed: 'yolo-fan', type: 'toggle', values: [0, 1], label: 'Bật/Tắt quạt' },
+    { feature: 'switch_mode', feed: 'yolo-fan-mode-select', type: 'toggle', values: [0, 1], label: 'Chuyển chế độ Auto/Manual' },
+    { feature: 'adjust_temp_threshold', feed: 'temperature-var', type: 'slider', min: 0, max: 100, step: 1, label: 'Điều chỉnh ngưỡng nhiệt độ' },
+    { feature: 'adjust_fan_speed', feed: 'yolo-fan-speed', type: 'slider', min: 0, max: 100, step: 10, label: 'Điều chỉnh tốc độ quạt' },
+  ],
+  'yolo-light': [
+    { feature: 'toggle_power', feed: 'yolo-led', type: 'toggle', values: [0, 1], label: 'Bật/Tắt đèn' },
+    { feature: 'switch_mode', feed: 'yolo-led-mode-select', type: 'toggle', values: [0, 1], label: 'Chuyển chế độ Auto/Manual' },
+    { feature: 'adjust_brightness_threshold', feed: 'light-var', type: 'slider', min: 0, max: 100, step: 1, label: 'Điều chỉnh ngưỡng sáng' },
+    { feature: 'select_led_num', feed: 'yolo-led-num', type: 'slider', min: 1, max: 10, step: 1, label: 'Chọn số lượng đèn' },
+  ],
+  'yolo-device': [],
+};
 
 /**
  * DeviceControl component for managing IoT devices.
@@ -317,6 +334,43 @@ function DeviceControl() {
     }
   };
 
+  // Hàm gửi giá trị cho slider hoặc toggle (gọi đúng endpoint backend)
+  const sendDeviceValue = async (device, feature, value) => {
+    const payload = {
+      device_id: device.device_id,
+      feature: feature.feature,
+      value,
+    };
+    setLoading((prev) => ({ ...prev, [`${device.device_id}-${feature.feature}`]: true }));
+    try {
+      console.log('Gửi điều khiển:', payload); // DEBUG
+      const response = await controlDevice(payload);
+      const data = response.data;
+      console.log('Phản hồi backend:', data); // DEBUG
+      if (data.success) {
+        setSuccess(data.message || 'Đã gửi giá trị thành công');
+        setError('');
+        // Cập nhật local state cho device (slider/toggle)
+        setDevices((prev) =>
+          prev.map((d) =>
+            d.device_id === device.device_id
+              ? { ...d, [feature.feed]: value }
+              : d
+          )
+        );
+      } else {
+        setError(data.message || 'Gửi giá trị thất bại');
+        setSuccess('');
+      }
+    } catch (error) {
+      setError('Gửi giá trị thất bại');
+      setSuccess('');
+      console.error('Lỗi gửi giá trị:', error);
+    } finally {
+      setLoading((prev) => ({ ...prev, [`${device.device_id}-${feature.feature}`]: false }));
+    }
+  };
+
   return (
     <DeviceContainer>
       {loading.fetch ? (
@@ -330,7 +384,6 @@ function DeviceControl() {
               <DeviceInfo>
                 <DeviceName>{device.device_id}</DeviceName>
                 <DeviceDetail>Last Value: {device.last_value === '1' ? 'On' : 'Off'}</DeviceDetail>
-                <DeviceDetail>Type: {device.device_type}</DeviceDetail>
               </DeviceInfo>
               <DeviceActions>
                 {renameState.deviceId === device.device_id ? (
@@ -372,22 +425,43 @@ function DeviceControl() {
                 >
                   Remove {loading[device.device_id] === 'remove' && <LoadingSpinner />}
                 </ActionButton>
-                <TurnButton
-                  on={device.last_value === '1'}
-                  onClick={() => handleTurn(device, 1)}
-                  disabled={loading[device.device_id]}
-                  aria-label={`Turn on device ${device.device_id}`}
-                >
-                  Turn On {loading[device.device_id] === 'turn-1' && <LoadingSpinner />}
-                </TurnButton>
-                <TurnButton
-                  on={device.last_value === '0'}
-                  onClick={() => handleTurn(device, 0)}
-                  disabled={loading[device.device_id]}
-                  aria-label={`Turn off device ${device.device_id}`}
-                >
-                  Turn Off {loading[device.device_id] === 'turn-0' && <LoadingSpinner />}
-                </TurnButton>
+                {/* Render các feature động theo device_type */}
+                {DEVICE_FEATURES[device.device_type]?.map((feature) => {
+                  if (feature.type === 'toggle') {
+                    // Toggle: 2 trạng thái, ví dụ Bật/Tắt
+                    const isOn = device[feature.feed] === (feature.values[1] || 1);
+                    return (
+                      <TurnButton
+                        key={feature.feed}
+                        on={isOn}
+                        onClick={() => sendDeviceValue(device, feature, isOn ? feature.values[0] : feature.values[1])}
+                        disabled={loading[`${device.device_id}-${feature.feature}`]}
+                        aria-label={feature.label}
+                      >
+                        {feature.label} {loading[`${device.device_id}-${feature.feature}`] && <LoadingSpinner />}
+                      </TurnButton>
+                    );
+                  }
+                  if (feature.type === 'slider') {
+                    return (
+                      <div key={feature.feed} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <label style={{ color: '#dbeafe', fontSize: 12 }}>{feature.label}</label>
+                        <input
+                          type="range"
+                          min={feature.min}
+                          max={feature.max}
+                          step={feature.step}
+                          value={device[feature.feed] || feature.min}
+                          onChange={e => sendDeviceValue(device, feature, Number(e.target.value))}
+                          disabled={loading[`${device.device_id}-${feature.feature}`]}
+                          style={{ marginLeft: 8 }}
+                        />
+                        <span style={{ color: '#10b981', fontSize: 12 }}>{device[feature.feed] || feature.min}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
               </DeviceActions>
             </DeviceItem>
           ))}
