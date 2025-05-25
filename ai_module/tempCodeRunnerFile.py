@@ -1,0 +1,1 @@
+df = generate_synthetic_data()

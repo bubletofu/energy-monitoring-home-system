@@ -1,0 +1,57 @@
+2025-05-18 17:46:28,140 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/energy-monitoring-home-system/backend/.env
+2025-05-18 17:46:28,140 - INFO - Environment variables:
+2025-05-18 17:46:28,140 - INFO - DATABASE_URL from env: None
+2025-05-18 17:46:28,140 - INFO - ALGORITHM from env: None
+2025-05-18 17:46:28,140 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-05-18 17:46:28,143 - ERROR - Error loading settings: 2 validation errors for Settings
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+2025-05-18 17:46:28,143 - ERROR - Lỗi khi tải biến môi trường: 2 validation errors for Settings
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+2025-05-18 17:47:03,571 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/energy-monitoring-home-system/backend/.env
+2025-05-18 17:47:03,571 - INFO - Environment variables:
+2025-05-18 17:47:03,571 - INFO - DATABASE_URL from env: None
+2025-05-18 17:47:03,571 - INFO - ALGORITHM from env: None
+2025-05-18 17:47:03,571 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-05-18 17:47:03,575 - ERROR - Error loading settings: 2 validation errors for Settings
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+2025-05-18 17:47:03,575 - ERROR - Lỗi khi tải biến môi trường: 2 validation errors for Settings
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+2025-05-18 18:39:17,252 - INFO - Loading .env from: /Users/phuong/Desktop/hcmut/energy-monitoring-home-system/backend/.env
+2025-05-18 18:39:17,252 - INFO - Environment variables:
+2025-05-18 18:39:17,252 - INFO - DATABASE_URL from env: None
+2025-05-18 18:39:17,252 - INFO - ALGORITHM from env: None
+2025-05-18 18:39:17,252 - INFO - ACCESS_TOKEN_EXPIRE_MINUTES from env: None
+2025-05-18 18:39:17,255 - ERROR - Error loading settings: 2 validation errors for Settings
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+2025-05-18 18:39:17,255 - ERROR - Lỗi khi tải biến môi trường: 2 validation errors for Settings
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing

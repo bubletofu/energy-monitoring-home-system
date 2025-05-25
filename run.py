@@ -2,6 +2,7 @@ import subprocess
 import os
 import time
 from ai_module.fanControl import run_knn_model
+from ai_module.lightControl import run_light_prediction
 
 def run_shell_command(command):
     """
@@ -23,14 +24,12 @@ def clean_docker_and_database():
     
     run_shell_command("docker stop $(docker ps -q)")
     run_shell_command("docker rm $(docker ps -a -q)")
-
     run_shell_command("docker volume prune -f")
     run_shell_command("docker network prune -f")
     run_shell_command("docker rmi $(docker images -q)")
     run_shell_command("""
         docker exec -it <your_postgres_container_name> psql -U postgres -c "DROP DATABASE IF EXISTS iot_db;"
     """)
-
     run_shell_command("""
         docker exec -it <your_postgres_container_name> psql -U postgres -c "CREATE DATABASE iot_db;"
     """)
@@ -52,7 +51,10 @@ def setup_environment():
 def main():
     clean_docker_and_database()
     setup_environment()
-    model = run_knn_model()
+    print("Running fan status prediction...")
+    run_knn_model()
+    print("Running light status prediction...")
+    run_light_prediction()
 
 if __name__ == "__main__":
     main()
